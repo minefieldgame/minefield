@@ -1,5 +1,7 @@
 import type { TopTenPuzzle } from "@/games/top-ten/types";
 import type { DailyPuzzle } from "@/types/game";
+import type { MinefieldPuzzle } from "@/games/minefield/logic";
+import type { CloserPuzzle } from "@/games/closer/types";
 
 export type AdminNeedleDropPreview =
   | {
@@ -14,6 +16,7 @@ export type AdminNeedleDropPreview =
         generatedAt: string;
         rawITunesTitle: string;
         normalizedCorrectTitle: string;
+        normalizedCorrectArtist: string;
         errors: string[];
       };
       rawProviderResponse: unknown;
@@ -58,6 +61,8 @@ export type AdminPreviewResponse = {
     needledrop: AdminNeedleDropPreview;
     topTen: AdminTopTenPreview;
     spellDrop: AdminSpellDropPreview;
+    minefield: AdminMinefieldPreview;
+    closer: AdminCloserPreview;
   };
 };
 
@@ -68,4 +73,16 @@ export type AdminSpellDropPreview = {
   dateSeed: number;
   replayLimit: number;
   wordCount: number;
+};
+
+export type AdminMinefieldPreview = {
+  status: "ready";
+  puzzle: MinefieldPuzzle;
+};
+
+export type AdminCloserPreview = {
+  status: "ready";
+  puzzle: CloserPuzzle;
+  validation: { valid: boolean; errors: string[] };
+  questionPoolSize: number;
 };

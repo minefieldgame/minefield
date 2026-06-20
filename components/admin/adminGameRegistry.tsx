@@ -2,6 +2,8 @@ import type { ComponentType } from "react";
 import AdminNeedleDropPreview from "@/components/admin/AdminNeedleDropPreview";
 import AdminTopTenPreview from "@/components/admin/AdminTopTenPreview";
 import AdminSpellDropPreview from "@/components/admin/AdminSpellDropPreview";
+import AdminMinefieldPreview from "@/components/admin/AdminMinefieldPreview";
+import AdminCloserPreview from "@/components/admin/AdminCloserPreview";
 import type { AdminPreviewResponse } from "@/types/admin";
 
 export type AdminGamePreviewProps = {
@@ -29,6 +31,14 @@ function SpellDropModule({ data }: AdminGamePreviewProps) {
   return <AdminSpellDropPreview preview={data.games.spellDrop} />;
 }
 
+function MinefieldModule({ data, onRegenerate }: AdminGamePreviewProps) {
+  return <AdminMinefieldPreview preview={data.games.minefield} onRegenerate={onRegenerate} />;
+}
+
+function CloserModule({ data, onRegenerate }: AdminGamePreviewProps) {
+  return <AdminCloserPreview preview={data.games.closer} onRegenerate={onRegenerate} />;
+}
+
 export const adminGameRegistry: Array<{
   gameId: string;
   displayName: string;
@@ -40,6 +50,11 @@ export const adminGameRegistry: Array<{
     AdminPreviewComponent: NeedleDropModule
   },
   {
+    gameId: "minefield",
+    displayName: "Minefield",
+    AdminPreviewComponent: MinefieldModule
+  },
+  {
     gameId: "top-ten",
     displayName: "Top 3",
     AdminPreviewComponent: TopTenModule
@@ -48,5 +63,10 @@ export const adminGameRegistry: Array<{
     gameId: "spelldrop",
     displayName: "SpellDrop",
     AdminPreviewComponent: SpellDropModule
+  },
+  {
+    gameId: "closer",
+    displayName: "Closer",
+    AdminPreviewComponent: CloserModule
   }
 ];

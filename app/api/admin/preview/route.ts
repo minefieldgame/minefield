@@ -12,6 +12,12 @@ import { hashString } from "@/lib/dailySeed";
 import { getDailyGameDate } from "@/lib/date";
 import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
 import { getSpellDropWord } from "@/lib/spellDrop";
+import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
+import {
+  getCloserQuestionPool,
+  resolveCloserPuzzleForDate,
+  validateCloserPuzzle
+} from "@/games/closer/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +103,17 @@ export async function GET(request: NextRequest) {
     replayLimit: spellDropSelection.replayLimit,
     wordCount: spellDropSelection.wordCount
   };
+  const minefield = {
+    status: "ready" as const,
+    puzzle: resolveMinefieldPuzzle(date)
+  };
+  const closerPuzzle = resolveCloserPuzzleForDate(date);
+  const closer = {
+    status: "ready" as const,
+    puzzle: closerPuzzle,
+    validation: validateCloserPuzzle(closerPuzzle),
+    questionPoolSize: getCloserQuestionPool().length
+  };
 
   return NextResponse.json(
     {
@@ -105,7 +122,7 @@ export async function GET(request: NextRequest) {
       dailySeed,
       seedHash: dailySeed.toString(16).padStart(8, "0"),
       generatedAt,
-      games: { needledrop, topTen, spellDrop }
+      games: { needledrop, topTen, spellDrop, minefield, closer }
     },
     { headers: { "Cache-Control": "no-store" } }
   );

@@ -3,7 +3,7 @@ import { getTopTenForDate } from "@/lib/chartProvider";
 import { hashString, seededShuffle } from "@/lib/dailySeed";
 import { puzzleNumber } from "@/lib/date";
 import type { DailyPuzzle } from "@/types/game";
-import { normalizeMusicString } from "@/lib/normalize";
+import { normalizeArtist, normalizeMusicString } from "@/lib/normalize";
 
 export async function resolveNeedleDropPuzzle(puzzleDate: string): Promise<DailyPuzzle> {
   const [currentYear, month, day] = puzzleDate.split("-").map(Number);
@@ -52,6 +52,7 @@ export async function resolveNeedleDropDiagnostic(puzzleDate: string) {
       generatedAt: startedAt,
       rawITunesTitle: puzzle.track.trackName,
       normalizedCorrectTitle: normalizeMusicString(puzzle.title),
+      normalizedCorrectArtist: normalizeArtist(puzzle.artist),
       errors: [] as string[]
     },
     rawProviderResponse: {

@@ -28,16 +28,28 @@ export default function SpellDropGame({
   const [guess, setGuess] = useState("");
   const [plays, setPlays] = useState(0);
   const [state, setState] = useState<SpellDropState | null>(null);
-  const [copied, setCopied] = useState(false);
 
   function report(result: SpellDropState) {
+    const score = result.correct ? 100 : 0;
+    const summaryLabel = result.correct ? "Correct" : "Missed";
     onComplete({
       gameId: "spelldrop",
       displayName: "SpellDrop",
-      score: result.correct ? 100 : 0,
+      icon: "🔤",
+      score,
       maxScore: 100,
       completed: true,
-      detail: result.correct ? "Correct" : `Missed · ${word}`
+      successUnits: result.correct ? 1 : 0,
+      totalUnits: 1,
+      summaryLabel,
+      shareLine: `🔤 SpellDrop: ${score}/100, ${summaryLabel.toLowerCase()}`,
+      reviewData: {
+        type: "spelldrop",
+        correctWord: word,
+        userSpelling: result.guess,
+        correct: result.correct
+      },
+      detail: summaryLabel
     });
   }
 
@@ -77,19 +89,6 @@ export default function SpellDropGame({
     localStorage.setItem(`${STORAGE_PREFIX}${date}`, JSON.stringify(result));
     setState(result);
     report(result);
-  }
-
-  async function share() {
-    if (!state) return;
-    await navigator.clipboard.writeText([
-      "SpellDrop",
-      state.correct ? "✅ Correct" : "⬜ Missed",
-      "",
-      "Play Minefield:",
-      "https://minefieldgame.com"
-    ].join("\n"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1400);
   }
 
   const completed = Boolean(state?.completed);
@@ -136,15 +135,6 @@ export default function SpellDropGame({
         )}
       </form>
 
-      {state?.completed && (
-        <div className={`mt-3 rounded-xl border p-3 text-center ${state.correct ? "border-emerald-300 bg-emerald-50 dark:border-emerald-400/25 dark:bg-emerald-400/10" : "border-red-200 bg-red-50 dark:border-red-400/20 dark:bg-red-400/10"}`}>
-          <p className="text-xl font-black text-slate-950 dark:text-white">{state.correct ? "Correct!" : "Not quite."}</p>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">The spelling is <strong>{word}</strong>.</p>
-          <button onClick={share} className="mt-3 rounded-xl bg-violet px-5 py-2.5 text-sm font-extrabold text-white dark:bg-[#7569e5]">
-            {copied ? "Copied!" : "Share SpellDrop"}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

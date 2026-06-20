@@ -10,6 +10,20 @@ const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
+const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
+  "needledrop",
+  "minefield",
+  "top-ten",
+  "spelldrop",
+  "closer"
+];
+const GAME_DEFAULTS = {
+  needledrop: { displayName: "NeedleDrop", icon: "🎵", totalUnits: 7 },
+  minefield: { displayName: "Minefield", icon: "💣", totalUnits: 5 },
+  "top-ten": { displayName: "Top 3", icon: "🏆", totalUnits: 3 },
+  spelldrop: { displayName: "SpellDrop", icon: "🔤", totalUnits: 1 },
+  closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 }
+} as const;
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -22,7 +36,37 @@ function read<T>(key: string, fallback: T): T {
 }
 
 export function loadGameProgress(date: string): MinefieldDailyBoard {
-  return read(`${BOARD_PREFIX}${date}`, { date, results: {} });
+  const board = read<MinefieldDailyBoard>(`${BOARD_PREFIX}${date}`, { date, results: {} });
+  const results = Object.fromEntries(
+    Object.entries(board.results).map(([gameId, value]) => {
+      const id = gameId as MinefieldGameResult["gameId"];
+      return [id, normalizeResult(id, value as MinefieldGameResult)];
+    })
+  ) as MinefieldDailyBoard["results"];
+  return { ...board, results };
+}
+
+function normalizeResult(gameId: MinefieldGameResult["gameId"], result: MinefieldGameResult) {
+  const defaults = GAME_DEFAULTS[gameId];
+  const summaryLabel = result.summaryLabel ?? result.detail ?? "Completed";
+  return {
+    ...result,
+    gameId,
+    displayName: result.displayName ?? defaults.displayName,
+    icon: result.icon ?? defaults.icon,
+    maxScore: result.maxScore ?? 100,
+    successUnits: result.successUnits ?? 0,
+    totalUnits: result.totalUnits ?? defaults.totalUnits,
+    summaryLabel,
+    shareLine:
+      result.shareLine ??
+      `${defaults.icon} ${result.displayName ?? defaults.displayName}: ${result.score ?? 0}/${result.maxScore ?? 100}, ${summaryLabel.toLowerCase()}`,
+    reviewData: result.reviewData ?? {
+      type: "legacy",
+      message: "Detailed answer review is unavailable for this previously saved result."
+    },
+    detail: result.detail ?? summaryLabel
+  } satisfies MinefieldGameResult;
 }
 
 export function saveGameProgress(date: string, result: MinefieldGameResult) {
@@ -37,9 +81,11 @@ export function saveGameProgress(date: string, result: MinefieldGameResult) {
 
 export function calculateDailySummary(
   board: MinefieldDailyBoard,
-  totalGames = 3
+  totalGames = 5
 ): MinefieldSummary {
-  const results = Object.values(board.results).filter(Boolean) as MinefieldGameResult[];
+  const results = (Object.values(board.results).filter(Boolean) as MinefieldGameResult[]).sort(
+    (left, right) => RESULT_ORDER.indexOf(left.gameId) - RESULT_ORDER.indexOf(right.gameId)
+  );
   return {
     date: board.date,
     totalScore: results.reduce((sum, result) => sum + result.score, 0),
@@ -56,13 +102,17 @@ function previousPacificDate(dateKey: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 3) {
+export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 5) {
   const summary = calculateDailySummary(board, totalGames);
   if (summary.gamesCompleted < totalGames) return summary;
 
   const archived = read<MinefieldSummary[]>(ARCHIVE_KEY, []);
-  if (!archived.some((entry) => entry.date === board.date)) {
-    localStorage.setItem(ARCHIVE_KEY, JSON.stringify([summary, ...archived].slice(0, 180)));
+  const existingEntry = archived.some((entry) => entry.date === board.date);
+  localStorage.setItem(
+    ARCHIVE_KEY,
+    JSON.stringify([summary, ...archived.filter((entry) => entry.date !== board.date)].slice(0, 180))
+  );
+  if (!existingEntry) {
     const stats = read<MinefieldStats>(STATS_KEY, EMPTY_STATS);
     const continued = stats.lastCompletedDate === previousPacificDate(board.date);
     const currentStreak = continued ? stats.currentStreak + 1 : 1;

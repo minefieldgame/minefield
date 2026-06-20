@@ -29,7 +29,8 @@ export default function AdminNeedleDropPreview({
   date: string;
   onRegenerate: () => void;
 }) {
-  const [testGuess, setTestGuess] = useState("");
+  const [testGuessTitle, setTestGuessTitle] = useState("");
+  const [testGuessArtist, setTestGuessArtist] = useState("");
   if (preview.status === "error") {
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
@@ -40,7 +41,12 @@ export default function AdminNeedleDropPreview({
   }
 
   const { puzzle, diagnostics } = preview;
-  const guessExplanation = explainNeedleDropGuess(testGuess, puzzle.title);
+  const guessExplanation = explainNeedleDropGuess({
+    displayValue: `${testGuessTitle} — ${testGuessArtist}`,
+    title: testGuessTitle,
+    artist: testGuessArtist,
+    selectedAutocomplete: true
+  }, puzzle.title, puzzle.artist);
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
@@ -73,24 +79,39 @@ export default function AdminNeedleDropPreview({
         <Datum label="Provider" value={diagnostics.sourceProvider} />
         <Datum label="Raw iTunes title" value={diagnostics.rawITunesTitle} />
         <Datum label="Normalized correct title" value={diagnostics.normalizedCorrectTitle} />
+        <Datum label="Normalized correct artist" value={diagnostics.normalizedCorrectArtist} />
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 p-4 dark:border-[#3b424f]">
-        <label htmlFor="needle-guess-test" className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
-          Test user guess / autocomplete selected value
-        </label>
-        <input
-          id="needle-guess-test"
-          value={testGuess}
-          onChange={(event) => setTestGuess(event.target.value)}
-          placeholder="Enter a title to test"
-          className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-semibold text-slate-950 outline-none focus:border-violet dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white"
-        />
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <Datum label="Normalized user guess" value={guessExplanation.normalizedGuess || "—"} />
-          <Datum label="Pass / fail" value={testGuess ? (guessExplanation.correct ? "PASS" : "FAIL") : "Waiting for test value"} />
+        <p className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">Test autocomplete selection</p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <input
+            aria-label="Raw selected guess title"
+            value={testGuessTitle}
+            onChange={(event) => setTestGuessTitle(event.target.value)}
+            placeholder="Selected track title"
+            className="h-12 rounded-xl border border-slate-300 bg-white px-4 font-semibold text-slate-950 outline-none focus:border-violet dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white"
+          />
+          <input
+            aria-label="Raw selected guess artist"
+            value={testGuessArtist}
+            onChange={(event) => setTestGuessArtist(event.target.value)}
+            placeholder="Selected artist"
+            className="h-12 rounded-xl border border-slate-300 bg-white px-4 font-semibold text-slate-950 outline-none focus:border-violet dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white"
+          />
         </div>
-        <p className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{guessExplanation.reason}</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <Datum label="Raw guess title" value={guessExplanation.rawGuessTitle || "—"} />
+          <Datum label="Raw guess artist" value={guessExplanation.rawGuessArtist || "—"} />
+          <Datum label="Normalized guess title" value={guessExplanation.normalizedGuessTitle || "—"} />
+          <Datum label="Normalized guess artist" value={guessExplanation.normalizedGuessArtist || "—"} />
+          <Datum label="Normalized correct title" value={guessExplanation.normalizedCorrectTitle} />
+          <Datum label="Normalized correct artist" value={guessExplanation.normalizedCorrectArtist} />
+          <Datum label="Title match" value={guessExplanation.titleMatch ? "true" : "false"} />
+          <Datum label="Artist match" value={guessExplanation.artistMatch ? "true" : "false"} />
+          <Datum label="Final accepted" value={guessExplanation.correct ? "true" : "false"} />
+        </div>
+        <p className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Rejection reason: {guessExplanation.reason}</p>
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-3 dark:border-[#343a47] dark:bg-[#20242c]">

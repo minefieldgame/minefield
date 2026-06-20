@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DailySummary from "@/components/DailySummary";
 import Header from "@/components/Header";
 import MiniGameCard from "@/components/MiniGameCard";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
+import MinefieldGame from "@/games/minefield/MinefieldGame";
 import SpellDropGame from "@/games/spelldrop/SpellDropGame";
 import TopTenGame from "@/games/top-ten/TopTenGame";
+import CloserGame from "@/games/closer/CloserGame";
 import { formatChartDate, getDailyGameDate } from "@/lib/date";
 import {
   calculateDailySummary,
@@ -18,8 +20,10 @@ import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "
 
 const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
   { id: "needledrop", title: "NeedleDrop", subtitle: "Name the song" },
+  { id: "minefield", title: "Minefield", subtitle: "Find safe tiles" },
   { id: "top-ten", title: "Top 3", subtitle: "Find three answers" },
-  { id: "spelldrop", title: "SpellDrop", subtitle: "One word. One chance." }
+  { id: "spelldrop", title: "SpellDrop", subtitle: "One word. One chance." },
+  { id: "closer", title: "Closer", subtitle: "How close can you get?" }
 ];
 
 export default function MinefieldFeed() {
@@ -28,16 +32,13 @@ export default function MinefieldFeed() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [completionResult, setCompletionResult] = useState<MinefieldGameResult | null>(null);
-  const sectionRefs = useRef<Array<HTMLElement | null>>([]);
 
   useEffect(() => {
     const loaded = loadGameProgress(date);
     setBoard(loaded);
     const firstIncomplete = GAMES.findIndex((game) => !loaded.results[game.id]?.completed);
-    const initial = firstIncomplete === -1 ? GAMES.length : firstIncomplete;
-    setActiveIndex(initial);
+    setActiveIndex(firstIncomplete === -1 ? GAMES.length : firstIncomplete);
     setReady(true);
-    requestAnimationFrame(() => sectionRefs.current[initial]?.scrollIntoView({ block: "start" }));
   }, [date]);
 
   const summary = useMemo(() => calculateDailySummary(board, GAMES.length), [board]);
@@ -46,7 +47,11 @@ export default function MinefieldFeed() {
     setCompletionResult(result);
     setBoard((current) => {
       const existing = current.results[result.gameId];
-      if (existing?.completed && existing.score === result.score && existing.detail === result.detail) return current;
+      if (
+        existing?.completed &&
+        existing.score === result.score &&
+        existing.summaryLabel === result.summaryLabel
+      ) return current;
       const next = saveGameProgress(current.date, result);
       if (Object.values(next.results).filter((entry) => entry?.completed).length === GAMES.length) {
         completeDailyBoard(next, GAMES.length);
@@ -55,15 +60,9 @@ export default function MinefieldFeed() {
     });
   }, []);
 
-  const goTo = useCallback((index: number) => {
-    const next = Math.max(0, Math.min(index, GAMES.length));
+  const goNext = useCallback(() => {
     setCompletionResult(null);
-    setActiveIndex(next);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        sectionRefs.current[next]?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
+    setActiveIndex((index) => Math.min(index + 1, GAMES.length));
   }, []);
 
   const activeGame = GAMES[activeIndex];
@@ -71,9 +70,9 @@ export default function MinefieldFeed() {
 
   useEffect(() => {
     if (!activeComplete || completionResult?.gameId !== activeGame?.id) return;
-    const timeout = window.setTimeout(() => goTo(activeIndex + 1), 1100);
+    const timeout = window.setTimeout(goNext, 1100);
     return () => window.clearTimeout(timeout);
-  }, [activeComplete, activeGame?.id, activeIndex, completionResult, goTo]);
+  }, [activeComplete, activeGame?.id, completionResult, goNext]);
 
   return (
     <div className="h-dvh overflow-hidden">
@@ -84,7 +83,7 @@ export default function MinefieldFeed() {
             <p className="truncate text-sm font-black text-slate-950 dark:text-white">{formatChartDate(date)}</p>
             <p className="text-[10px] font-black uppercase tracking-[.15em] text-[#db4e36] dark:text-[#ff826a]">Today’s Minefield</p>
           </div>
-          <div className="ml-auto flex w-32 gap-1.5">
+          <div className="ml-auto flex w-36 gap-1.5">
             {GAMES.map((game, index) => (
               <span
                 key={game.id}
@@ -101,71 +100,69 @@ export default function MinefieldFeed() {
           <span className="text-sm font-black text-violet dark:text-[#9187f6]">{summary.totalScore}</span>
         </div>
 
-        <main className="minefield-snap-feed flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain scroll-smooth">
+        <main className="relative flex-1 overflow-hidden">
           {!ready ? (
-            <section className="grid h-full snap-start place-items-center px-4 text-sm font-bold text-slate-500">Preparing today’s games…</section>
+            <section className="grid h-full place-items-center px-4 text-sm font-bold text-slate-500">Preparing today’s games…</section>
           ) : (
             <>
               {GAMES.map((game, index) => {
-                const result = board.results[game.id];
                 const active = index === activeIndex;
+                const result = board.results[game.id];
+                const nextTitle = GAMES[index + 1]?.title ?? "Daily Summary";
                 return (
                   <section
                     key={game.id}
-                    ref={(node) => { sectionRefs.current[index] = node; }}
-                    className="flex min-h-full snap-start snap-always items-center justify-center overflow-hidden px-3 py-3"
-                    aria-current={active ? "step" : undefined}
+                    aria-hidden={!active}
+                    inert={!active}
+                    className={`absolute inset-0 flex items-center justify-center overflow-hidden px-3 py-3 transition-transform duration-500 ease-[cubic-bezier(.22,.8,.3,1)] ${
+                      active ? "pointer-events-auto" : "pointer-events-none"
+                    }`}
+                    style={{ transform: `translateY(${(index - activeIndex) * 100}%)` }}
                   >
-                    <div className="w-full max-w-xl">
-                      {active ? (
-                        <>
-                          <MiniGameCard number={index + 1} title={game.title} subtitle={game.subtitle}>
-                            {game.id === "needledrop" ? (
-                              <NeedleDropGame onComplete={handleComplete} />
-                            ) : game.id === "top-ten" ? (
-                              <TopTenGame onComplete={handleComplete} />
-                            ) : (
-                              <SpellDropGame onComplete={handleComplete} />
-                            )}
-                          </MiniGameCard>
-                          {activeComplete && (
-                            <div className="mt-2 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 dark:border-emerald-400/20 dark:bg-emerald-400/10">
-                              <div>
-                                <p className="text-sm font-black text-emerald-900 dark:text-emerald-100">Complete · {result?.score ?? 0} points</p>
-                                <p className="text-[11px] text-emerald-700 dark:text-emerald-300">Sliding to the next game…</p>
-                              </div>
-                              <button onClick={() => goTo(index + 1)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white dark:bg-emerald-400 dark:text-emerald-950">
-                                Next Game
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      ) : index < activeIndex && result ? (
-                        <button onClick={() => goTo(index)} className="theme-surface w-full rounded-2xl border p-5 text-left">
-                          <p className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Completed</p>
-                          <div className="mt-1 flex items-center justify-between">
-                            <h2 className="text-2xl font-black text-slate-950 dark:text-white">{game.title}</h2>
-                            <span className="text-2xl font-black text-violet dark:text-[#9187f6]">{result.score}</span>
+                    <div className="relative w-full max-w-xl">
+                      <MiniGameCard number={index + 1} title={game.title} subtitle={game.subtitle}>
+                        {active && (
+                          game.id === "needledrop" ? (
+                            <NeedleDropGame onComplete={handleComplete} />
+                          ) : game.id === "minefield" ? (
+                            <MinefieldGame onComplete={handleComplete} />
+                          ) : game.id === "top-ten" ? (
+                            <TopTenGame onComplete={handleComplete} />
+                          ) : game.id === "spelldrop" ? (
+                            <SpellDropGame onComplete={handleComplete} />
+                          ) : (
+                            <CloserGame onComplete={handleComplete} />
+                          )
+                        )}
+                      </MiniGameCard>
+
+                      {active && activeComplete && result && (
+                        <div className="absolute inset-0 z-30 grid place-items-center rounded-[1.5rem] bg-white/88 p-5 text-center backdrop-blur-md dark:bg-[#171a21]/90">
+                          <div>
+                            <p className="text-3xl" aria-hidden="true">{result.icon}</p>
+                            <h3 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{game.title} complete</h3>
+                            <p className="mt-1 text-lg font-black text-violet dark:text-[#9187f6]">Score: {result.score}/{result.maxScore}</p>
+                            <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-300">Next up: {nextTitle}</p>
+                            <button onClick={goNext} className="mt-4 rounded-xl bg-violet px-6 py-3 font-extrabold text-white dark:bg-[#7569e5]">
+                              Next
+                            </button>
                           </div>
-                        </button>
-                      ) : (
-                        <div className="text-center text-sm font-bold text-slate-400 dark:text-slate-600">{game.title}</div>
+                        </div>
                       )}
                     </div>
                   </section>
                 );
               })}
+
               <section
-                ref={(node) => { sectionRefs.current[GAMES.length] = node; }}
-                className="flex min-h-full snap-start snap-always items-center justify-center overflow-y-auto px-3 py-3"
+                aria-hidden={activeIndex !== GAMES.length}
+                inert={activeIndex !== GAMES.length}
+                className={`absolute inset-0 flex items-center justify-center overflow-y-auto px-3 py-3 transition-transform duration-500 ease-[cubic-bezier(.22,.8,.3,1)] ${
+                  activeIndex === GAMES.length ? "pointer-events-auto touch-pan-y" : "pointer-events-none"
+                }`}
+                style={{ transform: `translateY(${(GAMES.length - activeIndex) * 100}%)` }}
               >
-                <div className="w-full max-w-xl">
-                  {activeIndex === GAMES.length ? (
-                    <DailySummary summary={summary} />
-                  ) : (
-                    <div className="text-center text-sm font-bold text-slate-400 dark:text-slate-600">Complete all three games to unlock today’s summary.</div>
-                  )}
-                </div>
+                <div className="w-full max-w-xl"><DailySummary summary={summary} /></div>
               </section>
             </>
           )}

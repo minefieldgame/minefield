@@ -1,12 +1,13 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
-import type { SongSuggestion } from "@/types/game";
+import { parseSongGuess } from "@/lib/normalize";
+import type { SongGuessSubmission, SongSuggestion } from "@/types/game";
 
 type Props = {
   disabled: boolean;
   shaking: boolean;
-  onGuess: (guess: string) => void;
+  onGuess: (guess: SongGuessSubmission) => void;
   onSkip: () => void;
   onGiveUp: () => void;
 };
@@ -17,11 +18,12 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
   const [activeIndex, setActiveIndex] = useState(-1);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<SongSuggestion | null>(null);
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const query = guess.trim();
-    if (disabled || query.length < 2) {
+    if (disabled || selectedSuggestion || query.length < 2) {
       requestRef.current?.abort();
       setSuggestions([]);
       setOpen(false);
@@ -55,19 +57,28 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
     }, 325);
 
     return () => window.clearTimeout(timeout);
-  }, [disabled, guess]);
+  }, [disabled, guess, selectedSuggestion]);
 
   function selectSuggestion(suggestion: SongSuggestion) {
     setGuess(`${suggestion.title} — ${suggestion.artist}`);
+    setSelectedSuggestion(suggestion);
     setSuggestions([]);
     setOpen(false);
     setActiveIndex(-1);
   }
 
-  function submitValue(value: string) {
+  function submitValue(value: string, suggestion = selectedSuggestion) {
     if (!value.trim()) return;
-    onGuess(value.trim());
+    onGuess(suggestion
+      ? {
+          displayValue: `${suggestion.title} — ${suggestion.artist}`,
+          title: suggestion.title,
+          artist: suggestion.artist,
+          selectedAutocomplete: true
+        }
+      : parseSongGuess(value));
     setGuess("");
+    setSelectedSuggestion(null);
     setSuggestions([]);
     setOpen(false);
     setActiveIndex(-1);
@@ -91,7 +102,7 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
     } else if (event.key === "Enter" && activeIndex >= 0) {
       event.preventDefault();
       const suggestion = suggestions[activeIndex];
-      submitValue(`${suggestion.title} — ${suggestion.artist}`);
+      submitValue(`${suggestion.title} — ${suggestion.artist}`, suggestion);
     }
   }
 
@@ -110,6 +121,7 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
           disabled={disabled}
           onChange={(event) => {
             setGuess(event.target.value);
+            setSelectedSuggestion(null);
             setOpen(true);
           }}
           onKeyDown={handleKeyDown}

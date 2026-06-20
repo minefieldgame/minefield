@@ -230,7 +230,7 @@ export default function AdminDashboard({ environment }: { environment: string })
 
             <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
               <h2 className="text-xl font-black text-slate-950 dark:text-white">Future game previews</h2>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">Chrono, Higher, Closer, Fake Fact, Breedle, GeoPin, Ladder, and Minefield can register an admin preview through the shared module registry.</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">Chrono, Higher, Fake Fact, Breedle, GeoPin, and Ladder can register an admin preview through the shared module registry.</p>
             </section>
           </>
         )}

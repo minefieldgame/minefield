@@ -5,8 +5,10 @@ Minefield is a mobile-first daily feed of quick mini-games. Players complete one
 The current daily board contains:
 
 - **NeedleDrop** — identify a Billboard Top 10 song from increasingly long official iTunes preview clips.
+- **Minefield** — risk up to five picks on a deterministic hidden-mine grid.
 - **Top 3** — name the first three entries in a ranked category.
 - **SpellDrop** — spell a commonly misspelled word after hearing it spoken.
+- **Closer** — make one numeric trivia guess and score by percentage error.
 
 The app uses Next.js App Router, React, TypeScript, Tailwind CSS, local storage, and server route handlers. It requires no database or user account.
 
@@ -63,6 +65,13 @@ games/
     types.ts
   spelldrop/
     SpellDropGame.tsx
+  minefield/
+    MinefieldGame.tsx
+    logic.ts
+  closer/
+    CloserGame.tsx
+    providers.ts
+    types.ts
 lib/
   date.ts
   seed.ts
@@ -162,6 +171,8 @@ The dashboard can:
 - Inspect Top 3 category selection, all accepted answers and aliases, validation, and raw provider data
 - Test NeedleDrop title normalization and see why a sample guess passes or fails
 - Inspect SpellDrop’s selected word, accepted spelling, deterministic seed, and replay limit
+- Inspect Minefield’s deterministic mine positions, clue, and full board
+- Inspect Closer’s selected numeric question, answer, source note, validation, and question-pool size
 - Copy resolved puzzle JSON
 
 Admin previews are read-only. They do not write player progress, alter local daily puzzles, or change production generation.

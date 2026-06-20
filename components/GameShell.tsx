@@ -21,7 +21,7 @@ import {
   saveGame,
   saveStats
 } from "@/lib/storage";
-import type { DailyPuzzle, GameState } from "@/types/game";
+import type { DailyPuzzle, GameState, SongGuessSubmission } from "@/types/game";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type Props = {
@@ -50,13 +50,31 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
       setState(stored);
       setShowResult(!embedded && stored.status !== "playing");
       if (stored.status !== "playing") {
+        const won = stored.status === "won";
+        const solvedIn = stored.attempt + 1;
+        const summaryLabel = won ? `Solved in ${solvedIn}` : "Not solved";
         onComplete?.({
           gameId: "needledrop",
           displayName: "NeedleDrop",
+          icon: "🎵",
           score: stored.score,
           maxScore: 100,
           completed: true,
-          detail: stored.status === "won" ? `Solved in ${stored.attempt + 1}/7` : "Not solved"
+          successUnits: won ? solvedIn : 0,
+          totalUnits: 7,
+          summaryLabel,
+          shareLine: `🎵 NeedleDrop: ${stored.score}/100, ${summaryLabel.toLowerCase()}`,
+          reviewData: {
+            type: "needledrop",
+            songTitle: stored.puzzle.title,
+            artist: stored.puzzle.artist,
+            chartDate: stored.puzzle.chartDate,
+            chartPosition: stored.puzzle.chartPosition,
+            artworkUrl: stored.puzzle.track.artworkUrl,
+            userGuesses: stored.guesses,
+            won
+          },
+          detail: summaryLabel
         });
       }
       setLoading(false);
@@ -121,20 +139,37 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
       attempt: next.attempt
     });
     saveArchive(archive);
+    const solvedIn = next.attempt + 1;
+    const summaryLabel = won ? `Solved in ${solvedIn}` : "Not solved";
     onComplete?.({
       gameId: "needledrop",
       displayName: "NeedleDrop",
+      icon: "🎵",
       score: next.score,
       maxScore: 100,
       completed: true,
-      detail: next.status === "won" ? `Solved in ${next.attempt + 1}/7` : "Not solved"
+      successUnits: won ? solvedIn : 0,
+      totalUnits: 7,
+      summaryLabel,
+      shareLine: `🎵 NeedleDrop: ${next.score}/100, ${summaryLabel.toLowerCase()}`,
+      reviewData: {
+        type: "needledrop",
+        songTitle: next.puzzle.title,
+        artist: next.puzzle.artist,
+        chartDate: next.puzzle.chartDate,
+        chartPosition: next.puzzle.chartPosition,
+        artworkUrl: next.puzzle.track.artworkUrl,
+        userGuesses: next.guesses,
+        won
+      },
+      detail: summaryLabel
     });
     setShowResult(!embedded);
   }
 
-  function advance(guess?: string) {
+  function advance(guess?: SongGuessSubmission) {
     if (!state || state.status !== "playing") return;
-    const guesses = guess ? [...state.guesses, guess] : state.guesses;
+    const guesses = guess ? [...state.guesses, guess.displayValue] : state.guesses;
     if (guess && isCorrectGuess(guess, state.puzzle.title, state.puzzle.artist)) {
       finish({
         ...state,
@@ -200,15 +235,6 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
                 onSkip={() => advance()}
                 onGiveUp={giveUp}
               />
-              {state.status !== "playing" && embedded && (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center dark:border-[#3b424f] dark:bg-[#252a34]">
-                  <p className="text-lg font-black text-slate-950 dark:text-white">
-                    {state.status === "won" ? "You got it!" : "Today’s answer"}
-                  </p>
-                  <p className="mt-1 font-bold text-slate-700 dark:text-slate-200">{state.puzzle.title}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{state.puzzle.artist} · {state.score} points</p>
-                </div>
-              )}
               {state.status !== "playing" && !embedded && (
                 <button onClick={() => setShowResult(true)} className="mt-3 w-full rounded-2xl bg-coral px-5 py-3 font-extrabold text-white shadow-lg shadow-coral/20 hover:bg-[#dc553c] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/30 active:scale-[.98] dark:bg-[#ff7055] dark:hover:bg-[#ff8068]">
                   View today’s result

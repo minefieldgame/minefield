@@ -20,6 +20,13 @@ export type SongSuggestion = {
   rawTitle?: string;
 };
 
+export type SongGuessSubmission = {
+  displayValue: string;
+  title: string;
+  artist: string;
+  selectedAutocomplete: boolean;
+};
+
 export type DailyPuzzle = {
   id: string;
   number: number;

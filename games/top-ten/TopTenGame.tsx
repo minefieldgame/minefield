@@ -7,7 +7,6 @@ import { getDailyGameDate } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 const STORAGE_PREFIX = "minefield:top-three:v1:";
-const GAME_URL = "https://minefieldgame.com";
 
 function loadStored(date: string) {
   try {
@@ -35,16 +34,31 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
   const [justFound, setJustFound] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const reportCompletion = useCallback((next: TopTenState) => {
+    const score = topTenScore(next.found);
+    const summaryLabel = next.status === "completed" ? "3/3 found" : `${next.found.length}/3 found`;
     onComplete({
       gameId: "top-ten",
       displayName: "Top 3",
-      score: topTenScore(next.found),
+      icon: "🏆",
+      score,
       maxScore: 100,
       completed: true,
-      detail: next.status === "completed" ? "Perfect 3/3" : `${next.found.length}/3 found`
+      successUnits: next.found.length,
+      totalUnits: 3,
+      summaryLabel,
+      shareLine: `🏆 Top 3: ${score}/100, ${summaryLabel}`,
+      reviewData: {
+        type: "top-three",
+        prompt: next.puzzle.category.prompt,
+        answers: next.puzzle.answers.map((answer) => answer.name),
+        found: next.found,
+        missed: next.puzzle.answers
+          .map((answer) => answer.name)
+          .filter((answer) => !next.found.includes(answer))
+      },
+      detail: summaryLabel
     });
   }, [onComplete]);
 
@@ -76,9 +90,15 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
         onComplete({
           gameId: "top-ten",
           displayName: "Top 3",
+          icon: "🏆",
           score: 0,
           maxScore: 100,
           completed: true,
+          successUnits: 0,
+          totalUnits: 3,
+          summaryLabel: "Unavailable today",
+          shareLine: "🏆 Top 3: unavailable",
+          reviewData: { type: "legacy", message: "Today’s Top 3 could not be generated." },
           detail: "Unavailable today"
         });
       })
@@ -116,23 +136,6 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
     const next = { ...state, status: "gave-up" as const, updatedAt: new Date().toISOString() };
     persist(next);
     reportCompletion(next);
-  }
-
-  async function share() {
-    if (!state) return;
-    const found = state.found.length;
-    const boxes = Array.from({ length: 3 }, (_, index) => index < found ? "🟩" : "⬜").join("");
-    await navigator.clipboard.writeText([
-      "Minefield: Top 3",
-      `${found}/3`,
-      `Score: ${topTenScore(state.found)}`,
-      boxes,
-      "",
-      "Play Minefield:",
-      GAME_URL
-    ].join("\n"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
   }
 
   if (loading) {
@@ -174,7 +177,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
               }`}
             >
               <span className="mb-1 grid h-6 w-6 place-items-center rounded-full bg-black/[.05] text-[10px] font-black dark:bg-white/[.07]">{answer.rank}</span>
-              <span className="leading-4">{found || ended ? answer.name : "Hidden"}</span>
+              <span className="leading-4">{found ? answer.name : "Hidden"}</span>
             </div>
           );
         })}
@@ -198,14 +201,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
             </button>
           </div>
         </form>
-      ) : (
-        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-[#3b424f] dark:bg-[#252a34]">
-          <p className="font-black text-slate-950 dark:text-white">{state.status === "completed" ? "Perfect 3/3!" : `${state.found.length}/3 found`} · {topTenScore(state.found)} points</p>
-          <button onClick={share} className="mt-2 rounded-lg bg-violet px-4 py-2 text-xs font-extrabold text-white dark:bg-[#7569e5]">
-            {copied ? "Copied!" : "Share Top 3"}
-          </button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
