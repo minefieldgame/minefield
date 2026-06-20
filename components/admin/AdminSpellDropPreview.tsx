@@ -30,6 +30,9 @@ export default function AdminSpellDropPreview({ preview }: { preview: Preview })
           ["Generated word", puzzle.word], ["Definition", puzzle.definition],
           ["Common misspellings", puzzle.commonMisspellings.join(", ")],
           ["Pronunciation hint", puzzle.pronunciationHint], ["Generator", preview.generator],
+          ["Model used", preview.generator.match(/\(([^)]+)\)/)?.[1] ?? "Configured model"],
+          ["Cache hit", String(preview.cacheHit)],
+          ["Generation duration", `${preview.generationDurationMs} ms`],
           ["Confidence", `${Math.round(preview.confidence * 100)}%`],
           ["Content hash", preview.contentHash],
           ["Repeat check", preview.repeatCheck.repeated ? "Recently appeared" : "Clear"]

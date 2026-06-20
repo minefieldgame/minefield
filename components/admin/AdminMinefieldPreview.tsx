@@ -23,8 +23,7 @@ export default function AdminMinefieldPreview({
         {[
           ["Selected date", preview.puzzle.date],
           ["Daily seed", preview.puzzle.seed],
-          ["Mine positions", preview.puzzle.minePositions.map((value) => value + 1).join(", ")],
-          ["Daily clue", preview.puzzle.clue]
+          ["Mine positions", preview.puzzle.minePositions.map((value) => value + 1).join(", ")]
         ].map(([label, value]) => (
           <div key={label} className="theme-raised rounded-xl border p-3">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>

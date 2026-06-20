@@ -46,8 +46,8 @@ export async function resolveDailyCloserPuzzle(
       const result = await requestStructuredContent<GeneratedCloser>({
         name: "minefield_closer",
         instructions:
-          "Create one fast, factual numeric trivia question for a general audience. It must be unambiguous, stable or date-stamped, non-zero, reasonably guessable, and supported by a reliable source. Return only the schema.",
-        input: `Pacific date ${date}; deterministic seed ${seed}. Vary across geography, sports, culture, science, history, business, animals, and technology.`,
+          "Create one fast, factual numeric trivia question for a general audience. It must be easy to understand immediately, playable in under 30 seconds, unambiguous, non-zero, reasonably guessable, and supported by a reliable source. Favor famous heights, speeds, populations, movie grosses, animal facts, planets, major sports records, and familiar cultural milestones. Avoid obscure terminals, company divisions, quarterly metrics, narrow datasets, and hyper-specific methodology. Return only the schema.",
+        input: `Pacific date ${date}; deterministic seed ${seed}. Vary across mainstream geography, sports, culture, science, history, animals, and technology.`,
         schema: SCHEMA,
         useWebSearch: true
       });

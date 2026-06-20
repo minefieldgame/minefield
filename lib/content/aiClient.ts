@@ -1,3 +1,5 @@
+import { OPENAI_GENERATION_MODEL } from "@/lib/content/config";
+
 type OpenAIResponse = {
   output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
   error?: { message?: string };
@@ -22,7 +24,7 @@ export function getAIStatus() {
   return {
     apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY),
     liveGenerationEnabled: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL ?? "gpt-5.5"
+    model: OPENAI_GENERATION_MODEL
   };
 }
 
@@ -40,8 +42,10 @@ export async function requestStructuredContent<T>({
   useWebSearch?: boolean;
 }): Promise<AIResult<T>> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
-  const model = process.env.OPENAI_MODEL ?? "gpt-5.5";
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is missing. Add it in AWS Amplify environment variables.");
+  }
+  const model = OPENAI_GENERATION_MODEL;
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {

@@ -40,7 +40,7 @@ export type MinefieldGridReviewData = {
   safePicks: number[];
   path: number[];
   hitMine: boolean;
-  clue: string;
+  clue?: string;
 };
 
 export type CloserReviewData = {

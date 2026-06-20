@@ -53,8 +53,7 @@ export default function MinefieldGame({ onComplete }: { onComplete: (result: Min
         minePositions: puzzle.minePositions,
         safePicks: next.safePicks,
         path: next.path,
-        hitMine: next.hitMine,
-        clue: puzzle.clue
+        hitMine: next.hitMine
       },
       detail: label
     });
@@ -107,10 +106,6 @@ export default function MinefieldGame({ onComplete }: { onComplete: (result: Min
       <div className="flex items-center justify-between text-xs font-black">
         <span className="rounded-full bg-amber-500/10 px-3 py-1.5 text-amber-700 dark:text-amber-300">💣 3 hidden</span>
         <span className="text-slate-700 dark:text-white">{state.safePicks.length}/5 safe · {state.safePicks.length * 20} pts</span>
-      </div>
-      <div className="mx-auto mt-2 w-fit rounded-full border border-violet/15 bg-violet/5 px-3 py-1.5 text-center text-xs text-slate-600 dark:border-violet/25 dark:bg-violet/10 dark:text-slate-300">
-        <span className="font-black text-violet dark:text-[#aaa2ff]">Hint:</span>{" "}
-        <span className="font-semibold">{puzzle.clue.replace(/^Today’s\s+/i, "Today’s ")}</span>
       </div>
       <div className="mx-auto mt-3 grid max-w-[310px] grid-cols-5 gap-2">
         {Array.from({ length: 25 }, (_, index) => {

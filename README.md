@@ -20,17 +20,19 @@ Use Node.js 20 or newer.
 npm install
 ```
 
-Create `.env.local`:
+Create a file named `.env.local` in the project root:
 
 ```text
-OPENAI_API_KEY=your-key-here
+OPENAI_API_KEY=your_api_key_here
 ```
 
-Optional:
+The default generation model is centralized in `lib/content/config.ts` and uses the lower-cost `gpt-5.4-mini`. Override it only when needed:
 
 ```text
-OPENAI_MODEL=gpt-5.5
+OPENAI_MODEL=gpt-5.4-mini
 ```
+
+OpenAI API usage requires an API-platform account with billing configured. A ChatGPT subscription does not automatically provide API credits.
 
 Then run:
 
@@ -53,20 +55,20 @@ Top 3, SpellDrop, and Closer use the shared server-side content system in `lib/c
 - `aiClient.ts` — server-only OpenAI structured-output requests
 - `validation.ts` — deterministic sanity checks
 - `sourceResolver.ts` — source metadata normalization
-- `cache.ts` — instance-local generated-content cache
+- `cache.ts` — instance-local generated-content cache and in-flight request deduplication
 - `repeatPrevention.ts` — hashes, recent-content checks, and replaceable history storage
 
 Every request uses the Pacific date, game ID, and a deterministic seed. Generated factual content is validated before it reaches the player. Top 3 and Closer use web-backed source notes. The OpenAI key never enters the browser bundle.
 
 If `OPENAI_API_KEY` is missing, dynamic games show a clean unavailable state and the board advances. Admin displays the full configuration error. Minefield does not silently substitute a small hardcoded daily puzzle bank.
 
-Player progress stores the final generated puzzle in localStorage, so refreshes preserve the exact puzzle already received by that player. Server cache headers and the content cache reduce regeneration. A production shared cache/database can replace the cache/history adapters later without changing game components.
+Player progress stores the final generated puzzle in localStorage, so refreshes preserve the exact puzzle already received by that player. Server cache headers, same-instance daily caching, frontend request deduplication, and in-flight server promise reuse prevent repeated generation calls. Admin reports cache hits and generation duration. A production shared cache/database can replace the cache/history adapters later without changing game components.
 
 ## Geography reference data
 
 `data/worldCities.ts` contains more than 100 major-city coordinates. `data/landmarks.ts` contains more than 50 global landmarks with coordinates and Wikimedia Commons image references. These are broad geographic reference datasets rather than prewritten daily trivia banks.
 
-Meet Me Halfway uses a spherical midpoint calculation. Both map games use haversine distance and deterministic daily selection. The shared `InteractiveGuessMap` uses client-side Leaflet with OpenStreetMap/CARTO tiles, high-density rendering, touch zoom, panning, markers, and review mode while remaining compatible with AWS Amplify.
+Meet Me Halfway uses a spherical midpoint calculation. Both map games use haversine distance and deterministic daily selection. The shared `InteractiveGuessMap` uses client-side Leaflet with a label-free OpenStreetMap/CARTO basemap, high-density rendering, touch zoom, panning, markers, and review mode while remaining compatible with AWS Amplify.
 
 ## Daily system
 
@@ -84,13 +86,16 @@ The feed allows only controlled forward progression. Completing a game advances 
 
 ## AWS Amplify
 
-1. Connect the repository to Amplify Hosting.
-2. Keep framework detection set to Next.js.
-3. Build with `npm run build`.
-4. Open **App settings → Environment variables**.
+1. Open AWS Amplify.
+2. Select the Minefield app.
+3. Go to **App settings**.
+4. Open **Environment variables**.
 5. Add `OPENAI_API_KEY`.
-6. Optionally add `OPENAI_MODEL`.
-7. Redeploy after saving environment variables.
+6. Paste the OpenAI API key.
+7. Save.
+8. Redeploy the active branch.
+
+Optionally add `OPENAI_MODEL` to override the centralized default.
 
 Do not prefix the key with `NEXT_PUBLIC_`. Do not configure static export; provider route handlers require the managed Next.js runtime.
 

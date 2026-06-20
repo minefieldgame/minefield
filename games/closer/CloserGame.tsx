@@ -5,6 +5,7 @@ import { calculateCloserScore, parseNumericGuess } from "@/games/closer/provider
 import type { CloserPuzzle } from "@/games/closer/types";
 import { getDailyGameDate } from "@/lib/date";
 import { markContentUsed } from "@/lib/content/repeatPrevention";
+import { fetchDailyPuzzle } from "@/lib/content/clientCache";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type CloserState = { date: string; rawGuess: string; numericGuess: number; completed: boolean; puzzle: CloserPuzzle };
@@ -45,11 +46,8 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
         setLoading(false); return;
       }
     } catch {}
-    fetch(`/api/closer?date=${date}`)
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error);
-        const loaded = body as CloserPuzzle;
+    fetchDailyPuzzle<CloserPuzzle>("closer", date, `/api/closer?date=${date}`)
+      .then((loaded) => {
         setPuzzle(loaded);
         if (loaded.contentHash) markContentUsed({ gameId: "closer", contentHash: loaded.contentHash, topic: loaded.category, answer: String(loaded.answer), date });
       })
@@ -78,7 +76,7 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
   }
 
   if (loading) return <div className="py-10 text-center text-sm font-semibold text-slate-500">Generating today’s question…</div>;
-  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Closer is unavailable today. Moving on automatically.</div>;
+  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be generated. Moving on automatically.</div>;
   return (
     <div>
       <span className="rounded-full bg-violet/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">{puzzle.category}</span>

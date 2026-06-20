@@ -54,7 +54,7 @@ export default function InteractiveGuessMap({
           doubleClickZoom: true
         });
         L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+          "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
           {
             subdomains: "abcd",
             maxZoom: 20,

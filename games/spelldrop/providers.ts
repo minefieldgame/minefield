@@ -42,8 +42,8 @@ export async function resolveDailySpellDropPuzzle(
       const result = await requestStructuredContent<GeneratedSpellDrop>({
         name: "minefield_spelldrop",
         instructions:
-          "Choose one real, commonly misspelled English word for a general audience. It must not be a proper noun, offensive, obscure, ambiguous, or primarily a homophone challenge. Include a concise definition, actual common misspellings, and a simple pronunciation hint. Return only the schema.",
-        input: `Pacific date ${date}; deterministic seed ${seed}. Choose fresh content and avoid the most clichéd spelling-bee words when possible.`,
+          "Choose one real, common, recognizable, commonly misspelled English word for a general audience. Target the reaction: 'I know this word—wait, how do you spell it?' Favor familiar everyday vocabulary, not obscure academic words. It must not be a proper noun, offensive, ambiguous, or a homophone trap. Include a concise definition, actual common misspellings, and a simple pronunciation hint. Return only the schema.",
+        input: `Pacific date ${date}; deterministic seed ${seed}. Generate fresh easy-to-medium content suitable for a quick daily game.`,
         schema: SCHEMA
       });
       const { confidence, ...content } = result.parsed;

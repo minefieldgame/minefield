@@ -5,6 +5,7 @@ import { checkTopTenAnswer, topTenScore } from "@/games/top-ten/logic";
 import type { TopTenPuzzle, TopTenState } from "@/games/top-ten/types";
 import { getDailyGameDate } from "@/lib/date";
 import { markContentUsed } from "@/lib/content/repeatPrevention";
+import { fetchDailyPuzzle } from "@/lib/content/clientCache";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 const STORAGE_PREFIX = "minefield:top-three:v1:";
@@ -72,11 +73,8 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
       setLoading(false);
       return;
     }
-    fetch(`/api/top-ten/generate?date=${date}`)
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error);
-        const puzzle = payload as TopTenPuzzle;
+    fetchDailyPuzzle<TopTenPuzzle>("top3", date, `/api/top-ten/generate?date=${date}`)
+      .then((puzzle) => {
         if (puzzle.contentHash) markContentUsed({ gameId: "top3", contentHash: puzzle.contentHash, topic: puzzle.category.topicArea, answer: puzzle.answers.map((answer) => answer.name).join("|"), date });
         const next: TopTenState = {
           puzzle,
@@ -147,7 +145,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
   if (error || !state) {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
-        <p className="font-extrabold">Top 3 unavailable today.</p>
+        <p className="font-extrabold">Today’s puzzle could not be generated.</p>
         <p className="mt-1 text-xs">Minefield will continue automatically.</p>
       </div>
     );

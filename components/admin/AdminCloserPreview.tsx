@@ -29,6 +29,9 @@ export default function AdminCloserPreview({ preview, onRegenerate }: { preview:
         {[
           ["Generated prompt", puzzle.prompt], ["Answer", puzzle.displayAnswer], ["Unit", puzzle.unit],
           ["Source note", puzzle.sourceNote], ["Generator", preview.generator],
+          ["Model used", preview.generator.match(/\(([^)]+)\)/)?.[1] ?? "Configured model"],
+          ["Cache hit", String(preview.cacheHit)],
+          ["Generation duration", `${preview.generationDurationMs} ms`],
           ["Confidence", `${Math.round(preview.confidence * 100)}%`],
           ["Content hash", preview.contentHash],
           ["Repeat check", preview.repeatCheck.repeated ? "Recently appeared" : "Clear"]

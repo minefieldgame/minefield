@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { hashString } from "@/lib/dailySeed";
+import { diagnoseTopTenGuess } from "@/games/top-ten/logic";
 import type { AdminTopTenPreview as Preview } from "@/types/admin";
 
 async function copyJson(value: unknown) {
@@ -20,6 +21,7 @@ export default function AdminTopTenPreview({
   onRetryCategory: () => void;
 }) {
   const [playerPreview, setPlayerPreview] = useState(false);
+  const [testGuess, setTestGuess] = useState("");
   if (preview.status === "error") {
     const diagnostics = preview.diagnostics;
     return (
@@ -74,10 +76,17 @@ export default function AdminTopTenPreview({
           ["Ranking metric", puzzle.category.rankingMetric],
           ["Answer type", puzzle.category.expectedAnswerType],
           ["Source strategy", puzzle.category.sourceStrategy],
+          ["Player prompt", puzzle.category.playerPrompt ?? puzzle.category.prompt],
+          ["Admin prompt", puzzle.category.adminPrompt ?? "—"],
+          ["Source note", puzzle.category.sourceNote ?? puzzle.category.source],
+          ["Validation note", puzzle.category.validationNote ?? "—"],
           ["OPENAI_API_KEY detected", String(diagnostics.apiKeyConfigured)],
           ["Live generation enabled", String(diagnostics.generationMode === "live-ai")],
+          ["Model used", puzzle.generator?.match(/\(([^)]+)\)/)?.[1] ?? "Configured model"],
           ["Content hash", puzzle.contentHash ?? "—"],
-          ["Repeat check", puzzle.repeatCheck?.repeated ? "Recently appeared" : "Clear"]
+          ["Repeat check", puzzle.repeatCheck?.repeated ? "Recently appeared" : "Clear"],
+          ["Cache hit", String(puzzle.cacheHit ?? false)],
+          ["Generation duration", `${puzzle.generationDurationMs ?? 0} ms`]
         ].map(([label, value]) => (
           <div key={label} className="theme-raised rounded-xl border p-3">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
@@ -98,11 +107,36 @@ export default function AdminTopTenPreview({
               <span className="grid h-8 w-8 place-items-center rounded-full bg-violet text-xs font-black text-white dark:bg-[#7569e5]">{answer.rank}</span>
               <div>
                 <p className="font-black text-slate-950 dark:text-white">{answer.name}</p>
+                <p className="text-xs font-bold text-violet">{answer.displayAnswer ?? answer.name}</p>
                 <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{answer.aliases.join(" · ") || "No additional aliases"}</p>
               </div>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-slate-200 p-4 dark:border-[#3b424f]">
+        <h3 className="text-sm font-black text-slate-950 dark:text-white">Answer matching diagnostics</h3>
+        <input
+          value={testGuess}
+          onChange={(event) => setTestGuess(event.target.value)}
+          placeholder="Try a player guess"
+          className="mt-3 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold dark:border-[#454c5a] dark:bg-[#252a34]"
+        />
+        {testGuess.trim() && (
+          <div className="mt-3 space-y-2">
+            {diagnoseTopTenGuess(testGuess, puzzle).map((diagnostic) => (
+              <div key={diagnostic.canonicalAnswer} className="theme-raised rounded-xl border p-3 text-xs">
+                <p className="font-black">{diagnostic.displayAnswer} · {Math.round(diagnostic.matchScore * 100)}% · {diagnostic.accepted ? "accepted" : "rejected"}</p>
+                <p className="mt-1 text-slate-500">Raw: {diagnostic.rawGuess}</p>
+                <p className="text-slate-500">Normalized: {diagnostic.normalizedGuess}</p>
+                <p className="text-slate-500">Canonical: {diagnostic.canonicalAnswer}</p>
+                <p className="text-slate-500">Aliases: {diagnostic.aliasesChecked.join(" · ")}</p>
+                {!diagnostic.accepted && <p className="mt-1 font-bold text-red-600">{diagnostic.rejectionReason}</p>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {diagnostics.warning && (

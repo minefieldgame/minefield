@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import { getDailyGameDate } from "@/lib/date";
 import { markContentUsed } from "@/lib/content/repeatPrevention";
+import { fetchDailyPuzzle } from "@/lib/content/clientCache";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type SpellDropState = { date: string; guess: string; correct: boolean; completed: boolean; puzzle: SpellDropPuzzle };
@@ -44,11 +45,8 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
         setLoading(false); return;
       }
     } catch {}
-    fetch(`/api/spelldrop?date=${date}`)
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error);
-        const loaded = body as SpellDropPuzzle;
+    fetchDailyPuzzle<SpellDropPuzzle>("spelldrop", date, `/api/spelldrop?date=${date}`)
+      .then((loaded) => {
         setPuzzle(loaded);
         if (loaded.contentHash) markContentUsed({ gameId: "spelldrop", contentHash: loaded.contentHash, topic: "spelling", answer: loaded.word, date });
       })
@@ -85,7 +83,7 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
   }
 
   if (loading) return <div className="py-10 text-center text-sm font-semibold text-slate-500">Choosing today’s word…</div>;
-  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">SpellDrop is unavailable today. Moving on automatically.</div>;
+  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be generated. Moving on automatically.</div>;
   const completed = Boolean(state?.completed);
   return (
     <div>

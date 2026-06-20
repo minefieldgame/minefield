@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import DailySummary from "@/components/DailySummary";
 import BrandLogo from "@/components/BrandLogo";
 import Header from "@/components/Header";
@@ -32,6 +33,7 @@ const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
 ];
 
 export default function MinefieldFeed() {
+  const router = useRouter();
   const date = getDailyGameDate();
   const [board, setBoard] = useState<MinefieldDailyBoard>({ date, results: {} });
   const [activeIndex, setActiveIndex] = useState(0);
@@ -51,7 +53,8 @@ export default function MinefieldFeed() {
   const summary = useMemo(() => calculateDailySummary(board, GAMES.length), [board]);
 
   const handleComplete = useCallback((result: MinefieldGameResult) => {
-    setCompletionResult(result);
+    const finishedBoard = result.gameId === GAMES[GAMES.length - 1].id;
+    if (!finishedBoard) setCompletionResult(result);
     setBoard((current) => {
       const existing = current.results[result.gameId];
       if (
@@ -62,10 +65,13 @@ export default function MinefieldFeed() {
       const next = saveGameProgress(current.date, result);
       if (Object.values(next.results).filter((entry) => entry?.completed).length === GAMES.length) {
         completeDailyBoard(next, GAMES.length);
+        if (finishedBoard) {
+          window.setTimeout(() => router.push(`/review?date=${current.date}`), 0);
+        }
       }
       return next;
     });
-  }, []);
+  }, [router]);
 
   const goNext = useCallback(() => {
     setCompletionResult(null);

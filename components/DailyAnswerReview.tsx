@@ -80,9 +80,6 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">
                   {review.hitMine ? "Hit a mine" : "Banked safely"} · {review.safePicks.length} safe picks
                 </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="font-black text-violet">Hint:</span> {review.clue}
-                </p>
                 <div className="mx-auto mt-3 grid max-w-[250px] grid-cols-5 gap-1.5">
                   {Array.from({ length: 25 }, (_, index) => {
                     const mine = review.minePositions.includes(index);

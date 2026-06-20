@@ -6,6 +6,10 @@ export type TopTenCategory = {
   title: string;
   displayName: string;
   prompt: string;
+  playerPrompt: string;
+  adminPrompt: string;
+  sourceNote: string;
+  validationNote: string;
   topicArea: string;
   rankingMetric: string;
   expectedAnswerType: string;
@@ -20,7 +24,10 @@ export type TopTenCategory = {
 export type TopTenAnswer = {
   rank: number;
   name: string;
+  displayAnswer: string;
+  simplifiedTitle: string;
   aliases: string[];
+  normalizedTokens: string[];
   value: string;
   sourceNote: string;
 };
@@ -53,6 +60,8 @@ export type TopTenPuzzle = {
   contentHash?: string;
   repeatCheck?: { repeated: boolean; lookback: number };
   generator?: string;
+  cacheHit?: boolean;
+  generationDurationMs?: number;
   warning?: string;
   rawAIResponse?: unknown;
 };
