@@ -28,9 +28,19 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function normalizeResult(gameId: MinefieldGameResult["gameId"], result: MinefieldGameResult) {
+function normalizeResult(gameId: MinefieldGameResult["gameId"], result: MinefieldGameResult, date: string) {
   const defaults = GAME_DEFAULTS[gameId];
   const summaryLabel = result.summaryLabel ?? result.detail ?? "Completed";
+  const recovered = !result.reviewData || result.reviewData.type === "legacy"
+    ? recoverReviewData(gameId, date)
+    : null;
+  const reviewData = recovered ?? result.reviewData ?? {
+    type: "legacy" as const,
+    message: "Detailed answer review is unavailable for this previously saved result."
+  };
+  const safeReviewData = reviewData.type === "legacy" && /error|generate|failed/i.test(reviewData.message)
+    ? { type: "legacy" as const, message: "Today’s puzzle was unavailable." }
+    : reviewData;
   return {
     ...result, gameId,
     displayName: result.displayName ?? defaults.displayName,
@@ -41,9 +51,79 @@ function normalizeResult(gameId: MinefieldGameResult["gameId"], result: Minefiel
     summaryLabel,
     shareLine: result.shareLine ??
       `${defaults.icon} ${result.displayName ?? defaults.displayName}: ${result.score ?? 0}/${result.maxScore ?? 100}, ${summaryLabel.toLowerCase()}`,
-    reviewData: result.reviewData ?? { type: "legacy", message: "Detailed answer review is unavailable for this previously saved result." },
+    reviewData: safeReviewData,
     detail: result.detail ?? summaryLabel
   } satisfies MinefieldGameResult;
+}
+
+function recoverReviewData(
+  gameId: MinefieldGameResult["gameId"],
+  date: string
+): MinefieldGameResult["reviewData"] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    if (gameId === "top-ten") {
+      const state = read<{
+        puzzle: { category: { prompt: string }; answers: Array<{ name: string }> };
+        found: string[];
+      } | null>(`minefield:top-three:v1:${date}`, null);
+      if (state) {
+        const answers = state.puzzle.answers.map((answer) => answer.name);
+        return {
+          type: "top-three",
+          prompt: state.puzzle.category.prompt,
+          answers,
+          found: state.found,
+          missed: answers.filter((answer) => !state.found.includes(answer))
+        };
+      }
+    }
+    if (gameId === "spelldrop") {
+      const state = read<{
+        guess: string;
+        correct: boolean;
+        puzzle: { word: string; definition?: string };
+      } | null>(`minefield:spelldrop:v2:${date}`, null);
+      if (state?.puzzle) {
+        return {
+          type: "spelldrop",
+          correctWord: state.puzzle.word,
+          userSpelling: state.guess,
+          correct: state.correct,
+          definition: state.puzzle.definition
+        };
+      }
+    }
+    if (gameId === "closer") {
+      const state = read<{
+        rawGuess: string;
+        numericGuess: number;
+        puzzle: {
+          prompt: string;
+          answer: number;
+          displayAnswer: string;
+          sourceNote: string;
+        };
+      } | null>(`minefield:closer:v2:${date}`, null);
+      if (state?.puzzle) {
+        const percentError = Math.abs(state.numericGuess - state.puzzle.answer) / Math.abs(state.puzzle.answer);
+        return {
+          type: "closer",
+          prompt: state.puzzle.prompt,
+          userGuess: state.numericGuess,
+          rawGuess: state.rawGuess,
+          actualAnswer: state.puzzle.answer,
+          displayAnswer: state.puzzle.displayAnswer,
+          percentError,
+          sourceNote: state.puzzle.sourceNote,
+          scoreLabel: percentError <= 0.01 ? "Dead on" : percentError <= 0.1 ? "Very close" : "Completed"
+        };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function loadGameProgress(date: string): MinefieldDailyBoard {
@@ -51,7 +131,7 @@ export function loadGameProgress(date: string): MinefieldDailyBoard {
   const results = Object.fromEntries(
     Object.entries(board.results).map(([gameId, value]) => {
       const id = gameId as MinefieldGameResult["gameId"];
-      return [id, normalizeResult(id, value as MinefieldGameResult)];
+      return [id, normalizeResult(id, value as MinefieldGameResult, board.date)];
     })
   ) as MinefieldDailyBoard["results"];
   return { ...board, results };

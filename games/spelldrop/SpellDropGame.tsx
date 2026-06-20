@@ -58,7 +58,7 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
           gameId: "spelldrop", displayName: "SpellDrop", icon: "🔤", score: 0, maxScore: 100,
           completed: true, successUnits: 0, totalUnits: 1, summaryLabel: "Unavailable today",
           shareLine: "🔤 SpellDrop: unavailable",
-          reviewData: { type: "legacy", message: "Today’s SpellDrop could not be generated." }
+          reviewData: { type: "legacy", message: "Today’s puzzle was unavailable." }
         });
       })
       .finally(() => setLoading(false));

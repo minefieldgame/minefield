@@ -7,8 +7,18 @@ export default function AdminCloserPreview({ preview, onRegenerate }: { preview:
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <h2 className="text-2xl font-black">Closer</h2>
       <p className="mt-3 rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">{preview.error}</p>
-      <p className="mt-3 text-sm font-bold">OPENAI_API_KEY detected: {String(preview.diagnostics.apiKeyConfigured)}</p>
-      <p className="text-sm font-bold">Live generation enabled: {String(preview.diagnostics.liveGenerationEnabled)}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {[
+          ["Generation status", preview.diagnostics.generationStatus],
+          ["Validation status", preview.diagnostics.validationStatus],
+          ["OPENAI_API_KEY detected", String(preview.diagnostics.apiKeyConfigured)],
+          ["Live generation enabled", String(preview.diagnostics.liveGenerationEnabled)],
+          ["Fallback usage", preview.diagnostics.fallbackUsed ? "Used" : "None"],
+          ["Content hash", preview.diagnostics.contentHash ?? "Not generated"],
+          ["Source data", preview.diagnostics.sourceData.join(", ") || "None"],
+          ["Generation errors", preview.diagnostics.errors.join(" | ")]
+        ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 break-words text-sm font-bold">{value}</p></div>)}
+      </div>
     </section>
   );
   const { puzzle } = preview;

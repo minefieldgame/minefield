@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import DailySummary from "@/components/DailySummary";
+import BrandLogo from "@/components/BrandLogo";
 import Header from "@/components/Header";
 import MiniGameCard from "@/components/MiniGameCard";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
@@ -117,7 +118,9 @@ export default function MinefieldFeed() {
           ) : !started ? (
             <section className="grid h-full place-items-center px-4">
               <div className="theme-surface w-full max-w-xl rounded-[2rem] border p-7 text-center sm:p-9">
-                <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#202128] text-3xl text-white shadow-xl dark:bg-violet">◆</div>
+                <div className="mx-auto flex h-28 items-center justify-center">
+                  <BrandLogo priority className="h-28 w-auto object-contain drop-shadow-xl" />
+                </div>
                 <p className="mt-6 text-xs font-black uppercase tracking-[.22em] text-coral">Seven quick games · daily</p>
                 <h1 className="mt-2 text-4xl font-black tracking-[-.05em] text-slate-950 dark:text-white">Minefield</h1>
                 <p className="mx-auto mt-3 max-w-sm text-base font-semibold leading-7 text-slate-500 dark:text-slate-300">

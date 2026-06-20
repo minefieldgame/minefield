@@ -21,11 +21,22 @@ export async function GET(request: NextRequest) {
   const topTenRetry = Number(request.nextUrl.searchParams.get("topTenRetry") ?? 0);
   const force = request.nextUrl.searchParams.get("force") === "1";
   const aiStatus = getAIStatus();
-  const dynamicError = (reason: unknown) => ({
+  const dynamicError = (reason: unknown) => {
+    const message = reason instanceof Error ? reason.message : "Generation failed.";
+    return {
     status: "error" as const,
-    error: reason instanceof Error ? reason.message : "Generation failed.",
-    diagnostics: aiStatus
-  });
+    error: message,
+    diagnostics: {
+      ...aiStatus,
+      generationStatus: "failed" as const,
+      validationStatus: "not-run" as const,
+      sourceData: [],
+      contentHash: null,
+      fallbackUsed: false as const,
+      errors: [message]
+    }
+  };
+  };
 
   const [needledropResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
     resolveNeedleDropDiagnostic(date),
@@ -63,7 +74,13 @@ export async function GET(request: NextRequest) {
           liveAIEnabled: providerStatus.mode === "live-ai",
           model: providerStatus.model,
           generationMode: providerStatus.mode,
-          failureReason: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure."
+          failureReason: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure.",
+          generationStatus: "failed" as const,
+          validationStatus: "not-run" as const,
+          sourceData: [],
+          contentHash: null,
+          fallbackUsed: false as const,
+          errors: [topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure."]
         }
       };
 

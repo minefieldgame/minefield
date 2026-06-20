@@ -25,6 +25,7 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const limitRef = useRef(duration);
+  const completedRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
@@ -36,12 +37,15 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
     frameRef.current = null;
     audio?.pause();
     setPlaying(false);
+    completedRef.current = completed;
     if (completed) setProgress(1);
   }
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    completedRef.current = false;
+    setProgress(0);
     audio.load();
     return () => stopPlayback();
     // The player remounts when the attempt changes.
@@ -71,13 +75,18 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
     }
 
     setPlaybackError(false);
-    setProgress(0);
-    limitRef.current = ended ? 30 : duration;
+    const mediaDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
+    limitRef.current = ended ? mediaDuration : Math.min(duration, mediaDuration);
     try {
       audio.pause();
-      audio.currentTime = 0;
+      if (completedRef.current || audio.currentTime >= limitRef.current - 0.01) {
+        audio.currentTime = 0;
+        completedRef.current = false;
+        setProgress(0);
+      }
       await audio.play();
       setPlaying(true);
+      setProgress(Math.min(1, audio.currentTime / limitRef.current));
       frameRef.current = requestAnimationFrame(monitorPlayback);
     } catch {
       setPlaying(false);
@@ -93,6 +102,12 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
         preload="auto"
         playsInline
         onCanPlay={() => setReady(true)}
+        onLoadedMetadata={() => {
+          const audio = audioRef.current;
+          if (!audio) return;
+          const mediaDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
+          limitRef.current = ended ? mediaDuration : Math.min(duration, mediaDuration);
+        }}
         onPlaying={() => setReady(true)}
         onTimeUpdate={() => {
           const audio = audioRef.current;
@@ -118,7 +133,7 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
           <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="6"
             strokeLinecap="round" pathLength="1" strokeDasharray="1"
             strokeDashoffset={1 - progress}
-            className="text-coral transition-[stroke-dashoffset] duration-75 dark:text-[#ff765c]" />
+            className="text-coral dark:text-[#ff765c]" />
         </svg>
         <span className="absolute inset-[9px] rounded-full bg-white shadow-[0_16px_40px_rgba(23,23,28,.18)] dark:bg-[#242832] dark:shadow-[0_18px_44px_rgba(0,0,0,.45)]" />
         <span className="relative grid h-[68px] w-[68px] place-items-center rounded-full bg-[#202128] text-white shadow-inner group-hover:bg-[#30323a] dark:bg-violet dark:text-white dark:shadow-[0_0_24px_rgba(101,88,211,.28)] dark:group-hover:bg-[#7569e5]">

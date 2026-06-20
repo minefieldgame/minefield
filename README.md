@@ -66,7 +66,7 @@ Player progress stores the final generated puzzle in localStorage, so refreshes 
 
 `data/worldCities.ts` contains more than 100 major-city coordinates. `data/landmarks.ts` contains more than 50 global landmarks with coordinates and Wikimedia Commons image references. These are broad geographic reference datasets rather than prewritten daily trivia banks.
 
-Meet Me Halfway uses a spherical midpoint calculation. Both map games use haversine distance and deterministic daily selection. The shared `InteractiveGuessMap` is dependency-free, client-safe, touch-friendly, and compatible with AWS Amplify.
+Meet Me Halfway uses a spherical midpoint calculation. Both map games use haversine distance and deterministic daily selection. The shared `InteractiveGuessMap` uses client-side Leaflet with OpenStreetMap/CARTO tiles, high-density rendering, touch zoom, panning, markers, and review mode while remaining compatible with AWS Amplify.
 
 ## Daily system
 

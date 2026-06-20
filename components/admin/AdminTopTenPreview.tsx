@@ -33,6 +33,11 @@ export default function AdminTopTenPreview({
               ["Live AI generation", diagnostics.liveAIEnabled ? "Enabled" : "Disabled"],
               ["Generation mode", diagnostics.generationMode],
               ["Model", diagnostics.model],
+              ["Generation status", diagnostics.generationStatus],
+              ["Validation status", diagnostics.validationStatus],
+              ["Fallback usage", diagnostics.fallbackUsed ? "Used" : "None"],
+              ["Content hash", diagnostics.contentHash ?? "Not generated"],
+              ["Source data", diagnostics.sourceData.join(", ") || "None"],
               ["Exact failure", diagnostics.failureReason]
             ].map(([label, value]) => (
               <div key={label} className="theme-raised rounded-xl border p-3">

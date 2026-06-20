@@ -1,12 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type * as Leaflet from "leaflet";
 
 export type MapPoint = { latitude: number; longitude: number };
-
-function toPercent(point: MapPoint) {
-  return { x: ((point.longitude + 180) / 360) * 100, y: ((90 - point.latitude) / 180) * 100 };
-}
 
 export default function InteractiveGuessMap({
   guess,
@@ -21,61 +18,143 @@ export default function InteractiveGuessMap({
   disabled?: boolean;
   label?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<Leaflet.Map | null>(null);
+  const leafletRef = useRef<typeof Leaflet | null>(null);
+  const markerLayerRef = useRef<Leaflet.LayerGroup | null>(null);
+  const onGuessRef = useRef(onGuess);
+  const disabledRef = useRef(disabled);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  function place(clientX: number, clientY: number) {
-    if (disabled || !onGuess || !ref.current) return;
-    const bounds = ref.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
-    const y = Math.max(0, Math.min(1, (clientY - bounds.top) / bounds.height));
-    onGuess({ longitude: x * 360 - 180, latitude: 90 - y * 180 });
-  }
+  useEffect(() => {
+    onGuessRef.current = onGuess;
+    disabledRef.current = disabled;
+  }, [disabled, onGuess]);
 
-  const guessPosition = guess ? toPercent(guess) : null;
-  const correctPosition = correct ? toPercent(correct) : null;
+  useEffect(() => {
+    let cancelled = false;
+    async function setup() {
+      if (!containerRef.current || mapRef.current) return;
+      try {
+        const L = await import("leaflet");
+        if (cancelled || !containerRef.current) return;
+        leafletRef.current = L;
+        const map = L.map(containerRef.current, {
+          center: [18, 5],
+          zoom: 1.5,
+          minZoom: 1,
+          maxZoom: 18,
+          zoomControl: true,
+          attributionControl: true,
+          worldCopyJump: true,
+          scrollWheelZoom: true,
+          touchZoom: true,
+          dragging: true,
+          doubleClickZoom: true
+        });
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+          {
+            subdomains: "abcd",
+            maxZoom: 20,
+            detectRetina: true,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          }
+        ).addTo(map);
+        markerLayerRef.current = L.layerGroup().addTo(map);
+        map.on("click", (event: Leaflet.LeafletMouseEvent) => {
+          if (disabledRef.current || !onGuessRef.current) return;
+          onGuessRef.current({
+            latitude: event.latlng.lat,
+            longitude: event.latlng.lng
+          });
+        });
+        mapRef.current = map;
+        requestAnimationFrame(() => map.invalidateSize());
+        setReady(true);
+      } catch (error) {
+        console.error("[InteractiveGuessMap] Leaflet failed to initialize.", error);
+        setLoadError(true);
+      }
+    }
+    setup();
+    return () => {
+      cancelled = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
+      markerLayerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const L = leafletRef.current;
+    const map = mapRef.current;
+    const layer = markerLayerRef.current;
+    if (!L || !map || !layer || !ready) return;
+    layer.clearLayers();
+    const points: Leaflet.LatLngExpression[] = [];
+
+    if (guess) {
+      const icon = L.divIcon({
+        className: "minefield-map-marker",
+        html: '<span class="minefield-map-pin minefield-map-pin--guess"></span>',
+        iconSize: [28, 36],
+        iconAnchor: [14, 34]
+      });
+      L.marker([guess.latitude, guess.longitude], { icon, keyboard: false })
+        .bindTooltip("Your pin", { direction: "top", offset: [0, -28] })
+        .addTo(layer);
+      points.push([guess.latitude, guess.longitude]);
+    }
+
+    if (correct) {
+      const icon = L.divIcon({
+        className: "minefield-map-marker",
+        html: '<span class="minefield-map-pin minefield-map-pin--correct">✓</span>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+      L.marker([correct.latitude, correct.longitude], { icon, keyboard: false })
+        .bindTooltip("Correct location", { direction: "top", offset: [0, -14] })
+        .addTo(layer);
+      points.push([correct.latitude, correct.longitude]);
+    }
+
+    if (guess && correct) {
+      L.polyline(
+        [[guess.latitude, guess.longitude], [correct.latitude, correct.longitude]],
+        { color: "#6558d3", weight: 2, dashArray: "6 7", opacity: 0.8 }
+      ).addTo(layer);
+      map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 7, animate: false });
+    }
+  }, [correct, guess, ready]);
+
   return (
     <div
-      ref={ref}
       role="application"
       aria-label={label}
-      onPointerDown={(event) => place(event.clientX, event.clientY)}
-      className={`relative aspect-[2/1] w-full overflow-hidden rounded-2xl border border-slate-300 bg-[#dceefa] shadow-inner dark:border-[#454c5a] dark:bg-[#172534] ${disabled ? "cursor-default" : "cursor-crosshair touch-none"}`}
+      className={`relative aspect-[2/1] min-h-44 w-full overflow-hidden rounded-2xl border border-slate-300 bg-[#dceefa] shadow-inner dark:border-[#454c5a] dark:bg-[#172534] ${
+        disabled ? "" : "cursor-crosshair"
+      }`}
     >
-      <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full" aria-hidden="true">
-        <defs>
-          <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
-            <stop stopColor="#dff4ff" /><stop offset="1" stopColor="#bcdced" />
-          </linearGradient>
-          <pattern id="grid" width="125" height="125" patternUnits="userSpaceOnUse">
-            <path d="M125 0H0V125" fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="1000" height="500" fill="url(#ocean)" className="dark:opacity-20" />
-        <g fill="#8fbb9d" stroke="#6f9e80" strokeWidth="3" opacity=".96">
-          <path d="M70 112 130 65l105 10 73 52-12 66-58 27-22 68-62 42-43-75-53-48Z" />
-          <path d="m240 286 67 22 35 56-18 91-49 32-24-76-33-66Z" />
-          <path d="m450 105 62-42 106 20 55 48 81-1 66 43-9 55-83 22-50 72-79-15-37-62-76-20-42-61Z" />
-          <path d="m535 251 73 14 52 72-25 111-57 19-54-81-13-73Z" />
-          <path d="m800 341 77-28 69 40-13 65-86 22-57-50Z" />
-          <path d="m896 95 35-24 32 23-18 38-40 6Z" />
-          <path d="m392 82 25-17 29 12-10 31-35 5Z" />
-        </g>
-        <rect width="1000" height="500" fill="url(#grid)" className="text-slate-600 dark:text-slate-200" />
-      </svg>
-      {guessPosition && (
-        <span className="absolute z-10 -translate-x-1/2 -translate-y-full drop-shadow-lg" style={{ left: `${guessPosition.x}%`, top: `${guessPosition.y}%` }}>
-          <span className="block h-5 w-5 rounded-full border-[4px] border-white bg-violet shadow-md" />
-          <span className="mx-auto block h-2 w-1 bg-violet" />
-        </span>
+      <div ref={containerRef} className="absolute inset-0 z-0" />
+      {!ready && !loadError && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-slate-100 text-xs font-bold text-slate-500 dark:bg-[#20242c]">
+          Loading high-definition map…
+        </div>
       )}
-      {correctPosition && (
-        <span className="absolute z-10 -translate-x-1/2 -translate-y-1/2" style={{ left: `${correctPosition.x}%`, top: `${correctPosition.y}%` }}>
-          <span className="grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-emerald-500 text-xs font-black text-white shadow-lg">✓</span>
-        </span>
+      {loadError && (
+        <div role="alert" className="absolute inset-0 z-10 grid place-items-center bg-slate-100 px-5 text-center text-sm font-bold text-slate-600 dark:bg-[#20242c] dark:text-slate-300">
+          The map could not load. Check your connection and try again.
+        </div>
       )}
-      {!guess && !disabled && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 text-center">
-          <span className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black text-slate-700 shadow-sm dark:bg-[#20242c]/90 dark:text-white">Tap anywhere to place your pin</span>
+      {!guess && !disabled && ready && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[500] text-center">
+          <span className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-black text-slate-700 shadow-md dark:bg-[#20242c]/95 dark:text-white">
+            Tap to place · pinch or scroll to zoom
+          </span>
         </div>
       )}
     </div>

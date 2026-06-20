@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import BrandLogo from "@/components/BrandLogo";
 
 type Props = { onStats?: () => void };
 
@@ -45,15 +45,7 @@ export default function Header({ onStats }: Props) {
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-[#111318]/85">
       <div className="mx-auto flex h-[68px] w-full max-w-3xl items-center justify-between px-4">
         <Link href="/" className="group rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/25" aria-label="Minefield home">
-          <Image
-            src="/minefield-logo.png"
-            alt="Minefield"
-            width={720}
-            height={710}
-            priority
-            className="h-12 w-auto object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.04] sm:h-14"
-            sizes="56px"
-          />
+          <BrandLogo priority className="h-12 w-auto object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.04] sm:h-14" />
         </Link>
 
         <nav className="flex items-center gap-1">

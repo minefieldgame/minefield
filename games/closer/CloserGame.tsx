@@ -59,7 +59,7 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
           gameId: "closer", displayName: "Closer", icon: "🎯", score: 0, maxScore: 100,
           completed: true, successUnits: 0, totalUnits: 1, summaryLabel: "Unavailable today",
           shareLine: "🎯 Closer: unavailable",
-          reviewData: { type: "legacy", message: "Today’s Closer could not be generated." }
+          reviewData: { type: "legacy", message: "Today’s puzzle was unavailable." }
         });
       })
       .finally(() => setLoading(false));

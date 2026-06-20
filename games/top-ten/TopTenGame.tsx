@@ -101,7 +101,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
           totalUnits: 3,
           summaryLabel: "Unavailable today",
           shareLine: "🏆 Top 3: unavailable",
-          reviewData: { type: "legacy", message: "Today’s Top 3 could not be generated." },
+          reviewData: { type: "legacy", message: "Today’s puzzle was unavailable." },
           detail: "Unavailable today"
         });
       })

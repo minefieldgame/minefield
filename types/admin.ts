@@ -51,6 +51,12 @@ export type AdminTopTenPreview =
         model: string;
         generationMode: string;
         failureReason: string;
+        generationStatus: "failed";
+        validationStatus: "not-run";
+        sourceData: string[];
+        contentHash: null;
+        fallbackUsed: false;
+        errors: string[];
       };
     };
 
@@ -78,6 +84,12 @@ export type AdminDynamicError = {
     apiKeyConfigured: boolean;
     liveGenerationEnabled: boolean;
     model: string;
+    generationStatus: "failed";
+    validationStatus: "not-run";
+    sourceData: string[];
+    contentHash: null;
+    fallbackUsed: false;
+    errors: string[];
   };
 };
 
