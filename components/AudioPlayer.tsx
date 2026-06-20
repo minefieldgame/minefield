@@ -6,8 +6,8 @@ type Props = { src: string; duration: number; ended: boolean; playLabel?: string
 
 function PlayIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-10 w-10 translate-x-[2px]">
-      <path d="M8.25 5.3v13.4c0 .92 1.02 1.48 1.8.98l10.08-6.7a1.16 1.16 0 0 0 0-1.96L10.05 4.32c-.78-.5-1.8.06-1.8.98Z" fill="currentColor" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-9 w-9">
+      <path d="M9 6.5v11l8.5-5.5L9 6.5Z" fill="currentColor" />
     </svg>
   );
 }
@@ -112,15 +112,16 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
         aria-pressed={playing}
         className="group relative grid h-24 w-24 place-items-center rounded-full outline-none transition duration-200 ease-out hover:scale-[1.025] focus-visible:ring-4 focus-visible:ring-violet/35 active:scale-[.94]"
       >
-        <span className="absolute inset-0 rounded-full bg-slate-200 dark:bg-[#353b48]" />
-        <span
-          className="absolute inset-0 rounded-full transition-[background] duration-100"
-          style={{
-            background: `conic-gradient(#f06449 ${progress * 360}deg, transparent ${progress * 360}deg)`
-          }}
-        />
-        <span className="absolute inset-[6px] rounded-full bg-white shadow-[0_16px_40px_rgba(23,23,28,.18)] dark:bg-[#242832] dark:shadow-[0_18px_44px_rgba(0,0,0,.45)]" />
-        <span className="relative grid h-[70px] w-[70px] place-items-center rounded-full bg-[#202128] text-white shadow-inner group-hover:bg-[#30323a] dark:bg-violet dark:text-white dark:shadow-[0_0_24px_rgba(101,88,211,.28)] dark:group-hover:bg-[#7569e5]">
+        <svg viewBox="0 0 100 100" aria-hidden="true" className="absolute inset-0 h-full w-full -rotate-90 overflow-visible">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="6"
+            className="text-slate-200 dark:text-[#353b48]" />
+          <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="6"
+            strokeLinecap="round" pathLength="1" strokeDasharray="1"
+            strokeDashoffset={1 - progress}
+            className="text-coral transition-[stroke-dashoffset] duration-75 dark:text-[#ff765c]" />
+        </svg>
+        <span className="absolute inset-[9px] rounded-full bg-white shadow-[0_16px_40px_rgba(23,23,28,.18)] dark:bg-[#242832] dark:shadow-[0_18px_44px_rgba(0,0,0,.45)]" />
+        <span className="relative grid h-[68px] w-[68px] place-items-center rounded-full bg-[#202128] text-white shadow-inner group-hover:bg-[#30323a] dark:bg-violet dark:text-white dark:shadow-[0_0_24px_rgba(101,88,211,.28)] dark:group-hover:bg-[#7569e5]">
           {playing ? <PauseIcon /> : <PlayIcon />}
         </span>
       </button>

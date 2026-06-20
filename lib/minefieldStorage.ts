@@ -1,38 +1,49 @@
-import type {
-  MinefieldDailyBoard,
-  MinefieldGameResult,
-  MinefieldStats,
-  MinefieldSummary
-} from "@/types/minefield";
+import type { MinefieldDailyBoard, MinefieldGameResult, MinefieldStats, MinefieldSummary } from "@/types/minefield";
 
 const BOARD_PREFIX = "minefield:board:";
 const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
-
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
 const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
-  "needledrop",
-  "minefield",
-  "top-ten",
-  "spelldrop",
-  "closer"
+  "needledrop", "minefield", "top-ten", "spelldrop", "closer",
+  "meet-me-halfway", "landmark-drop"
 ];
 const GAME_DEFAULTS = {
   needledrop: { displayName: "NeedleDrop", icon: "🎵", totalUnits: 7 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 5 },
   "top-ten": { displayName: "Top 3", icon: "🏆", totalUnits: 3 },
   spelldrop: { displayName: "SpellDrop", icon: "🔤", totalUnits: 1 },
-  closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 }
+  closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 },
+  "meet-me-halfway": { displayName: "Meet Me Halfway", icon: "🌍", totalUnits: 1 },
+  "landmark-drop": { displayName: "Landmark Drop", icon: "🗼", totalUnits: 1 }
 } as const;
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
     const value = localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
+    return value ? JSON.parse(value) as T : fallback;
   } catch {
     return fallback;
   }
+}
+
+function normalizeResult(gameId: MinefieldGameResult["gameId"], result: MinefieldGameResult) {
+  const defaults = GAME_DEFAULTS[gameId];
+  const summaryLabel = result.summaryLabel ?? result.detail ?? "Completed";
+  return {
+    ...result, gameId,
+    displayName: result.displayName ?? defaults.displayName,
+    icon: result.icon ?? defaults.icon,
+    maxScore: result.maxScore ?? 100,
+    successUnits: result.successUnits ?? 0,
+    totalUnits: result.totalUnits ?? defaults.totalUnits,
+    summaryLabel,
+    shareLine: result.shareLine ??
+      `${defaults.icon} ${result.displayName ?? defaults.displayName}: ${result.score ?? 0}/${result.maxScore ?? 100}, ${summaryLabel.toLowerCase()}`,
+    reviewData: result.reviewData ?? { type: "legacy", message: "Detailed answer review is unavailable for this previously saved result." },
+    detail: result.detail ?? summaryLabel
+  } satisfies MinefieldGameResult;
 }
 
 export function loadGameProgress(date: string): MinefieldDailyBoard {
@@ -46,43 +57,14 @@ export function loadGameProgress(date: string): MinefieldDailyBoard {
   return { ...board, results };
 }
 
-function normalizeResult(gameId: MinefieldGameResult["gameId"], result: MinefieldGameResult) {
-  const defaults = GAME_DEFAULTS[gameId];
-  const summaryLabel = result.summaryLabel ?? result.detail ?? "Completed";
-  return {
-    ...result,
-    gameId,
-    displayName: result.displayName ?? defaults.displayName,
-    icon: result.icon ?? defaults.icon,
-    maxScore: result.maxScore ?? 100,
-    successUnits: result.successUnits ?? 0,
-    totalUnits: result.totalUnits ?? defaults.totalUnits,
-    summaryLabel,
-    shareLine:
-      result.shareLine ??
-      `${defaults.icon} ${result.displayName ?? defaults.displayName}: ${result.score ?? 0}/${result.maxScore ?? 100}, ${summaryLabel.toLowerCase()}`,
-    reviewData: result.reviewData ?? {
-      type: "legacy",
-      message: "Detailed answer review is unavailable for this previously saved result."
-    },
-    detail: result.detail ?? summaryLabel
-  } satisfies MinefieldGameResult;
-}
-
 export function saveGameProgress(date: string, result: MinefieldGameResult) {
   const board = loadGameProgress(date);
-  const next: MinefieldDailyBoard = {
-    ...board,
-    results: { ...board.results, [result.gameId]: result }
-  };
+  const next: MinefieldDailyBoard = { ...board, results: { ...board.results, [result.gameId]: result } };
   localStorage.setItem(`${BOARD_PREFIX}${date}`, JSON.stringify(next));
   return next;
 }
 
-export function calculateDailySummary(
-  board: MinefieldDailyBoard,
-  totalGames = 5
-): MinefieldSummary {
+export function calculateDailySummary(board: MinefieldDailyBoard, totalGames = 7): MinefieldSummary {
   const results = (Object.values(board.results).filter(Boolean) as MinefieldGameResult[]).sort(
     (left, right) => RESULT_ORDER.indexOf(left.gameId) - RESULT_ORDER.indexOf(right.gameId)
   );
@@ -102,28 +84,21 @@ function previousPacificDate(dateKey: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 5) {
+export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 7) {
   const summary = calculateDailySummary(board, totalGames);
   if (summary.gamesCompleted < totalGames) return summary;
-
   const archived = read<MinefieldSummary[]>(ARCHIVE_KEY, []);
   const existingEntry = archived.some((entry) => entry.date === board.date);
-  localStorage.setItem(
-    ARCHIVE_KEY,
-    JSON.stringify([summary, ...archived.filter((entry) => entry.date !== board.date)].slice(0, 180))
-  );
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify([summary, ...archived.filter((entry) => entry.date !== board.date)].slice(0, 180)));
   if (!existingEntry) {
     const stats = read<MinefieldStats>(STATS_KEY, EMPTY_STATS);
     const continued = stats.lastCompletedDate === previousPacificDate(board.date);
     const currentStreak = continued ? stats.currentStreak + 1 : 1;
-    localStorage.setItem(
-      STATS_KEY,
-      JSON.stringify({
-        currentStreak,
-        maxStreak: Math.max(stats.maxStreak, currentStreak),
-        lastCompletedDate: board.date
-      })
-    );
+    localStorage.setItem(STATS_KEY, JSON.stringify({
+      currentStreak,
+      maxStreak: Math.max(stats.maxStreak, currentStreak),
+      lastCompletedDate: board.date
+    }));
   }
   return summary;
 }

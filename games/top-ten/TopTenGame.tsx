@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { checkTopTenAnswer, topTenScore } from "@/games/top-ten/logic";
 import type { TopTenPuzzle, TopTenState } from "@/games/top-ten/types";
 import { getDailyGameDate } from "@/lib/date";
+import { markContentUsed } from "@/lib/content/repeatPrevention";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 const STORAGE_PREFIX = "minefield:top-three:v1:";
@@ -75,8 +76,10 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
       .then(async (response) => {
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error);
+        const puzzle = payload as TopTenPuzzle;
+        if (puzzle.contentHash) markContentUsed({ gameId: "top3", contentHash: puzzle.contentHash, topic: puzzle.category.topicArea, answer: puzzle.answers.map((answer) => answer.name).join("|"), date });
         const next: TopTenState = {
-          puzzle: payload as TopTenPuzzle,
+          puzzle,
           found: [],
           misses: [],
           status: "playing",

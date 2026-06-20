@@ -2,50 +2,31 @@
 
 import type { AdminCloserPreview as Preview } from "@/types/admin";
 
-export default function AdminCloserPreview({
-  preview,
-  onRegenerate
-}: {
-  preview: Preview;
-  onRegenerate: () => void;
-}) {
-  async function copy() {
-    await navigator.clipboard.writeText(JSON.stringify(preview.puzzle, null, 2));
-  }
-  const puzzle = preview.puzzle;
+export default function AdminCloserPreview({ preview, onRegenerate }: { preview: Preview; onRegenerate: () => void }) {
+  if (preview.status === "error") return (
+    <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
+      <h2 className="text-2xl font-black">Closer</h2>
+      <p className="mt-3 rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">{preview.error}</p>
+      <p className="mt-3 text-sm font-bold">OPENAI_API_KEY detected: {String(preview.diagnostics.apiKeyConfigured)}</p>
+      <p className="text-sm font-bold">Live generation enabled: {String(preview.diagnostics.liveGenerationEnabled)}</p>
+    </section>
+  );
+  const { puzzle } = preview;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <p className="text-[11px] font-black uppercase tracking-[.18em] text-[#db4e36] dark:text-[#ff826a]">Game diagnostics</p>
-      <div className="flex items-center justify-between">
-        <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Closer</h2>
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">{preview.validation.valid ? "valid" : "invalid"}</span>
-      </div>
+      <div className="flex items-center justify-between"><h2 className="text-2xl font-black">Closer</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {[
-          ["Selected date", puzzle.date],
-          ["Daily seed", puzzle.seed],
-          ["Question ID", puzzle.id],
-          ["Category", puzzle.category],
-          ["Prompt", puzzle.prompt],
-          ["Answer", puzzle.displayAnswer],
-          ["Unit", puzzle.unit],
-          ["Source note", puzzle.sourceNote],
-          ["Question pool", `${preview.questionPoolSize} verified templates`]
-        ].map(([label, value]) => (
-          <div key={label} className="theme-raised rounded-xl border p-3">
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="mt-1 text-sm font-bold text-slate-950 dark:text-white">{value}</p>
-          </div>
-        ))}
+          ["Generated prompt", puzzle.prompt], ["Answer", puzzle.displayAnswer], ["Unit", puzzle.unit],
+          ["Source note", puzzle.sourceNote], ["Generator", preview.generator],
+          ["Confidence", `${Math.round(preview.confidence * 100)}%`],
+          ["Content hash", preview.contentHash],
+          ["Repeat check", preview.repeatCheck.repeated ? "Recently appeared" : "Clear"]
+        ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 break-words text-sm font-bold">{value}</p></div>)}
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <button onClick={onRegenerate} className="rounded-xl bg-violet px-4 py-3 text-sm font-extrabold text-white">Generate Closer</button>
-        <button onClick={copy} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold dark:border-[#454c5a] dark:bg-[#292e38]">Copy JSON</button>
-      </div>
-      <details className="mt-3 rounded-xl border border-slate-200 dark:border-[#3b424f]">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw puzzle JSON</summary>
-        <pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre>
-      </details>
+      <button onClick={onRegenerate} className="mt-4 rounded-xl bg-violet px-5 py-3 text-sm font-extrabold text-white">Generate Closer</button>
+      <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw AI response</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(preview.rawAIResponse, null, 2)}</pre></details>
+      <details className="mt-2 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Final puzzle JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
   );
 }

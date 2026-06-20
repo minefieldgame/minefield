@@ -14,6 +14,9 @@ export type CloserPuzzle = {
   sourceNote: string;
   difficulty: CloserDifficulty;
   allowNegative?: boolean;
+  contentHash?: string;
+  confidence?: number;
+  generatedAt?: string;
 };
 
 export type CloserScore = {

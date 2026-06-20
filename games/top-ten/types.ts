@@ -1,5 +1,5 @@
 export type TopTenDifficulty = "easy" | "medium" | "hard";
-export type TopTenGenerationMode = "live-ai" | "development-mock";
+export type TopTenGenerationMode = "live-ai";
 
 export type TopTenCategory = {
   id: string;
@@ -50,6 +50,9 @@ export type TopTenPuzzle = {
   confidence: number;
   validation: TopTenValidation;
   generationMode: TopTenGenerationMode;
+  contentHash?: string;
+  repeatCheck?: { repeated: boolean; lookback: number };
+  generator?: string;
   warning?: string;
   rawAIResponse?: unknown;
 };

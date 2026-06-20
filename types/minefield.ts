@@ -1,4 +1,11 @@
-export type MinefieldGameId = "needledrop" | "top-ten" | "spelldrop" | "minefield" | "closer";
+export type MinefieldGameId =
+  | "needledrop"
+  | "minefield"
+  | "top-ten"
+  | "spelldrop"
+  | "closer"
+  | "meet-me-halfway"
+  | "landmark-drop";
 
 export type NeedleDropReviewData = {
   type: "needledrop";
@@ -24,6 +31,7 @@ export type SpellDropReviewData = {
   correctWord: string;
   userSpelling: string;
   correct: boolean;
+  definition?: string;
 };
 
 export type MinefieldGridReviewData = {
@@ -47,12 +55,34 @@ export type CloserReviewData = {
   scoreLabel: string;
 };
 
+export type MeetMeHalfwayReviewData = {
+  type: "meet-me-halfway";
+  locationA: { name: string; country: string; latitude: number; longitude: number };
+  locationB: { name: string; country: string; latitude: number; longitude: number };
+  midpoint: { latitude: number; longitude: number };
+  guess: { latitude: number; longitude: number };
+  distanceKm: number;
+};
+
+export type LandmarkDropReviewData = {
+  type: "landmark-drop";
+  landmark: string;
+  city: string;
+  country: string;
+  correct: { latitude: number; longitude: number };
+  guess: { latitude: number; longitude: number };
+  distanceKm: number;
+  imageUrl: string;
+};
+
 export type MinefieldReviewData =
   | NeedleDropReviewData
   | TopThreeReviewData
   | SpellDropReviewData
   | MinefieldGridReviewData
   | CloserReviewData
+  | MeetMeHalfwayReviewData
+  | LandmarkDropReviewData
   | { type: "legacy"; message: string };
 
 export type MinefieldGameResult = {

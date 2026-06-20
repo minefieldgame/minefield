@@ -2,6 +2,9 @@ import type { TopTenPuzzle } from "@/games/top-ten/types";
 import type { DailyPuzzle } from "@/types/game";
 import type { MinefieldPuzzle } from "@/games/minefield/logic";
 import type { CloserPuzzle } from "@/games/closer/types";
+import type { SpellDropPuzzle } from "@/games/spelldrop/types";
+import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
+import type { resolveMeetMeHalfwayPuzzle, resolveLandmarkDropPuzzle } from "@/games/geography/puzzles";
 
 export type AdminNeedleDropPreview =
   | {
@@ -63,26 +66,41 @@ export type AdminPreviewResponse = {
     spellDrop: AdminSpellDropPreview;
     minefield: AdminMinefieldPreview;
     closer: AdminCloserPreview;
+    meetMeHalfway: AdminMeetMeHalfwayPreview;
+    landmarkDrop: AdminLandmarkDropPreview;
   };
 };
 
-export type AdminSpellDropPreview = {
-  status: "ready";
-  word: string;
-  acceptedSpelling: string;
-  dateSeed: number;
-  replayLimit: number;
-  wordCount: number;
+export type AdminDynamicError = {
+  status: "error";
+  error: string;
+  diagnostics: {
+    apiKeyConfigured: boolean;
+    liveGenerationEnabled: boolean;
+    model: string;
+  };
 };
+
+export type AdminSpellDropPreview =
+  | ({ status: "ready" } & GeneratedContentEnvelope<SpellDropPuzzle>)
+  | AdminDynamicError;
 
 export type AdminMinefieldPreview = {
   status: "ready";
   puzzle: MinefieldPuzzle;
 };
 
-export type AdminCloserPreview = {
+export type AdminCloserPreview =
+  | ({ status: "ready" } & GeneratedContentEnvelope<CloserPuzzle>)
+  | AdminDynamicError;
+
+export type AdminMeetMeHalfwayPreview = {
   status: "ready";
-  puzzle: CloserPuzzle;
-  validation: { valid: boolean; errors: string[] };
-  questionPoolSize: number;
+  puzzle: ReturnType<typeof resolveMeetMeHalfwayPuzzle>;
+};
+
+export type AdminLandmarkDropPreview = {
+  status: "ready";
+  puzzle: ReturnType<typeof resolveLandmarkDropPuzzle>;
+  imageStatus: string;
 };

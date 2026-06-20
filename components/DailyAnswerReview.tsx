@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import InteractiveGuessMap from "@/components/InteractiveGuessMap";
 import { formatChartDate } from "@/lib/date";
 import type { MinefieldSummary } from "@/types/minefield";
 
@@ -13,13 +14,13 @@ export default function DailyAnswerReview({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-slate-950/55 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5">
-      <section className="theme-surface max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[1.75rem] border p-5 sm:rounded-[1.75rem]">
-        <div className="sticky top-0 z-10 flex items-start justify-between bg-[var(--surface)] pb-4">
+      <section className="theme-surface max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[1.75rem] border px-5 pb-5 pt-3 sm:rounded-[1.75rem]">
+        <div className="sticky top-0 z-20 flex items-start justify-between bg-[var(--surface)] pb-4 pt-2">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[.18em] text-[#db4e36] dark:text-[#ff826a]">Board complete</p>
             <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Daily Answers</h2>
           </div>
-          <button onClick={onClose} aria-label="Close answer review" className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-xl font-bold dark:bg-[#292e38]">×</button>
+          <button onClick={onClose} aria-label="Close answer review" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-2xl font-bold leading-none dark:bg-[#292e38]">×</button>
         </div>
 
         <div className="space-y-3">
@@ -125,6 +126,33 @@ export default function DailyAnswerReview({
                       {review.scoreLabel} · {(review.percentError * 100).toFixed(1)}% error
                     </p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Source: {review.sourceNote}</p>
+                  </div>
+                )}
+
+                {review.type === "meet-me-halfway" && (
+                  <div className="mt-3">
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      {review.locationA.name} ↔ {review.locationB.name}
+                    </p>
+                    <div className="mt-2">
+                      <InteractiveGuessMap guess={review.guess} correct={review.midpoint} disabled />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      Your pin was {Math.round(review.distanceKm).toLocaleString()} km from the true spherical midpoint.
+                    </p>
+                  </div>
+                )}
+
+                {review.type === "landmark-drop" && (
+                  <div className="mt-3">
+                    <p className="font-black text-slate-950 dark:text-white">{review.landmark}</p>
+                    <p className="text-xs text-slate-500">{review.city}, {review.country}</p>
+                    <div className="mt-2">
+                      <InteractiveGuessMap guess={review.guess} correct={review.correct} disabled />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      Your pin was {Math.round(review.distanceKm).toLocaleString()} km away.
+                    </p>
                   </div>
                 )}
 

@@ -68,7 +68,11 @@ export default function AdminTopTenPreview({
           ["Topic area", puzzle.category.topicArea],
           ["Ranking metric", puzzle.category.rankingMetric],
           ["Answer type", puzzle.category.expectedAnswerType],
-          ["Source strategy", puzzle.category.sourceStrategy]
+          ["Source strategy", puzzle.category.sourceStrategy],
+          ["OPENAI_API_KEY detected", String(diagnostics.apiKeyConfigured)],
+          ["Live generation enabled", String(diagnostics.generationMode === "live-ai")],
+          ["Content hash", puzzle.contentHash ?? "—"],
+          ["Repeat check", puzzle.repeatCheck?.repeated ? "Recently appeared" : "Clear"]
         ].map(([label, value]) => (
           <div key={label} className="theme-raised rounded-xl border p-3">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
@@ -145,8 +149,8 @@ export default function AdminTopTenPreview({
         <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(puzzle, null, 2)}</pre>
       </details>
       <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw AI category response</summary>
-        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(rawAI?.category ?? null, null, 2)}</pre>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw AI response</summary>
+        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(puzzle.rawAIResponse ?? null, null, 2)}</pre>
       </details>
       <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
         <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw answer resolver response</summary>

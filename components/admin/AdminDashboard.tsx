@@ -88,7 +88,7 @@ export default function AdminDashboard({ environment }: { environment: string })
 
   const generate = useCallback(async (
     date = selectedDate,
-    options: { retryTopTen?: boolean } = {}
+    options: { retryTopTen?: boolean; forceAll?: boolean } = {}
   ) => {
     setSelectedDate(date);
     setLoading(true);
@@ -97,7 +97,7 @@ export default function AdminDashboard({ environment }: { environment: string })
     setTopTenRetry(retry);
     try {
       const response = await fetch(
-        `/api/admin/preview?date=${date}&topTenRetry=${retry}&t=${Date.now()}`,
+        `/api/admin/preview?date=${date}&topTenRetry=${retry}&force=${options.forceAll ? "1" : ""}&t=${Date.now()}`,
         {
         cache: "no-store"
         }
@@ -192,7 +192,7 @@ export default function AdminDashboard({ environment }: { environment: string })
             <button onClick={() => setSelectedDate(shiftDate(today, 1))} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Tomorrow</button>
             <button onClick={() => generate(shiftDate(today, 1))} className="rounded-xl bg-coral px-3 py-2.5 text-sm font-bold text-white">Preview Tomorrow</button>
             <button onClick={() => { const date = randomDate(); generate(date); }} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Random Day</button>
-            <button onClick={() => generate(selectedDate)} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Regenerate All</button>
+            <button onClick={() => generate(selectedDate, { forceAll: true })} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Regenerate All</button>
           </div>
         </section>
 
@@ -223,15 +223,11 @@ export default function AdminDashboard({ environment }: { environment: string })
               <AdminPreviewComponent
                 key={gameId}
                 data={preview}
-                onRegenerate={() => generate(preview.date)}
+                onRegenerate={() => generate(preview.date, { forceAll: true })}
                 onRetryTopTen={() => generate(preview.date, { retryTopTen: true })}
               />
             ))}
 
-            <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-              <h2 className="text-xl font-black text-slate-950 dark:text-white">Future game previews</h2>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">Chrono, Higher, Fake Fact, Breedle, GeoPin, and Ladder can register an admin preview through the shared module registry.</p>
-            </section>
           </>
         )}
       </main>

@@ -4,6 +4,7 @@ import AdminTopTenPreview from "@/components/admin/AdminTopTenPreview";
 import AdminSpellDropPreview from "@/components/admin/AdminSpellDropPreview";
 import AdminMinefieldPreview from "@/components/admin/AdminMinefieldPreview";
 import AdminCloserPreview from "@/components/admin/AdminCloserPreview";
+import { AdminLandmarkDropPreview, AdminMeetMeHalfwayPreview } from "@/components/admin/AdminGeographyPreviews";
 import type { AdminPreviewResponse } from "@/types/admin";
 
 export type AdminGamePreviewProps = {
@@ -39,6 +40,14 @@ function CloserModule({ data, onRegenerate }: AdminGamePreviewProps) {
   return <AdminCloserPreview preview={data.games.closer} onRegenerate={onRegenerate} />;
 }
 
+function MeetMeHalfwayModule({ data }: AdminGamePreviewProps) {
+  return <AdminMeetMeHalfwayPreview preview={data.games.meetMeHalfway} />;
+}
+
+function LandmarkDropModule({ data }: AdminGamePreviewProps) {
+  return <AdminLandmarkDropPreview preview={data.games.landmarkDrop} />;
+}
+
 export const adminGameRegistry: Array<{
   gameId: string;
   displayName: string;
@@ -68,5 +77,15 @@ export const adminGameRegistry: Array<{
     gameId: "closer",
     displayName: "Closer",
     AdminPreviewComponent: CloserModule
+  },
+  {
+    gameId: "meet-me-halfway",
+    displayName: "Meet Me Halfway",
+    AdminPreviewComponent: MeetMeHalfwayModule
+  },
+  {
+    gameId: "landmark-drop",
+    displayName: "Landmark Drop",
+    AdminPreviewComponent: LandmarkDropModule
   }
 ];

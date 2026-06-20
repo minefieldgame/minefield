@@ -1,28 +1,68 @@
-import { CLOSER_QUESTION_POOL } from "@/data/closerQuestions";
-import { hashString } from "@/lib/dailySeed";
+import { requestStructuredContent } from "@/lib/content/aiClient";
+import { generateDailyContent, type GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
+import { hasCredibleSource } from "@/lib/content/sourceResolver";
+import { buildValidation } from "@/lib/content/validation";
 import type { CloserPuzzle, CloserScore } from "@/games/closer/types";
 
-export function getCloserQuestionPool() {
-  return CLOSER_QUESTION_POOL;
-}
+const SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["id", "category", "prompt", "answer", "unit", "displayAnswer", "sourceNote", "difficulty", "acceptableRangeNote", "confidence"],
+  properties: {
+    id: { type: "string" },
+    category: { type: "string" },
+    prompt: { type: "string" },
+    answer: { type: "number" },
+    unit: { type: "string" },
+    displayAnswer: { type: "string" },
+    sourceNote: { type: "string" },
+    difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+    acceptableRangeNote: { type: "string" },
+    confidence: { type: "number", minimum: 0, maximum: 1 }
+  }
+} as const;
+
+type GeneratedCloser = Omit<CloserPuzzle, "gameId" | "date" | "seed"> & { confidence: number };
 
 export function validateCloserPuzzle(puzzle: CloserPuzzle) {
-  const errors: string[] = [];
-  if (!puzzle.prompt.trim()) errors.push("Prompt is missing.");
-  if (!Number.isFinite(puzzle.answer)) errors.push("Answer is not numeric.");
-  if (!puzzle.allowNegative && puzzle.answer < 0) errors.push("Negative answer is not allowed.");
-  if (!puzzle.unit.trim()) errors.push("Unit is missing.");
-  if (!puzzle.sourceNote.trim()) errors.push("Source note is missing.");
-  return { valid: errors.length === 0, errors };
+  return buildValidation({
+    promptPresent: puzzle.prompt.trim().length >= 15,
+    numericNonZeroAnswer: Number.isFinite(puzzle.answer) && puzzle.answer !== 0,
+    unitClear: puzzle.unit.trim().length > 0,
+    displayAnswerPresent: puzzle.displayAnswer.trim().length > 0,
+    sourcePresent: hasCredibleSource([puzzle.sourceNote]),
+    generalAudience: puzzle.prompt.length <= 180
+  });
 }
 
-export function resolveCloserPuzzleForDate(date: string): CloserPuzzle {
-  const seed = hashString(`closer:${date}`);
-  const template = CLOSER_QUESTION_POOL[seed % CLOSER_QUESTION_POOL.length];
-  const puzzle: CloserPuzzle = { gameId: "closer", date, seed, ...template };
-  const validation = validateCloserPuzzle(puzzle);
-  if (!validation.valid) throw new Error(validation.errors.join(" "));
-  return puzzle;
+export async function resolveDailyCloserPuzzle(
+  date: string,
+  force = false
+): Promise<GeneratedContentEnvelope<CloserPuzzle>> {
+  return generateDailyContent({
+    gameId: "closer",
+    date,
+    force,
+    generate: async ({ seed }) => {
+      const result = await requestStructuredContent<GeneratedCloser>({
+        name: "minefield_closer",
+        instructions:
+          "Create one fast, factual numeric trivia question for a general audience. It must be unambiguous, stable or date-stamped, non-zero, reasonably guessable, and supported by a reliable source. Return only the schema.",
+        input: `Pacific date ${date}; deterministic seed ${seed}. Vary across geography, sports, culture, science, history, business, animals, and technology.`,
+        schema: SCHEMA,
+        useWebSearch: true
+      });
+      const { confidence, ...content } = result.parsed;
+      return {
+        puzzle: { gameId: "closer", date, seed, ...content },
+        rawAIResponse: result.raw,
+        confidence,
+        sourceNotes: [content.sourceNote],
+        generator: `OpenAI Responses API (${result.model}) + web search`
+      };
+    },
+    validate: validateCloserPuzzle,
+    describe: (puzzle) => ({ topic: puzzle.category, answer: String(puzzle.answer), hashInput: puzzle.prompt })
+  });
 }
 
 export function parseNumericGuess(input: string) {
@@ -30,27 +70,21 @@ export function parseNumericGuess(input: string) {
   if (!normalized) return null;
   const match = normalized.match(/^(-?\d+(?:\.\d+)?)(k|m|b|thousand|million|billion)?$/);
   if (!match) return null;
-  const value = Number(match[1]);
   const multipliers: Record<string, number> = {
-    k: 1_000, thousand: 1_000,
-    m: 1_000_000, million: 1_000_000,
+    k: 1_000, thousand: 1_000, m: 1_000_000, million: 1_000_000,
     b: 1_000_000_000, billion: 1_000_000_000
   };
-  return value * (multipliers[match[2] ?? ""] ?? 1);
+  return Number(match[1]) * (multipliers[match[2] ?? ""] ?? 1);
 }
 
 export const normalizeNumericGuess = parseNumericGuess;
 
 export function calculateCloserScore(guess: number, answer: number): CloserScore {
   const distanceFromAnswer = Math.abs(guess - answer);
-  const percentError = answer === 0 ? (distanceFromAnswer === 0 ? 0 : Infinity) : distanceFromAnswer / Math.abs(answer);
+  const percentError = distanceFromAnswer / Math.abs(answer);
   const score =
-    percentError <= 0.01 ? 100 :
-    percentError <= 0.05 ? 90 :
-    percentError <= 0.10 ? 80 :
-    percentError <= 0.20 ? 65 :
-    percentError <= 0.35 ? 50 :
-    percentError <= 0.50 ? 35 :
+    percentError <= 0.01 ? 100 : percentError <= 0.05 ? 90 : percentError <= 0.10 ? 80 :
+    percentError <= 0.20 ? 65 : percentError <= 0.35 ? 50 : percentError <= 0.50 ? 35 :
     percentError <= 0.75 ? 20 : 0;
   const labels: Record<number, string> = {
     100: "Dead on", 90: "Extremely close", 80: "Very close", 65: "Close enough",
