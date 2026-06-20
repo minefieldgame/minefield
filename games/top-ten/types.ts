@@ -29,7 +29,7 @@ export type TopTenValidation = {
   valid: boolean;
   checks: {
     rankedPrompt: boolean;
-    exactlyTenAnswers: boolean;
+    exactlyThreeAnswers: boolean;
     uniqueAnswers: boolean;
     objectiveRanking: boolean;
     safeAliases: boolean;

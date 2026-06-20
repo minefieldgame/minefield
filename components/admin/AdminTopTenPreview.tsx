@@ -24,8 +24,8 @@ export default function AdminTopTenPreview({
     const diagnostics = preview.diagnostics;
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-        <h2 className="text-2xl font-black text-slate-950 dark:text-white">Top 10</h2>
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">{preview.error || "Top 10 not installed."}</p>
+        <h2 className="text-2xl font-black text-slate-950 dark:text-white">Top 3</h2>
+        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">{preview.error || "Top 3 not installed."}</p>
         {diagnostics && (
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {[
@@ -55,7 +55,7 @@ export default function AdminTopTenPreview({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[.18em] text-[#db4e36] dark:text-[#ff826a]">Game diagnostics</p>
-          <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Top 10</h2>
+          <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Top 3</h2>
         </div>
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">{diagnostics.validationStatus}</span>
       </div>
@@ -105,7 +105,7 @@ export default function AdminTopTenPreview({
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <button onClick={() => copyJson(puzzle)} className="rounded-xl bg-violet px-3 py-3 text-sm font-extrabold text-white dark:bg-[#7569e5]">Copy Puzzle JSON</button>
         <button onClick={() => navigator.clipboard.writeText(puzzle.category.prompt)} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Copy Prompt</button>
-        <button onClick={onRegenerate} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Generate Top 10</button>
+        <button onClick={onRegenerate} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Generate Top 3</button>
         <button onClick={onRetryCategory} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Retry Category</button>
         <button onClick={() => setPlayerPreview((value) => !value)} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Preview as Player</button>
       </div>
@@ -114,8 +114,8 @@ export default function AdminTopTenPreview({
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#3b424f] dark:bg-[#20242c]">
           <span className="rounded-full bg-violet/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">{puzzle.category.topicArea}</span>
           <h3 className="mt-3 text-xl font-black text-slate-950 dark:text-white">{puzzle.category.prompt}</h3>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {Array.from({ length: 10 }, (_, index) => (
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }, (_, index) => (
               <div key={index} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-400 dark:border-[#343a47] dark:bg-[#252a34] dark:text-slate-500">
                 {index + 1} —
               </div>

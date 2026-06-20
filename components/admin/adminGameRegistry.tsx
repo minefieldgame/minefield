@@ -41,7 +41,7 @@ export const adminGameRegistry: Array<{
   },
   {
     gameId: "top-ten",
-    displayName: "Top 10",
+    displayName: "Top 3",
     AdminPreviewComponent: TopTenModule
   },
   {

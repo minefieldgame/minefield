@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
           status: "error",
           error: topTenResult.reason instanceof Error
             ? topTenResult.reason.message
-            : "Top 10 generation failed.",
+            : "Top 3 generation failed.",
           diagnostics: {
             apiKeyConfigured: providerStatus.apiKeyConfigured,
             liveAIEnabled: providerStatus.mode === "live-ai",
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
             generationMode: providerStatus.mode,
             failureReason: topTenResult.reason instanceof Error
               ? topTenResult.reason.message
-              : "Unknown Top 10 generation failure."
+              : "Unknown Top 3 generation failure."
           }
         };
   const spellDropSelection = getSpellDropWord(date);

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     });
   } catch {
     return NextResponse.json(
-      { error: "Today’s Top 10 could not be generated. Please try again later." },
+      { error: "Today’s Top 3 could not be generated. Please try again later." },
       { status: 502 }
     );
   }

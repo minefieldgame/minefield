@@ -32,5 +32,5 @@ export function checkTopTenAnswer(
 }
 
 export function topTenScore(found: string[]) {
-  return found.length * 10;
+  return found.length >= 3 ? 100 : found.length * 33;
 }

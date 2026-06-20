@@ -46,6 +46,15 @@ body {
   transition: background-color 260ms ease, color 220ms ease;
 }
 
+.minefield-snap-feed {
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.minefield-snap-feed::-webkit-scrollbar {
+  display: none;
+}
+
 .dark body {
   background:
     radial-gradient(circle at 8% 0%, var(--page-glow-b), transparent 27rem),

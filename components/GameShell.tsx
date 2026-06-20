@@ -169,12 +169,12 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
         {!loading && error && <ErrorState message={error} retry={loadPuzzle} />}
         {!loading && state && (
           <>
-            <div className="mb-6 pt-2 text-center">
-              <p className="text-xs font-black uppercase tracking-[.2em] text-[#db4e36] dark:text-[#ff826a]">Today’s Billboard time capsule</p>
-              <h1 className="mt-2 text-3xl font-black tracking-[-.04em] text-slate-900 dark:text-white sm:text-4xl">
+            <div className="mb-3 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#db4e36] dark:text-[#ff826a]">Billboard time capsule</p>
+              <h1 className="mt-1 text-xl font-black tracking-[-.03em] text-slate-900 dark:text-white">
                 {formatChartDate(state.puzzle.chartDate)}
               </h1>
-              <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">This song was in the Billboard Hot 100 Top 10</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Billboard Hot 100 top-ten hit</p>
             </div>
             <section className={embedded ? "" : "theme-surface rounded-[2rem] border p-5 sm:p-7"}>
               <AttemptTracker attempt={state.attempt} />
@@ -185,8 +185,8 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
                 ended={state.status !== "playing"}
               />
               {state.guesses.length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {state.guesses.map((guess, index) => (
+                <div className="mb-2 flex max-h-7 gap-1.5 overflow-hidden">
+                  {state.guesses.slice(-2).map((guess, index) => (
                     <span key={`${guess}-${index}`} className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 line-through dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
                       {guess}
                     </span>
@@ -215,9 +215,7 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
                 </button>
               )}
             </section>
-            <p className="mt-5 text-center text-xs text-slate-500 dark:text-slate-400">
-              New puzzle daily at midnight Pacific · No audio is stored
-            </p>
+            {!embedded && <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">New daily at midnight Pacific</p>}
           </>
         )}
       </div>

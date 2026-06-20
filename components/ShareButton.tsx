@@ -15,7 +15,10 @@ export function buildShareText(state: GameState) {
     "Top 10 Billboard Hit",
     won ? `Solved in ${state.attempt + 1}/7` : "Failed",
     `Score: ${state.score}`,
-    boxes
+    boxes,
+    "",
+    "Play Minefield:",
+    "https://minefieldgame.com"
   ].join("\n");
 }
 

@@ -39,14 +39,14 @@ const RESOLUTION_SCHEMA = {
   properties: {
     answers: {
       type: "array",
-      minItems: 10,
-      maxItems: 10,
+      minItems: 3,
+      maxItems: 3,
       items: {
         type: "object",
         additionalProperties: false,
         required: ["rank", "name", "aliases", "value", "sourceNote"],
         properties: {
-          rank: { type: "integer", minimum: 1, maximum: 10 },
+          rank: { type: "integer", minimum: 1, maximum: 3 },
           name: { type: "string" },
           aliases: { type: "array", items: { type: "string" }, maxItems: 8 },
           value: { type: "string" },
@@ -121,10 +121,10 @@ export async function generateTopTenCategory(date: string, attempt = 0) {
   const { parsed, raw } = await callOpenAI<Omit<TopTenCategory, "displayName" | "source" | "answerType" | "aliasStrategy">>({
     model: process.env.OPENAI_MODEL ?? "gpt-5.5",
     instructions:
-      "You create safe, objective daily Top 10 trivia categories. Never create opinion rankings, political controversy, private-data rankings, or categories whose order changes hourly. The prompt must begin with 'Name the top 10'. Return only the requested schema.",
+      "You create safe, objective daily Top 3 trivia categories. Never create opinion rankings, political controversy, private-data rankings, or categories whose order changes hourly. The prompt must begin with 'Name the top 3'. Return only the requested schema.",
     input:
       `Date: ${date}. Deterministic seed: ${seed}. Required topic area: ${topicArea}. ` +
-      "Create one clear, broadly understandable category with an objective ranking, exactly ten retrievable answers, and a reliable public web source strategy.",
+      "Create one clear, broadly understandable category with an objective ranking, exactly three retrievable answers, and a reliable public web source strategy.",
     text: {
       format: {
         type: "json_schema",
@@ -144,8 +144,8 @@ export async function generateTopTenCategory(date: string, attempt = 0) {
   if (category.topicArea.toLowerCase() !== topicArea.toLowerCase()) {
     throw new Error(`AI returned topic area ${category.topicArea}; expected ${topicArea}.`);
   }
-  if (!/^name the top 10\b/i.test(category.prompt.trim())) {
-    throw new Error("AI category prompt did not use the required Top 10 format.");
+  if (!/^name the top 3\b/i.test(category.prompt.trim())) {
+    throw new Error("AI category prompt did not use the required Top 3 format.");
   }
   return { category, rawAIResponse: raw, mode: "live-ai" as const };
 }
@@ -169,7 +169,7 @@ export async function resolveTopTenCategory(category: TopTenCategory, date: stri
   const { parsed, raw } = await callOpenAI<Resolution>({
     model: process.env.OPENAI_MODEL ?? "gpt-5.5",
     instructions:
-      "Resolve an objective Top 10 trivia category using current reliable public web sources. Use web search. Return exactly ten uniquely ranked answers. Add conservative aliases only: common abbreviations, established alternate names, and famous last names when unambiguous. Never invent values or aliases.",
+      "Resolve an objective Top 3 trivia category using current reliable public web sources. Use web search. Return exactly three uniquely ranked answers. Add conservative aliases only: common abbreviations, established alternate names, and famous last names when unambiguous. Never invent values or aliases.",
     input:
       `Resolve this category for the Minefield daily game dated ${date}: ${JSON.stringify(category)}. ` +
       "Prefer authoritative statistics, official bodies, reputable reference works, or well-established industry sources. Include source URLs.",
@@ -189,9 +189,9 @@ export async function resolveTopTenCategory(category: TopTenCategory, date: stri
 export function validateTopTenPuzzle(puzzle: TopTenPuzzle): TopTenValidation {
   const normalized = puzzle.answers.map((answer) => answer.name.trim().toLowerCase());
   const checks = {
-    rankedPrompt: /^name the top 10\b/i.test(puzzle.category.prompt.trim()),
-    exactlyTenAnswers: puzzle.answers.length === 10,
-    uniqueAnswers: new Set(normalized).size === 10 && normalized.every(Boolean),
+    rankedPrompt: /^name the top 3\b/i.test(puzzle.category.prompt.trim()),
+    exactlyThreeAnswers: puzzle.answers.length === 3,
+    uniqueAnswers: new Set(normalized).size === 3 && normalized.every(Boolean),
     objectiveRanking: Boolean(puzzle.validation?.checks?.objectiveRanking ?? true),
     safeAliases: puzzle.answers.every((answer) =>
       answer.aliases.every((alias) => alias.trim().length > 0 && alias.length < 100)
@@ -231,7 +231,7 @@ export async function resolveDailyTopTenPuzzle(
           valid: false,
           checks: {
             rankedPrompt: false,
-            exactlyTenAnswers: false,
+            exactlyThreeAnswers: false,
             uniqueAnswers: false,
             objectiveRanking: resolved.resolution.objectiveRanking,
             safeAliases: false,
@@ -265,7 +265,7 @@ export async function resolveDailyTopTenPuzzle(
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown generation error";
       failures.push(message);
-      console.error("[Top 10 generation attempt failed]", {
+      console.error("[Top 3 generation attempt failed]", {
         date,
         attempt,
         mode: getTopTenProviderStatus().mode,
@@ -274,13 +274,13 @@ export async function resolveDailyTopTenPuzzle(
       });
     }
   }
-  console.error("[Top 10 unavailable]", {
+  console.error("[Top 3 unavailable]", {
     date,
     mode: getTopTenProviderStatus().mode,
     failures
   });
   throw new Error(
-    `Today’s Top 10 could not be generated. Please try again later. ${failures.join(" | ")}`
+    `Today’s Top 3 could not be generated. Please try again later. ${failures.join(" | ")}`
   );
 }
 
@@ -297,7 +297,7 @@ export function getTopTenProviderStatus() {
     apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY),
     warning: process.env.OPENAI_API_KEY
       ? null
-      : "OPENAI_API_KEY is missing. Top 10 is using the clearly labeled development mock generator."
+      : "OPENAI_API_KEY is missing. Top 3 is using the clearly labeled development mock generator."
   };
 }
 
@@ -327,7 +327,7 @@ function category(
 }
 
 function answers(items: Array<[string, string, string[]?]>): TopTenAnswer[] {
-  return items.map(([name, value, aliases = []], index) => ({
+  return items.slice(0, 3).map(([name, value, aliases = []], index) => ({
     rank: index + 1,
     name,
     aliases,
@@ -342,7 +342,7 @@ const MOCK_CATEGORIES: Array<{
   sources: string[];
 }> = [
   {
-    category: category("largest-countries-area", "Largest Countries", "Name the top 10 countries by total area.", "Geography", "total area", "country"),
+    category: category("largest-countries-area", "Largest Countries", "Name the top 3 countries by total area.", "Geography", "total area", "country"),
     answers: answers([
       ["Russia", "17.1M km²", ["Russian Federation"]], ["Canada", "10.0M km²"], ["China", "9.6M km²", ["PRC"]],
       ["United States", "9.5M km²", ["USA", "US", "United States of America"]], ["Brazil", "8.5M km²"],
@@ -352,7 +352,7 @@ const MOCK_CATEGORIES: Array<{
     sources: ["https://data.worldbank.org/indicator/AG.SRF.TOTL.K2"]
   },
   {
-    category: category("tallest-mountains", "Earth’s Tallest Mountains", "Name the top 10 highest mountains above sea level.", "World records", "elevation above sea level", "mountain"),
+    category: category("tallest-mountains", "Earth’s Tallest Mountains", "Name the top 3 highest mountains above sea level.", "World records", "elevation above sea level", "mountain"),
     answers: answers([
       ["Mount Everest", "8,848.86 m", ["Everest"]], ["K2", "8,611 m", ["Mount Godwin-Austen"]],
       ["Kangchenjunga", "8,586 m", ["Kanchenjunga"]], ["Lhotse", "8,516 m"], ["Makalu", "8,485 m"],
@@ -362,7 +362,7 @@ const MOCK_CATEGORIES: Array<{
     sources: ["https://www.britannica.com/science/mountain-landform"]
   },
   {
-    category: category("largest-islands", "Largest Islands", "Name the top 10 largest islands by land area, excluding continents.", "Geography", "land area", "island"),
+    category: category("largest-islands", "Largest Islands", "Name the top 3 largest islands by land area, excluding continents.", "Geography", "land area", "island"),
     answers: answers([
       ["Greenland", "2,130,800 km²"], ["New Guinea", "785,753 km²"], ["Borneo", "748,168 km²"],
       ["Madagascar", "587,041 km²"], ["Baffin Island", "507,451 km²"], ["Sumatra", "443,066 km²"],
@@ -372,7 +372,7 @@ const MOCK_CATEGORIES: Array<{
     sources: ["https://www.britannica.com/science/island"]
   },
   {
-    category: category("largest-moons", "Largest Moons", "Name the top 10 largest moons in the Solar System by diameter.", "Science", "mean diameter", "moon"),
+    category: category("largest-moons", "Largest Moons", "Name the top 3 largest moons in the Solar System by diameter.", "Science", "mean diameter", "moon"),
     answers: answers([
       ["Ganymede", "5,268 km"], ["Titan", "5,150 km"], ["Callisto", "4,821 km"], ["Io", "3,643 km"],
       ["Moon", "3,475 km", ["Earth's Moon", "Luna"]], ["Europa", "3,122 km"], ["Triton", "2,707 km"],
@@ -381,7 +381,7 @@ const MOCK_CATEGORIES: Array<{
     sources: ["https://science.nasa.gov/solar-system/moons/"]
   },
   {
-    category: category("best-selling-consoles", "Best-Selling Consoles", "Name the top 10 best-selling video game consoles by worldwide unit sales.", "Video games", "worldwide hardware unit sales", "console"),
+    category: category("best-selling-consoles", "Best-Selling Consoles", "Name the top 3 best-selling video game consoles by worldwide unit sales.", "Video games", "worldwide hardware unit sales", "console"),
     answers: answers([
       ["PlayStation 2", "160M+", ["PS2"]], ["Nintendo DS", "154M", ["DS"]], ["Nintendo Switch", "150M+", ["Switch"]],
       ["Game Boy", "118M", ["Game Boy Color", "GB"]], ["PlayStation 4", "117M", ["PS4"]], ["PlayStation", "102M", ["PS1"]],
@@ -391,7 +391,7 @@ const MOCK_CATEGORIES: Array<{
     sources: ["https://www.nintendo.co.jp/ir/en/finance/hard_soft/", "https://sonyinteractive.com/"]
   },
   {
-    category: category("largest-lakes", "Largest Lakes", "Name the top 10 largest lakes by surface area.", "Geography", "surface area", "lake"),
+    category: category("largest-lakes", "Largest Lakes", "Name the top 3 largest lakes by surface area.", "Geography", "surface area", "lake"),
     answers: answers([
       ["Caspian Sea", "371,000 km²", ["Caspian"]], ["Lake Superior", "82,100 km²", ["Superior"]],
       ["Lake Victoria", "68,870 km²", ["Victoria"]], ["Lake Huron", "59,600 km²", ["Huron"]],
@@ -402,7 +402,7 @@ const MOCK_CATEGORIES: Array<{
     sources: ["https://www.britannica.com/science/lake"]
   },
   {
-    category: category("largest-animals", "Largest Living Animals", "Name the top 10 largest living animal species by typical maximum mass.", "Animals", "typical maximum body mass", "animal species"),
+    category: category("largest-animals", "Largest Living Animals", "Name the top 3 largest living animal species by typical maximum mass.", "Animals", "typical maximum body mass", "animal species"),
     answers: answers([
       ["Blue whale", "180+ tonnes"], ["North Pacific right whale", "100+ tonnes", ["Right whale"]],
       ["Southern right whale", "90+ tonnes"], ["Fin whale", "80+ tonnes"], ["Bowhead whale", "75+ tonnes"],

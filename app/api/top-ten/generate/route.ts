@@ -19,14 +19,14 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": retryOffset > 0 ? "no-store" : "public, s-maxage=86400" }
     });
   } catch (error) {
-    console.error("[Top 10 API failure]", {
+    console.error("[Top 3 API failure]", {
       date,
       retryOffset,
       error: error instanceof Error ? error.message : "Unknown generation error"
     });
     return NextResponse.json(
       {
-        error: "Today’s Top 10 could not be generated. Please try again later.",
+        error: "Today’s Top 3 could not be generated. Please try again later.",
         diagnostic: error instanceof Error ? error.message : "Unknown generation error"
       },
       { status: 502 }

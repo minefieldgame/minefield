@@ -81,7 +81,13 @@ export default function SpellDropGame({
 
   async function share() {
     if (!state) return;
-    await navigator.clipboard.writeText(`SpellDrop\n${state.correct ? "✅ Correct" : "⬜ Missed"}`);
+    await navigator.clipboard.writeText([
+      "SpellDrop",
+      state.correct ? "✅ Correct" : "⬜ Missed",
+      "",
+      "Play Minefield:",
+      "https://minefieldgame.com"
+    ].join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1400);
   }
@@ -90,27 +96,27 @@ export default function SpellDropGame({
   const remainingReplays = Math.max(0, SPELLDROP_REPLAY_LIMIT - Math.max(0, plays - 1));
   return (
     <div>
-      <div className="rounded-2xl border border-violet/15 bg-violet/5 p-5 text-center dark:border-violet/25 dark:bg-violet/10">
+      <div className="rounded-xl border border-violet/15 bg-violet/5 p-4 text-center dark:border-violet/25 dark:bg-violet/10">
         <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Spell the word you hear.</p>
         <button
           type="button"
           onClick={speak}
           disabled={completed || plays >= SPELLDROP_REPLAY_LIMIT + 1}
-          className="mx-auto mt-4 flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-violet px-6 font-extrabold text-white shadow-lg shadow-violet/20 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#7569e5]"
+          className="mx-auto mt-3 flex h-12 items-center justify-center gap-3 rounded-xl bg-violet px-6 font-extrabold text-white shadow-md shadow-violet/20 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#7569e5]"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 fill-current">
             <path d="M4 9v6h4l5 4V5L8 9H4Zm12.2-.7a1 1 0 0 0-1.4 1.4 3.25 3.25 0 0 1 0 4.6 1 1 0 1 0 1.4 1.4 5.25 5.25 0 0 0 0-7.4Zm2.8-2.8a1 1 0 1 0-1.4 1.4 7.2 7.2 0 0 1 0 10.2 1 1 0 1 0 1.4 1.4 9.2 9.2 0 0 0 0-13Z" />
           </svg>
           {plays === 0 ? "Play word" : "Play again"}
         </button>
-        <p className="mt-3 text-xs font-bold text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
           {plays === 0
             ? "2 replays available after the first play"
             : `${remainingReplays} ${remainingReplays === 1 ? "replay" : "replays"} left`}
         </p>
       </div>
 
-      <form onSubmit={submit} className="mt-5">
+      <form onSubmit={submit} className="mt-3">
         <label htmlFor="spelling-guess" className="sr-only">Type the spelling</label>
         <input
           id="spelling-guess"
@@ -121,17 +127,17 @@ export default function SpellDropGame({
           autoCorrect="off"
           spellCheck={false}
           placeholder="Type the spelling…"
-          className="h-14 w-full rounded-2xl border border-slate-300 bg-white px-5 text-center text-lg font-bold tracking-wide text-slate-950 outline-none focus:border-violet focus:ring-4 focus:ring-violet/15 disabled:bg-slate-100 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white dark:disabled:bg-[#20242c]"
+          className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-center font-bold tracking-wide text-slate-950 outline-none focus:border-violet focus:ring-4 focus:ring-violet/15 disabled:bg-slate-100 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white dark:disabled:bg-[#20242c]"
         />
         {!completed && (
-          <button disabled={!guess.trim()} className="mt-3 h-14 w-full rounded-2xl bg-[#202128] font-extrabold text-white shadow-lg active:scale-[.98] disabled:opacity-40 dark:bg-white dark:text-[#171920]">
+          <button disabled={!guess.trim()} className="mt-2 h-12 w-full rounded-xl bg-[#202128] font-extrabold text-white shadow-md active:scale-[.98] disabled:opacity-40 dark:bg-white dark:text-[#171920]">
             Submit spelling
           </button>
         )}
       </form>
 
       {state?.completed && (
-        <div className={`mt-5 rounded-2xl border p-4 text-center ${state.correct ? "border-emerald-300 bg-emerald-50 dark:border-emerald-400/25 dark:bg-emerald-400/10" : "border-red-200 bg-red-50 dark:border-red-400/20 dark:bg-red-400/10"}`}>
+        <div className={`mt-3 rounded-xl border p-3 text-center ${state.correct ? "border-emerald-300 bg-emerald-50 dark:border-emerald-400/25 dark:bg-emerald-400/10" : "border-red-200 bg-red-50 dark:border-red-400/20 dark:bg-red-400/10"}`}>
           <p className="text-xl font-black text-slate-950 dark:text-white">{state.correct ? "Correct!" : "Not quite."}</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">The spelling is <strong>{word}</strong>.</p>
           <button onClick={share} className="mt-3 rounded-xl bg-violet px-5 py-2.5 text-sm font-extrabold text-white dark:bg-[#7569e5]">

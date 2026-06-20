@@ -117,7 +117,7 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
           placeholder="Name that song…"
           autoComplete="off"
-          className="h-[58px] w-full rounded-2xl border border-slate-300 bg-white px-5 pr-12 text-base font-semibold text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-violet focus:ring-4 focus:ring-violet/15 disabled:bg-slate-100 disabled:opacity-60 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white dark:placeholder:text-slate-500 dark:shadow-inner dark:focus:border-[#8175ee] dark:focus:ring-[#8175ee]/20 dark:disabled:bg-[#20242c]"
+          className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-12 text-sm font-semibold text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-violet focus:ring-4 focus:ring-violet/15 disabled:bg-slate-100 disabled:opacity-60 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white dark:placeholder:text-slate-500 dark:shadow-inner dark:focus:border-[#8175ee] dark:focus:ring-[#8175ee]/20 dark:disabled:bg-[#20242c]"
         />
         {searching && (
           <span className="absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin rounded-full border-2 border-black/15 border-t-violet dark:border-white/20 dark:border-t-violet" />
@@ -127,7 +127,7 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
           <div
             id="song-suggestions"
             role="listbox"
-            className="absolute inset-x-0 top-[66px] z-30 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_50px_rgba(23,23,28,.16)] dark:border-[#454c5a] dark:bg-[#252a34] dark:shadow-[0_24px_60px_rgba(0,0,0,.5)]"
+            className="absolute inset-x-0 top-[52px] z-30 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-[0_20px_50px_rgba(23,23,28,.16)] dark:border-[#454c5a] dark:bg-[#252a34] dark:shadow-[0_24px_60px_rgba(0,0,0,.5)]"
           >
             {suggestions.map((suggestion, index) => (
               <button
@@ -138,7 +138,7 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
                 aria-selected={index === activeIndex}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectSuggestion(suggestion)}
-                className={`block w-full rounded-xl px-3.5 py-3 text-left transition ${
+                className={`block w-full rounded-lg px-3 py-2 text-left transition ${
                   index === activeIndex
                     ? "bg-violet/10 text-violet dark:bg-violet/30 dark:text-white"
                     : "hover:bg-slate-100 dark:hover:bg-white/[.07]"
@@ -157,16 +157,16 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
       <button
         type="submit"
         disabled={disabled || !guess.trim()}
-        className="mt-3 h-14 w-full rounded-2xl bg-violet font-extrabold text-white shadow-lg shadow-violet/25 hover:bg-[#594dc8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/30 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:bg-[#7569e5] dark:hover:bg-[#8579f0] dark:disabled:bg-[#343946] dark:disabled:text-slate-500"
+        className="mt-2 h-12 w-full rounded-xl bg-violet font-extrabold text-white shadow-md shadow-violet/20 hover:bg-[#594dc8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/30 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:bg-[#7569e5] dark:hover:bg-[#8579f0] dark:disabled:bg-[#343946] dark:disabled:text-slate-500"
       >
         Submit guess
       </button>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <button
           type="button"
           disabled={disabled}
           onClick={onSkip}
-          className="h-12 rounded-2xl border border-slate-200 bg-slate-100 font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 active:scale-[.97] disabled:opacity-40 dark:border-[#3d4451] dark:bg-[#292e38] dark:text-slate-100 dark:hover:border-[#505867] dark:hover:bg-[#343a46]"
+          className="h-10 rounded-xl border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 active:scale-[.97] disabled:opacity-40 dark:border-[#3d4451] dark:bg-[#292e38] dark:text-slate-100 dark:hover:border-[#505867] dark:hover:bg-[#343a46]"
         >
           Skip
         </button>
@@ -174,7 +174,7 @@ export default function GuessInput({ disabled, shaking, onGuess, onSkip, onGiveU
           type="button"
           disabled={disabled}
           onClick={onGiveUp}
-          className="h-12 rounded-2xl font-bold text-slate-500 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/15 active:scale-[.97] disabled:opacity-40 dark:text-slate-400 dark:hover:bg-red-400/10 dark:hover:text-red-300"
+          className="h-10 rounded-xl text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/15 active:scale-[.97] disabled:opacity-40 dark:text-slate-400 dark:hover:bg-red-400/10 dark:hover:text-red-300"
         >
           Give up
         </button>

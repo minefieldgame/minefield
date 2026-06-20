@@ -5,7 +5,7 @@ Minefield is a mobile-first daily feed of quick mini-games. Players complete one
 The current daily board contains:
 
 - **NeedleDrop** — identify a Billboard Top 10 song from increasingly long official iTunes preview clips.
-- **Top 10** — name all ten entries in a ranked category.
+- **Top 3** — name the first three entries in a ranked category.
 - **SpellDrop** — spell a commonly misspelled word after hearing it spoken.
 
 The app uses Next.js App Router, React, TypeScript, Tailwind CSS, local storage, and server route handlers. It requires no database or user account.
@@ -73,16 +73,16 @@ types/
 
 To add another game, create an isolated module and have it report a `MinefieldGameResult` to the feed. Add its metadata to the feed registry and its ID to `MinefieldGameId`.
 
-## Top 10 generation
+## Top 3 generation
 
-Top 10 uses a deterministic daily AI pipeline and provider abstraction:
+Top 3 uses a deterministic daily AI pipeline and provider abstraction:
 
 - `generateTopTenCategory(date)`
 - `resolveTopTenCategory(category, date)`
 - `resolveDailyTopTenPuzzle(date)`
 - `validateTopTenPuzzle()`
 
-Live mode uses the server-side OpenAI Responses API with web search and strict structured outputs. The AI creates an objective category in a deterministically selected topic area, resolves ten ranked answers from public sources, generates conservative aliases, and returns confidence/source metadata. A deterministic validator rejects malformed, duplicate, subjective, or unsourced puzzles. Generation retries up to three times.
+Live mode uses the server-side OpenAI Responses API with web search and strict structured outputs. The AI creates an objective category in a deterministically selected topic area, resolves three ranked answers from public sources, generates conservative aliases, and returns confidence/source metadata. A deterministic validator rejects malformed, duplicate, subjective, or unsourced puzzles. Generation retries up to three times.
 
 Configure AWS Amplify or local development with:
 
@@ -98,7 +98,7 @@ OPENAI_MODEL=gpt-5.5
 
 Secrets are read only by server route handlers and are never sent to browser code.
 
-If `OPENAI_API_KEY` is absent, Top 10 uses a deterministic development fallback so the player board remains usable. Deployment details stay out of the player experience; admin clearly reports that the key is missing and live generation is disabled.
+If `OPENAI_API_KEY` is absent, Top 3 uses a deterministic development fallback so the player board remains usable. Deployment details stay out of the player experience; admin clearly reports that the key is missing and live generation is disabled.
 
 Server routes:
 
@@ -159,7 +159,7 @@ The dashboard can:
 - Select a random historical date for stress testing
 - Display deterministic seeds and generation timestamps
 - Inspect NeedleDrop chart, iTunes matching, preview, and raw provider responses
-- Inspect Top 10 category selection, all accepted answers and aliases, validation, and raw provider data
+- Inspect Top 3 category selection, all accepted answers and aliases, validation, and raw provider data
 - Test NeedleDrop title normalization and see why a sample guess passes or fails
 - Inspect SpellDrop’s selected word, accepted spelling, deterministic seed, and replay limit
 - Copy resolved puzzle JSON
@@ -174,7 +174,7 @@ The password boundary is isolated in `lib/adminAuth.ts` and `/api/admin/auth`. F
 
 - Progress and archives are browser-local and do not sync between devices.
 - Public providers can be temporarily unavailable or change their response format.
-- The initial Top 10 category pool intentionally favors reliable structured data. More categories should only be added with a trustworthy provider and validation strategy.
+- The initial Top 3 category pool intentionally favors reliable structured data. More categories should only be added with a trustworthy provider and validation strategy.
 - Apple preview availability varies by song and storefront.
 
 ## Legal notes
