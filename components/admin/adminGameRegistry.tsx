@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import AdminNeedleDropPreview from "@/components/admin/AdminNeedleDropPreview";
 import AdminTopTenPreview from "@/components/admin/AdminTopTenPreview";
+import AdminSpellDropPreview from "@/components/admin/AdminSpellDropPreview";
 import type { AdminPreviewResponse } from "@/types/admin";
 
 export type AdminGamePreviewProps = {
@@ -24,6 +25,10 @@ function TopTenModule({ data, onRegenerate, onRetryTopTen }: AdminGamePreviewPro
   );
 }
 
+function SpellDropModule({ data }: AdminGamePreviewProps) {
+  return <AdminSpellDropPreview preview={data.games.spellDrop} />;
+}
+
 export const adminGameRegistry: Array<{
   gameId: string;
   displayName: string;
@@ -38,5 +43,10 @@ export const adminGameRegistry: Array<{
     gameId: "top-ten",
     displayName: "Top 10",
     AdminPreviewComponent: TopTenModule
+  },
+  {
+    gameId: "spelldrop",
+    displayName: "SpellDrop",
+    AdminPreviewComponent: SpellDropModule
   }
 ];

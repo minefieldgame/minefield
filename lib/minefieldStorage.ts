@@ -37,7 +37,7 @@ export function saveGameProgress(date: string, result: MinefieldGameResult) {
 
 export function calculateDailySummary(
   board: MinefieldDailyBoard,
-  totalGames = 2
+  totalGames = 3
 ): MinefieldSummary {
   const results = Object.values(board.results).filter(Boolean) as MinefieldGameResult[];
   return {
@@ -56,7 +56,7 @@ function previousPacificDate(dateKey: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 2) {
+export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 3) {
   const summary = calculateDailySummary(board, totalGames);
   if (summary.gamesCompleted < totalGames) return summary;
 

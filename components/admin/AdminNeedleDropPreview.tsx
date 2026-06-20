@@ -4,6 +4,8 @@ import Image from "next/image";
 import AudioPlayer from "@/components/AudioPlayer";
 import { hashString } from "@/lib/dailySeed";
 import type { AdminNeedleDropPreview as Preview } from "@/types/admin";
+import { explainNeedleDropGuess } from "@/lib/normalize";
+import { useState } from "react";
 
 async function copyJson(value: unknown) {
   await navigator.clipboard.writeText(JSON.stringify(value, null, 2));
@@ -27,6 +29,7 @@ export default function AdminNeedleDropPreview({
   date: string;
   onRegenerate: () => void;
 }) {
+  const [testGuess, setTestGuess] = useState("");
   if (preview.status === "error") {
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
@@ -37,6 +40,7 @@ export default function AdminNeedleDropPreview({
   }
 
   const { puzzle, diagnostics } = preview;
+  const guessExplanation = explainNeedleDropGuess(testGuess, puzzle.title);
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
@@ -67,6 +71,26 @@ export default function AdminNeedleDropPreview({
         <Datum label="Chart position" value={`#${puzzle.chartPosition}`} />
         <Datum label="Preview URL" value={diagnostics.previewAvailable ? "Available" : "Missing"} />
         <Datum label="Provider" value={diagnostics.sourceProvider} />
+        <Datum label="Raw iTunes title" value={diagnostics.rawITunesTitle} />
+        <Datum label="Normalized correct title" value={diagnostics.normalizedCorrectTitle} />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-slate-200 p-4 dark:border-[#3b424f]">
+        <label htmlFor="needle-guess-test" className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
+          Test user guess / autocomplete selected value
+        </label>
+        <input
+          id="needle-guess-test"
+          value={testGuess}
+          onChange={(event) => setTestGuess(event.target.value)}
+          placeholder="Enter a title to test"
+          className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-semibold text-slate-950 outline-none focus:border-violet dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white"
+        />
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <Datum label="Normalized user guess" value={guessExplanation.normalizedGuess || "—"} />
+          <Datum label="Pass / fail" value={testGuess ? (guessExplanation.correct ? "PASS" : "FAIL") : "Waiting for test value"} />
+        </div>
+        <p className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{guessExplanation.reason}</p>
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-3 dark:border-[#343a47] dark:bg-[#20242c]">

@@ -5,8 +5,9 @@ import DailySummary from "@/components/DailySummary";
 import Header from "@/components/Header";
 import MiniGameCard from "@/components/MiniGameCard";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
+import SpellDropGame from "@/games/spelldrop/SpellDropGame";
 import TopTenGame from "@/games/top-ten/TopTenGame";
-import { getDailyGameDate, formatChartDate } from "@/lib/date";
+import { formatChartDate, getDailyGameDate } from "@/lib/date";
 import {
   calculateDailySummary,
   completeDailyBoard,
@@ -15,13 +16,10 @@ import {
 } from "@/lib/minefieldStorage";
 import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "@/types/minefield";
 
-const GAMES: Array<{
-  id: MinefieldGameId;
-  title: string;
-  subtitle: string;
-}> = [
+const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
   { id: "needledrop", title: "NeedleDrop", subtitle: "Name the song from a tiny clip" },
-  { id: "top-ten", title: "Top 10", subtitle: "Find every answer on today’s list" }
+  { id: "top-ten", title: "Top 10", subtitle: "Find every answer on today’s list" },
+  { id: "spelldrop", title: "SpellDrop", subtitle: "One word. One chance." }
 ];
 
 export default function MinefieldFeed() {
@@ -29,6 +27,7 @@ export default function MinefieldFeed() {
   const [board, setBoard] = useState<MinefieldDailyBoard>({ date, results: {} });
   const [activeIndex, setActiveIndex] = useState(0);
   const [ready, setReady] = useState(false);
+  const [completionResult, setCompletionResult] = useState<MinefieldGameResult | null>(null);
 
   useEffect(() => {
     const loaded = loadGameProgress(date);
@@ -41,13 +40,12 @@ export default function MinefieldFeed() {
   const summary = useMemo(() => calculateDailySummary(board, GAMES.length), [board]);
 
   const handleComplete = useCallback((result: MinefieldGameResult) => {
+    setCompletionResult(result);
     setBoard((current) => {
       const existing = current.results[result.gameId];
-      if (
-        existing?.completed &&
-        existing.score === result.score &&
-        existing.detail === result.detail
-      ) return current;
+      if (existing?.completed && existing.score === result.score && existing.detail === result.detail) {
+        return current;
+      }
       const next = saveGameProgress(current.date, result);
       if (Object.values(next.results).filter((entry) => entry?.completed).length === GAMES.length) {
         completeDailyBoard(next, GAMES.length);
@@ -56,13 +54,20 @@ export default function MinefieldFeed() {
     });
   }, []);
 
-  function nextGame() {
+  const nextGame = useCallback(() => {
+    setCompletionResult(null);
     setActiveIndex((index) => Math.min(index + 1, GAMES.length));
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  }, []);
 
   const activeGame = GAMES[activeIndex];
   const activeComplete = activeGame ? Boolean(board.results[activeGame.id]?.completed) : false;
+
+  useEffect(() => {
+    if (!activeComplete || completionResult?.gameId !== activeGame?.id) return;
+    const timeout = window.setTimeout(nextGame, 1700);
+    return () => window.clearTimeout(timeout);
+  }, [activeComplete, activeGame?.id, completionResult, nextGame]);
 
   return (
     <>
@@ -72,9 +77,7 @@ export default function MinefieldFeed() {
           <div className="flex items-end justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[.2em] text-[#db4e36] dark:text-[#ff826a]">Today’s Minefield</p>
-              <h1 className="mt-1 text-3xl font-black tracking-[-.04em] text-slate-950 dark:text-white">
-                {formatChartDate(date)}
-              </h1>
+              <h1 className="mt-1 text-3xl font-black tracking-[-.04em] text-slate-950 dark:text-white">{formatChartDate(date)}</h1>
             </div>
             <div className="text-right">
               <p className="text-2xl font-black text-violet dark:text-[#9187f6]">{summary.totalScore}</p>
@@ -96,9 +99,7 @@ export default function MinefieldFeed() {
                 />
               ))}
             </div>
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
-              {summary.gamesCompleted}/{GAMES.length}
-            </span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-300">{summary.gamesCompleted}/{GAMES.length}</span>
           </div>
         </div>
 
@@ -113,18 +114,32 @@ export default function MinefieldFeed() {
             <MiniGameCard number={activeIndex + 1} title={activeGame.title} subtitle={activeGame.subtitle}>
               {activeGame.id === "needledrop" ? (
                 <NeedleDropGame onComplete={handleComplete} />
-              ) : (
+              ) : activeGame.id === "top-ten" ? (
                 <TopTenGame onComplete={handleComplete} />
+              ) : (
+                <SpellDropGame onComplete={handleComplete} />
               )}
             </MiniGameCard>
 
             {activeComplete && (
-              <button
-                onClick={nextGame}
-                className="mt-4 w-full rounded-2xl bg-[#202128] px-5 py-4 font-extrabold text-white shadow-lg hover:bg-[#30323a] active:scale-[.98] dark:bg-white dark:text-[#171920] dark:hover:bg-slate-100"
-              >
-                {activeIndex === GAMES.length - 1 ? "See daily summary" : "Next game ↑"}
-              </button>
+              <div className="mt-4 animate-[fadeIn_.2s_ease-out] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-black text-emerald-900 dark:text-emerald-100">
+                      Game complete · {board.results[activeGame.id]?.score ?? 0} points
+                    </p>
+                    <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-300">
+                      {activeIndex === GAMES.length - 1 ? "Opening your daily summary…" : "Moving to the next game…"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={nextGame}
+                    className="shrink-0 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-extrabold text-white active:scale-[.97] dark:bg-emerald-400 dark:text-emerald-950"
+                  >
+                    {activeIndex === GAMES.length - 1 ? "Summary" : "Next Game"}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

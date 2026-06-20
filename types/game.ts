@@ -17,6 +17,7 @@ export type SongSuggestion = {
   id: number | string;
   title: string;
   artist: string;
+  rawTitle?: string;
 };
 
 export type DailyPuzzle = {

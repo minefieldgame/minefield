@@ -48,7 +48,7 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
       stored && todayMonth === chartMonth && todayDay === chartDay;
     if (stored && storedUsesExactCalendarDate) {
       setState(stored);
-      setShowResult(stored.status !== "playing");
+      setShowResult(!embedded && stored.status !== "playing");
       if (stored.status !== "playing") {
         onComplete?.({
           gameId: "needledrop",
@@ -129,7 +129,7 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
       completed: true,
       detail: next.status === "won" ? `Solved in ${next.attempt + 1}/7` : "Not solved"
     });
-    setShowResult(true);
+    setShowResult(!embedded);
   }
 
   function advance(guess?: string) {
@@ -200,7 +200,16 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
                 onSkip={() => advance()}
                 onGiveUp={giveUp}
               />
-              {state.status !== "playing" && (
+              {state.status !== "playing" && embedded && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center dark:border-[#3b424f] dark:bg-[#252a34]">
+                  <p className="text-lg font-black text-slate-950 dark:text-white">
+                    {state.status === "won" ? "You got it!" : "Today’s answer"}
+                  </p>
+                  <p className="mt-1 font-bold text-slate-700 dark:text-slate-200">{state.puzzle.title}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{state.puzzle.artist} · {state.score} points</p>
+                </div>
+              )}
+              {state.status !== "playing" && !embedded && (
                 <button onClick={() => setShowResult(true)} className="mt-3 w-full rounded-2xl bg-coral px-5 py-3 font-extrabold text-white shadow-lg shadow-coral/20 hover:bg-[#dc553c] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/30 active:scale-[.98] dark:bg-[#ff7055] dark:hover:bg-[#ff8068]">
                   View today’s result
                 </button>
@@ -212,7 +221,7 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
           </>
         )}
       </div>
-      {showResult && state && <ResultModal state={state} onClose={() => setShowResult(false)} />}
+      {showResult && state && !embedded && <ResultModal state={state} onClose={() => setShowResult(false)} />}
       {showStats && !embedded && <StatsModal onClose={() => setShowStats(false)} />}
     </>
   );

@@ -1,4 +1,4 @@
-import { similarity } from "@/lib/normalize";
+import { cleanArtistName, cleanSongTitle, similarity } from "@/lib/normalize";
 import type { SongSuggestion, TrackPreview } from "@/types/game";
 
 export type ITunesResult = {
@@ -111,13 +111,16 @@ export async function searchSongSuggestions(query: string): Promise<SongSuggesti
   return (payload.results ?? [])
     .filter((result) => result.trackName && result.artistName)
     .flatMap((result) => {
-      const key = `${result.trackName!.toLowerCase()}::${result.artistName!.toLowerCase()}`;
+      const title = cleanSongTitle(result.trackName!);
+      const artist = cleanArtistName(result.artistName!);
+      const key = `${title.toLowerCase()}::${artist.toLowerCase()}`;
       if (seen.has(key)) return [];
       seen.add(key);
       return [{
         id: result.trackId ?? key,
-        title: result.trackName!,
-        artist: result.artistName!
+        title,
+        artist,
+        rawTitle: result.trackName!
       }];
     })
     .slice(0, 7);

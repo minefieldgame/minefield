@@ -11,7 +11,7 @@ export default function AboutPage() {
           <div className="mt-6 space-y-4 leading-7 text-slate-600 dark:text-slate-300">
             <p>Minefield is a vertical feed of fast daily mini-games. Play one, see your result, then move straight into the next.</p>
             <p>The daily board follows Pacific Time and is deterministic, so everyone receives the same games. Progress, streaks, scores, and the archive stay in your browser.</p>
-            <p>The first games are NeedleDrop, a Billboard song challenge, and Top 10, a category-ranking quiz. The architecture is designed to grow into a larger daily game ritual.</p>
+            <p>The daily lineup includes NeedleDrop, a Billboard song challenge; Top 10, a category-ranking quiz; and SpellDrop, a one-chance spelling challenge.</p>
             <p>Game data uses provider-based resolution with validation and clear failure states. Minefield never stores or redistributes audio files.</p>
           </div>
         </article>

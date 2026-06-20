@@ -167,22 +167,17 @@ export default function TopTenGame({
       <h3 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 dark:text-white">
         {state.puzzle.category.prompt}
       </h3>
-      {state.puzzle.warning && (
-        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
-          Development mode: {state.puzzle.warning}
-        </p>
-      )}
       <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-[#292e38]">
         <div className="h-full rounded-full bg-violet transition-all duration-300 dark:bg-[#7569e5]" style={{ width: `${state.found.length * 10}%` }} />
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-2">
+      <div className="mt-5 space-y-2">
         {state.puzzle.answers.map((answer) => {
           const found = state.found.includes(answer.name);
           return (
             <div
               key={answer.rank}
-              className={`min-h-12 rounded-xl border px-3 py-2.5 text-sm font-bold ${
+              className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-bold ${
                 found
                   ? `border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200 ${justFound === answer.name ? "scale-[1.03]" : ""}`
                   : ended
@@ -190,8 +185,12 @@ export default function TopTenGame({
                     : "border-slate-200 bg-white text-slate-400 dark:border-[#343a47] dark:bg-[#20242c] dark:text-slate-500"
               }`}
             >
-              <span className="mr-2 text-xs opacity-60">{answer.rank}</span>
-              {found || ended ? answer.name : "—"}
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-current/15 bg-black/[.04] text-xs font-black dark:bg-white/[.06]">
+                {answer.rank}
+              </span>
+              <span className="min-w-0 flex-1 leading-5">
+                {found || ended ? answer.name : "Hidden"}
+              </span>
             </div>
           );
         })}
@@ -225,7 +224,7 @@ export default function TopTenGame({
         </div>
       )}
       <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-        {state.puzzle.generationMode === "live-ai" ? "AI-resolved" : "Development mock"} · {state.puzzle.category.title}
+        Daily category · {state.puzzle.category.title}
       </p>
     </div>
   );

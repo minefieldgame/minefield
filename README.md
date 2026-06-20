@@ -6,6 +6,7 @@ The current daily board contains:
 
 - **NeedleDrop** — identify a Billboard Top 10 song from increasingly long official iTunes preview clips.
 - **Top 10** — name all ten entries in a ranked category.
+- **SpellDrop** — spell a commonly misspelled word after hearing it spoken.
 
 The app uses Next.js App Router, React, TypeScript, Tailwind CSS, local storage, and server route handlers. It requires no database or user account.
 
@@ -60,6 +61,8 @@ games/
     logic.ts
     providers.ts
     types.ts
+  spelldrop/
+    SpellDropGame.tsx
 lib/
   date.ts
   seed.ts
@@ -95,7 +98,7 @@ OPENAI_MODEL=gpt-5.5
 
 Secrets are read only by server route handlers and are never sent to browser code.
 
-If `OPENAI_API_KEY` is absent, Top 10 uses a deterministic, clearly labeled development mock generator across multiple topic areas. The player and admin interfaces both show a warning; the app does not silently represent mock content as live AI.
+If `OPENAI_API_KEY` is absent, Top 10 uses a deterministic development fallback so the player board remains usable. Deployment details stay out of the player experience; admin clearly reports that the key is missing and live generation is disabled.
 
 Server routes:
 
@@ -119,9 +122,17 @@ Official preview URLs and store links come from Apple’s iTunes Search API. Min
 2. Create a new Amplify Hosting app and connect the repository.
 3. Keep framework detection set to Next.js.
 4. Build with `npm run build`.
-5. Deploy without environment variables.
+5. In **App settings → Environment variables**, add `OPENAI_API_KEY` with the server-side OpenAI API key.
+6. Optionally add `OPENAI_MODEL`; it defaults to `gpt-5.5`.
+7. Redeploy the active branch after saving the environment variables.
+
+Do not prefix the key with `NEXT_PUBLIC_`. Amplify makes the server environment variable available to Next.js route handlers without exposing it in the browser bundle. Never commit the real key to source control.
 
 Do not configure a static export because provider route handlers require the managed Next.js runtime.
+
+## Custom header logo
+
+The supplied Minefield artwork is optimized as a transparent PNG at `public/minefield-logo.png`. The top-left header links the logo to home, preserves its aspect ratio, and uses alt text `Minefield`.
 
 ## Admin access
 
@@ -149,6 +160,8 @@ The dashboard can:
 - Display deterministic seeds and generation timestamps
 - Inspect NeedleDrop chart, iTunes matching, preview, and raw provider responses
 - Inspect Top 10 category selection, all accepted answers and aliases, validation, and raw provider data
+- Test NeedleDrop title normalization and see why a sample guess passes or fails
+- Inspect SpellDrop’s selected word, accepted spelling, deterministic seed, and replay limit
 - Copy resolved puzzle JSON
 
 Admin previews are read-only. They do not write player progress, alter local daily puzzles, or change production generation.

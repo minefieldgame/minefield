@@ -263,9 +263,22 @@ export async function resolveDailyTopTenPuzzle(
       if (!options.force) dailyCache.set(date, provisional);
       return provisional;
     } catch (error) {
-      failures.push(error instanceof Error ? error.message : "Unknown generation error");
+      const message = error instanceof Error ? error.message : "Unknown generation error";
+      failures.push(message);
+      console.error("[Top 10 generation attempt failed]", {
+        date,
+        attempt,
+        mode: getTopTenProviderStatus().mode,
+        model: getTopTenProviderStatus().model,
+        error: message
+      });
     }
   }
+  console.error("[Top 10 unavailable]", {
+    date,
+    mode: getTopTenProviderStatus().mode,
+    failures
+  });
   throw new Error(
     `Today’s Top 10 could not be generated. Please try again later. ${failures.join(" | ")}`
   );

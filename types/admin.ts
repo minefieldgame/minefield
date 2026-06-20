@@ -12,6 +12,8 @@ export type AdminNeedleDropPreview =
         previewAvailable: boolean;
         sourceProvider: string;
         generatedAt: string;
+        rawITunesTitle: string;
+        normalizedCorrectTitle: string;
         errors: string[];
       };
       rawProviderResponse: unknown;
@@ -34,7 +36,17 @@ export type AdminTopTenPreview =
       };
       rawProviderResponse: unknown;
     }
-  | { status: "error"; error: string };
+  | {
+      status: "error";
+      error: string;
+      diagnostics?: {
+        apiKeyConfigured: boolean;
+        liveAIEnabled: boolean;
+        model: string;
+        generationMode: string;
+        failureReason: string;
+      };
+    };
 
 export type AdminPreviewResponse = {
   date: string;
@@ -45,5 +57,15 @@ export type AdminPreviewResponse = {
   games: {
     needledrop: AdminNeedleDropPreview;
     topTen: AdminTopTenPreview;
+    spellDrop: AdminSpellDropPreview;
   };
+};
+
+export type AdminSpellDropPreview = {
+  status: "ready";
+  word: string;
+  acceptedSpelling: string;
+  dateSeed: number;
+  replayLimit: number;
+  wordCount: number;
 };

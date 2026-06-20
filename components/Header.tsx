@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -42,13 +43,17 @@ export default function Header({ onStats }: Props) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-[#111318]/85">
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3.5">
-        <Link href="/" className="group flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/25" aria-label="Minefield home">
-          <span className="relative grid h-10 w-10 place-items-center rounded-full bg-[#202128] text-white shadow-md group-hover:scale-105 dark:bg-[#f7f8fb] dark:text-[#171920] dark:shadow-[0_0_24px_rgba(255,255,255,.12)]">
-            <span className="h-3.5 w-3.5 rounded-full border-[3px] border-current" />
-            <span className="absolute h-1 w-1 rounded-full bg-coral" />
-          </span>
-          <span className="text-xl font-black tracking-[-0.04em] text-[#202128] dark:text-white">Minefield</span>
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-2.5">
+        <Link href="/" className="group rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/25" aria-label="Minefield home">
+          <Image
+            src="/minefield-logo.png"
+            alt="Minefield"
+            width={720}
+            height={710}
+            priority
+            className="h-16 w-auto object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.04] sm:h-[68px]"
+            sizes="68px"
+          />
         </Link>
 
         <nav className="flex items-center gap-1">

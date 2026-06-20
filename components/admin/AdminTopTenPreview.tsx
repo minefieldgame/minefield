@@ -21,15 +21,35 @@ export default function AdminTopTenPreview({
 }) {
   const [playerPreview, setPlayerPreview] = useState(false);
   if (preview.status === "error") {
+    const diagnostics = preview.diagnostics;
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
         <h2 className="text-2xl font-black text-slate-950 dark:text-white">Top 10</h2>
         <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">{preview.error || "Top 10 not installed."}</p>
+        {diagnostics && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {[
+              ["OPENAI_API_KEY", diagnostics.apiKeyConfigured ? "Detected" : "Missing"],
+              ["Live AI generation", diagnostics.liveAIEnabled ? "Enabled" : "Disabled"],
+              ["Generation mode", diagnostics.generationMode],
+              ["Model", diagnostics.model],
+              ["Exact failure", diagnostics.failureReason]
+            ].map(([label, value]) => (
+              <div key={label} className="theme-raised rounded-xl border p-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-950 dark:text-white">{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     );
   }
 
   const { puzzle, diagnostics } = preview;
+  const rawAI = puzzle.rawAIResponse as
+    | { category?: unknown; resolution?: unknown }
+    | undefined;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <div className="flex items-start justify-between">
@@ -123,6 +143,14 @@ export default function AdminTopTenPreview({
       <details className="mt-5 rounded-xl border border-slate-200 dark:border-[#3b424f]">
         <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw puzzle JSON</summary>
         <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(puzzle, null, 2)}</pre>
+      </details>
+      <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw AI category response</summary>
+        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(rawAI?.category ?? null, null, 2)}</pre>
+      </details>
+      <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw answer resolver response</summary>
+        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(rawAI?.resolution ?? null, null, 2)}</pre>
       </details>
       <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
         <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw provider response</summary>

@@ -1,4 +1,4 @@
-export type MinefieldGameId = "needledrop" | "top-ten";
+export type MinefieldGameId = "needledrop" | "top-ten" | "spelldrop";
 
 export type MinefieldGameResult = {
   gameId: MinefieldGameId;

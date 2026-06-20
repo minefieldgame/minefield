@@ -11,6 +11,7 @@ import {
 import { hashString } from "@/lib/dailySeed";
 import { getDailyGameDate } from "@/lib/date";
 import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
+import { getSpellDropWord } from "@/lib/spellDrop";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
             : "NeedleDrop generation failed."
         };
 
+  const providerStatus = getTopTenProviderStatus();
   const topTen =
     topTenResult.status === "fulfilled"
       ? {
@@ -62,8 +64,8 @@ export async function GET(request: NextRequest) {
                 : "Static development fixture",
             confidence: topTenResult.value.confidence,
             generationMode: topTenResult.value.generationMode,
-            apiKeyConfigured: getTopTenProviderStatus().apiKeyConfigured,
-            warning: topTenResult.value.warning ?? getTopTenProviderStatus().warning,
+            apiKeyConfigured: providerStatus.apiKeyConfigured,
+            warning: topTenResult.value.warning ?? providerStatus.warning,
             errors: topTenResult.value.validation.errors
           },
           rawProviderResponse: topTenResult.value.rawAIResponse ?? {
@@ -75,8 +77,26 @@ export async function GET(request: NextRequest) {
           status: "error",
           error: topTenResult.reason instanceof Error
             ? topTenResult.reason.message
-            : "Top 10 generation failed."
+            : "Top 10 generation failed.",
+          diagnostics: {
+            apiKeyConfigured: providerStatus.apiKeyConfigured,
+            liveAIEnabled: providerStatus.mode === "live-ai",
+            model: providerStatus.model,
+            generationMode: providerStatus.mode,
+            failureReason: topTenResult.reason instanceof Error
+              ? topTenResult.reason.message
+              : "Unknown Top 10 generation failure."
+          }
         };
+  const spellDropSelection = getSpellDropWord(date);
+  const spellDrop = {
+    status: "ready" as const,
+    word: spellDropSelection.word,
+    acceptedSpelling: spellDropSelection.word,
+    dateSeed: spellDropSelection.seed,
+    replayLimit: spellDropSelection.replayLimit,
+    wordCount: spellDropSelection.wordCount
+  };
 
   return NextResponse.json(
     {
@@ -85,7 +105,7 @@ export async function GET(request: NextRequest) {
       dailySeed,
       seedHash: dailySeed.toString(16).padStart(8, "0"),
       generatedAt,
-      games: { needledrop, topTen }
+      games: { needledrop, topTen, spellDrop }
     },
     { headers: { "Cache-Control": "no-store" } }
   );
