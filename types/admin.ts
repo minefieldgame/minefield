@@ -20,6 +20,22 @@ export type AdminNeedleDropPreview =
         rawITunesTitle: string;
         normalizedCorrectTitle: string;
         normalizedCorrectArtist: string;
+        requestedChartDate: string;
+        resolvedChartDate: string;
+        fallbackUsed: boolean;
+        fallbackReason: string;
+        attemptedYears: number[];
+        attemptedChartDates: string[];
+        attemptedChartPositions: number[];
+        previewAvailability: Array<{
+          year: number;
+          chartDate: string;
+          chartPosition: number;
+          title: string;
+          artist: string;
+          available: boolean;
+        }>;
+        finalSelectedSong: string;
         errors: string[];
       };
       rawProviderResponse: unknown;

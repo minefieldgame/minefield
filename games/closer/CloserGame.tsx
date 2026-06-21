@@ -11,8 +11,17 @@ import type { MinefieldGameResult } from "@/types/minefield";
 type CloserState = { date: string; rawGuess: string; numericGuess: number; completed: boolean; puzzle: CloserPuzzle };
 const STORAGE_PREFIX = "minefield:closer:v2:";
 
-export default function CloserGame({ onComplete }: { onComplete: (result: MinefieldGameResult) => void }) {
-  const date = getDailyGameDate();
+export default function CloserGame({
+  onComplete,
+  date: selectedDate,
+  storageScope
+}: {
+  onComplete: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
+}) {
+  const date = selectedDate ?? getDailyGameDate();
+  const storageKey = storageScope ? `${STORAGE_PREFIX}${storageScope}:${date}` : `${STORAGE_PREFIX}${date}`;
   const [puzzle, setPuzzle] = useState<CloserPuzzle | null>(null);
   const [input, setInput] = useState("");
   const [state, setState] = useState<CloserState | null>(null);
@@ -38,7 +47,7 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${date}`);
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as CloserState;
         setPuzzle(parsed.puzzle); setState(parsed); setInput(parsed.rawGuess);
@@ -49,7 +58,7 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
     fetchDailyPuzzle<CloserPuzzle>("closer", date, `/api/closer?date=${date}`)
       .then((loaded) => {
         setPuzzle(loaded);
-        if (loaded.contentHash) markContentUsed({ gameId: "closer", contentHash: loaded.contentHash, topic: loaded.category, answer: String(loaded.answer), date });
+        if (!storageScope && loaded.contentHash) markContentUsed({ gameId: "closer", contentHash: loaded.contentHash, topic: loaded.category, answer: String(loaded.answer), date });
       })
       .catch(() => {
         setError("Today’s Closer could not be generated.");
@@ -61,7 +70,7 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
         });
       })
       .finally(() => setLoading(false));
-  }, [date, onComplete, report]);
+  }, [date, onComplete, report, storageKey]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -71,7 +80,7 @@ export default function CloserGame({ onComplete }: { onComplete: (result: Minefi
       setError("Enter a valid positive number, such as 1.5m or 500k."); return;
     }
     const next: CloserState = { date, puzzle, rawGuess: input.trim(), numericGuess, completed: true };
-    localStorage.setItem(`${STORAGE_PREFIX}${date}`, JSON.stringify(next));
+    localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next); report(next);
   }
 

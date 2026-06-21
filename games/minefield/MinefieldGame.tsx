@@ -19,8 +19,17 @@ type GridState = {
 
 const STORAGE_PREFIX = "minefield:grid:v1:";
 
-export default function MinefieldGame({ onComplete }: { onComplete: (result: MinefieldGameResult) => void }) {
-  const date = getDailyGameDate();
+export default function MinefieldGame({
+  onComplete,
+  date: selectedDate,
+  storageScope
+}: {
+  onComplete: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
+}) {
+  const date = selectedDate ?? getDailyGameDate();
+  const storageKey = storageScope ? `${STORAGE_PREFIX}${storageScope}:${date}` : `${STORAGE_PREFIX}${date}`;
   const puzzle = useMemo(() => resolveMinefieldPuzzle(date), [date]);
   const [state, setState] = useState<GridState>({
     date,
@@ -61,7 +70,7 @@ export default function MinefieldGame({ onComplete }: { onComplete: (result: Min
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${date}`);
+      const stored = localStorage.getItem(storageKey);
       if (!stored) return;
       const parsed = JSON.parse(stored) as GridState;
       setState(parsed);
@@ -69,10 +78,10 @@ export default function MinefieldGame({ onComplete }: { onComplete: (result: Min
     } catch {
       // Invalid local progress falls back to a fresh board.
     }
-  }, [date]);
+  }, [date, storageKey]);
 
   function persist(next: GridState) {
-    localStorage.setItem(`${STORAGE_PREFIX}${date}`, JSON.stringify(next));
+    localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next);
   }
 

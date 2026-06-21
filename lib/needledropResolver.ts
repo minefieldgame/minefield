@@ -2,23 +2,79 @@ import { searchTrackPreview, searchTrackPreviewDiagnostic } from "@/lib/audioPro
 import { getTopTenForDate } from "@/lib/chartProvider";
 import { hashString, seededShuffle } from "@/lib/dailySeed";
 import { puzzleNumber } from "@/lib/date";
-import type { DailyPuzzle } from "@/types/game";
 import { normalizeArtist, normalizeMusicString } from "@/lib/normalize";
+import type { DailyPuzzle } from "@/types/game";
 
-export async function resolveNeedleDropPuzzle(puzzleDate: string): Promise<DailyPuzzle> {
+type PreviewAttempt = {
+  year: number;
+  chartDate: string;
+  chartPosition: number;
+  title: string;
+  artist: string;
+  available: boolean;
+};
+
+type ResolutionDiagnostics = {
+  requestedChartDate: string;
+  resolvedChartDate: string;
+  fallbackUsed: boolean;
+  fallbackReason: string;
+  attemptedYears: number[];
+  attemptedChartDates: string[];
+  attemptedChartPositions: number[];
+  previewAvailability: PreviewAttempt[];
+  finalSelectedSong: string;
+  errors: string[];
+};
+
+type Resolution = { puzzle: DailyPuzzle; diagnostics: ResolutionDiagnostics };
+const resolutionCache = new Map<string, Promise<Resolution>>();
+
+async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
   const [currentYear, month, day] = puzzleDate.split("-").map(Number);
   const years = Array.from(
     { length: Math.max(0, currentYear - 1958) },
     (_, index) => 1958 + index
   );
   const seed = hashString(`needledrop:${puzzleDate}`);
+  const candidateYears = seededShuffle(years, seed).slice(0, 10);
+  const attemptedYears: number[] = [];
+  const attemptedChartDates: string[] = [];
+  const attemptedChartPositions: number[] = [];
+  const previewAvailability: PreviewAttempt[] = [];
+  const errors: string[] = [];
 
-  for (const year of seededShuffle(years, seed).slice(0, 24)) {
-    const chart = await getTopTenForDate(month, day, year);
+  for (const year of candidateYears) {
+    attemptedYears.push(year);
+    const requestedChartDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    attemptedChartDates.push(requestedChartDate);
+    let chart;
+    try {
+      chart = await getTopTenForDate(month, day, year);
+    } catch (reason) {
+      errors.push(reason instanceof Error ? reason.message : `Chart failed for ${requestedChartDate}`);
+      continue;
+    }
+
     for (const song of seededShuffle(chart.songs, hashString(`${seed}:${year}`))) {
-      const track = await searchTrackPreview(song.title, song.artist);
+      attemptedChartPositions.push(song.position);
+      let track = null;
+      try {
+        track = await searchTrackPreview(song.title, song.artist);
+      } catch (reason) {
+        errors.push(reason instanceof Error ? reason.message : `Preview search failed for ${song.title}`);
+      }
+      previewAvailability.push({
+        year,
+        chartDate: chart.sourceDate,
+        chartPosition: song.position,
+        title: song.title,
+        artist: song.artist,
+        available: Boolean(track)
+      });
       if (!track) continue;
-      return {
+
+      const puzzle: DailyPuzzle = {
         id: puzzleDate,
         number: puzzleNumber(puzzleDate),
         puzzleDate,
@@ -30,16 +86,48 @@ export async function resolveNeedleDropPuzzle(puzzleDate: string): Promise<Daily
         artist: song.artist,
         track
       };
+      const fallbackReasons: string[] = [];
+      if (chart.sourceDate !== requestedChartDate) fallbackReasons.push("nearest chart date used");
+      if (year !== candidateYears[0]) fallbackReasons.push("alternate historical year used");
+      if (previewAvailability.length > 1) fallbackReasons.push("alternate Top 10 position used");
+      return {
+        puzzle,
+        diagnostics: {
+          requestedChartDate,
+          resolvedChartDate: chart.sourceDate,
+          fallbackUsed: fallbackReasons.length > 0,
+          fallbackReason: fallbackReasons.join("; ") || "none",
+          attemptedYears,
+          attemptedChartDates,
+          attemptedChartPositions,
+          previewAvailability,
+          finalSelectedSong: `${song.title} — ${song.artist}`,
+          errors
+        }
+      };
     }
   }
-  throw new Error("No playable track found");
+
+  throw new Error(`No playable track found after ${attemptedYears.length} historical chart attempts`);
+}
+
+function getResolution(puzzleDate: string) {
+  const cached = resolutionCache.get(puzzleDate);
+  if (cached) return cached;
+  const resolution = resolveWithFallbacks(puzzleDate);
+  resolutionCache.set(puzzleDate, resolution);
+  resolution.catch(() => resolutionCache.delete(puzzleDate));
+  return resolution;
+}
+
+export async function resolveNeedleDropPuzzle(puzzleDate: string): Promise<DailyPuzzle> {
+  return (await getResolution(puzzleDate)).puzzle;
 }
 
 export async function resolveNeedleDropDiagnostic(puzzleDate: string) {
   const startedAt = new Date().toISOString();
-  const puzzle = await resolveNeedleDropPuzzle(puzzleDate);
-  const [, month, day] = puzzleDate.split("-").map(Number);
-  const chart = await getTopTenForDate(month, day, puzzle.chartYear);
+  const resolution = await getResolution(puzzleDate);
+  const { puzzle } = resolution;
   const audio = await searchTrackPreviewDiagnostic(puzzle.title, puzzle.artist);
   return {
     puzzle,
@@ -53,12 +141,12 @@ export async function resolveNeedleDropDiagnostic(puzzleDate: string) {
       rawITunesTitle: puzzle.track.trackName,
       normalizedCorrectTitle: normalizeMusicString(puzzle.title),
       normalizedCorrectArtist: normalizeArtist(puzzle.artist),
-      errors: [] as string[]
+      ...resolution.diagnostics
     },
     rawProviderResponse: {
-      chart,
       iTunes: audio.rawResponse,
-      rankedMatches: audio.rankedResults
+      rankedMatches: audio.rankedResults,
+      resolution: resolution.diagnostics
     }
   };
 }

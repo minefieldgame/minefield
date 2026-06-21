@@ -75,6 +75,10 @@ export default function AdminNeedleDropPreview({
         <Datum label="Billboard date" value={puzzle.chartDate} />
         <Datum label="Source chart issue" value={puzzle.chartSourceDate ?? "—"} />
         <Datum label="Chart position" value={`#${puzzle.chartPosition}`} />
+        <Datum label="Requested chart date" value={diagnostics.requestedChartDate} />
+        <Datum label="Resolved chart date" value={diagnostics.resolvedChartDate} />
+        <Datum label="Fallback used" value={diagnostics.fallbackUsed ? "Yes" : "No"} />
+        <Datum label="Fallback reason" value={diagnostics.fallbackReason} />
         <Datum label="Preview URL" value={diagnostics.previewAvailable ? "Available" : "Missing"} />
         <Datum label="Provider" value={diagnostics.sourceProvider} />
         <Datum label="Raw iTunes title" value={diagnostics.rawITunesTitle} />
@@ -129,8 +133,17 @@ export default function AdminNeedleDropPreview({
         <Datum label="API request" value={diagnostics.requestStatus} />
         <Datum label="Response status" value={diagnostics.responseStatus} />
         <Datum label="Match confidence" value={`${Math.round(diagnostics.matchConfidence * 100)}%`} />
+        <Datum label="Attempted years" value={diagnostics.attemptedYears.join(", ")} />
+        <Datum label="Attempted chart dates" value={diagnostics.attemptedChartDates.join(", ")} />
+        <Datum label="Attempted positions" value={diagnostics.attemptedChartPositions.map((position) => `#${position}`).join(", ")} />
+        <Datum label="Final selected song" value={diagnostics.finalSelectedSong} />
         <Datum label="Errors" value={diagnostics.errors.length ? diagnostics.errors.join(", ") : "None"} />
       </div>
+
+      <details className="mt-3 rounded-xl border border-slate-200 dark:border-[#3b424f]">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Preview availability attempts</summary>
+        <pre className="max-h-72 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(diagnostics.previewAvailability, null, 2)}</pre>
+      </details>
 
       <details className="mt-5 rounded-xl border border-slate-200 dark:border-[#3b424f]">
         <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw puzzle JSON</summary>

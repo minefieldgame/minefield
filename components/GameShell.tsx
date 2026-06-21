@@ -27,9 +27,11 @@ import type { MinefieldGameResult } from "@/types/minefield";
 type Props = {
   embedded?: boolean;
   onComplete?: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
 };
 
-export default function GameShell({ embedded = false, onComplete }: Props) {
+export default function GameShell({ embedded = false, onComplete, date, storageScope }: Props) {
   const [state, setState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,8 +42,8 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
   const loadPuzzle = useCallback(async () => {
     setLoading(true);
     setError("");
-    const dateKey = getPacificDateKey();
-    const stored = loadGame(dateKey);
+    const dateKey = date ?? getPacificDateKey();
+    const stored = loadGame(dateKey, storageScope);
     const [, todayMonth, todayDay] = dateKey.split("-");
     const [, chartMonth, chartDay] = stored?.puzzle.chartDate?.split("-") ?? [];
     const storedUsesExactCalendarDate =
@@ -92,53 +94,55 @@ export default function GameShell({ embedded = false, onComplete }: Props) {
         score: 0,
         updatedAt: new Date().toISOString()
       };
-      saveGame(next);
+      saveGame(next, storageScope);
       setState(next);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Today’s song could not be loaded. Please try again later.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [date, embedded, onComplete, storageScope]);
 
   useEffect(() => {
     loadPuzzle();
   }, [loadPuzzle]);
 
   function persist(next: GameState) {
-    saveGame(next);
+    saveGame(next, storageScope);
     setState(next);
   }
 
   function finish(next: GameState) {
     persist(next);
-    const stats = { ...EMPTY_STATS, ...loadStats() };
     const won = next.status === "won";
-    stats.gamesPlayed += 1;
-    stats.wins += won ? 1 : 0;
-    stats.totalScore += next.score;
-    stats.currentStreak = won ? stats.currentStreak + 1 : 0;
-    stats.maxStreak = Math.max(stats.maxStreak, stats.currentStreak);
-    stats.perfectGuesses += won && next.attempt === 0 ? 1 : 0;
-    if (won) {
-      const key = String(next.attempt + 1);
-      stats.guessDistribution[key] = (stats.guessDistribution[key] ?? 0) + 1;
+    if (!storageScope) {
+      const stats = { ...EMPTY_STATS, ...loadStats() };
+      stats.gamesPlayed += 1;
+      stats.wins += won ? 1 : 0;
+      stats.totalScore += next.score;
+      stats.currentStreak = won ? stats.currentStreak + 1 : 0;
+      stats.maxStreak = Math.max(stats.maxStreak, stats.currentStreak);
+      stats.perfectGuesses += won && next.attempt === 0 ? 1 : 0;
+      if (won) {
+        const key = String(next.attempt + 1);
+        stats.guessDistribution[key] = (stats.guessDistribution[key] ?? 0) + 1;
+      }
+      stats.lastPlayedDate = next.puzzle.puzzleDate;
+      saveStats(stats);
+      const archive = loadArchive().filter((entry) => entry.id !== next.puzzle.id);
+      archive.unshift({
+        id: next.puzzle.id,
+        puzzleDate: next.puzzle.puzzleDate,
+        chartDate: next.puzzle.chartDate,
+        title: next.puzzle.title,
+        artist: next.puzzle.artist,
+        position: next.puzzle.chartPosition,
+        status: next.status,
+        score: next.score,
+        attempt: next.attempt
+      });
+      saveArchive(archive);
     }
-    stats.lastPlayedDate = next.puzzle.puzzleDate;
-    saveStats(stats);
-    const archive = loadArchive().filter((entry) => entry.id !== next.puzzle.id);
-    archive.unshift({
-      id: next.puzzle.id,
-      puzzleDate: next.puzzle.puzzleDate,
-      chartDate: next.puzzle.chartDate,
-      title: next.puzzle.title,
-      artist: next.puzzle.artist,
-      position: next.puzzle.chartPosition,
-      status: next.status,
-      score: next.score,
-      attempt: next.attempt
-    });
-    saveArchive(archive);
     const solvedIn = next.attempt + 1;
     const summaryLabel = won ? `Solved in ${solvedIn}` : "Not solved";
     onComplete?.({

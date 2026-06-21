@@ -161,6 +161,10 @@ export default function AdminDashboard({ environment }: { environment: string })
   if (!authenticated) return <AdminLogin onSuccess={() => setAuthenticated(true)} />;
 
   const pacific = getPacificToday();
+  const previewPath = `/play?date=${selectedDate}&mode=admin-preview`;
+  async function copyPreviewUrl() {
+    await navigator.clipboard.writeText(`${window.location.origin}${previewPath}`);
+  }
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-white/[.08] dark:bg-[#111318]/90">
@@ -194,6 +198,17 @@ export default function AdminDashboard({ environment }: { environment: string })
             <button onClick={() => { const date = randomDate(); generate(date); }} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Random Day</button>
             <button onClick={() => generate(selectedDate, { forceAll: true })} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Regenerate All</button>
           </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <a href={previewPath} className="flex h-12 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-extrabold text-white">
+              Play this date
+            </a>
+            <button onClick={copyPreviewUrl} className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
+              Copy direct preview URL
+            </button>
+            <button onClick={() => generate(selectedDate)} disabled={loading} className="h-12 rounded-xl bg-slate-100 px-4 text-sm font-extrabold dark:bg-[#292e38]">
+              Preview data
+            </button>
+          </div>
         </section>
 
         {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">{error}</div>}
@@ -220,12 +235,27 @@ export default function AdminDashboard({ environment }: { environment: string })
             </section>
 
             {adminGameRegistry.map(({ gameId, AdminPreviewComponent }) => (
-              <AdminPreviewComponent
-                key={gameId}
-                data={preview}
-                onRegenerate={() => generate(preview.date, { forceAll: true })}
-                onRetryTopTen={() => generate(preview.date, { retryTopTen: true })}
-              />
+              <div key={gameId} className="space-y-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button onClick={() => generate(preview.date)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-extrabold dark:bg-[#292e38]">
+                    Preview data
+                  </button>
+                  <a href={`/play?date=${preview.date}&mode=admin-preview`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-extrabold text-white">
+                    Play this date
+                  </a>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/play?date=${preview.date}&mode=admin-preview`)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-extrabold dark:border-[#454c5a] dark:bg-[#292e38]"
+                  >
+                    Copy direct preview URL
+                  </button>
+                </div>
+                <AdminPreviewComponent
+                  data={preview}
+                  onRegenerate={() => generate(preview.date, { forceAll: true })}
+                  onRetryTopTen={() => generate(preview.date, { retryTopTen: true })}
+                />
+              </div>
             ))}
 
           </>

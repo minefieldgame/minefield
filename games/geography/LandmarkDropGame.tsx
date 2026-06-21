@@ -10,8 +10,17 @@ import type { MinefieldGameResult } from "@/types/minefield";
 type State = { guess: MapPoint; distanceKm: number; score: number; completed: boolean };
 const PREFIX = "minefield:landmark-drop:v1:";
 
-export default function LandmarkDropGame({ onComplete }: { onComplete: (result: MinefieldGameResult) => void }) {
-  const date = getDailyGameDate();
+export default function LandmarkDropGame({
+  onComplete,
+  date: selectedDate,
+  storageScope
+}: {
+  onComplete: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
+}) {
+  const date = selectedDate ?? getDailyGameDate();
+  const storageKey = storageScope ? `${PREFIX}${storageScope}:${date}` : `${PREFIX}${date}`;
   const puzzle = useMemo(() => resolveLandmarkDropPuzzle(date), [date]);
   const [guess, setGuess] = useState<MapPoint | null>(null);
   const [state, setState] = useState<State | null>(null);
@@ -35,19 +44,19 @@ export default function LandmarkDropGame({ onComplete }: { onComplete: (result: 
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(`${PREFIX}${date}`);
+      const stored = localStorage.getItem(storageKey);
       if (!stored) return;
       const parsed = JSON.parse(stored) as State;
       setState(parsed); setGuess(parsed.guess);
       if (parsed.completed) report(parsed);
     } catch {}
-  }, [date, report]);
+  }, [date, report, storageKey]);
 
   function submit() {
     if (!guess || state?.completed) return;
     const distanceKm = haversineDistanceKm(guess, target);
     const next = { guess, distanceKm, score: calculateLandmarkDropScore(distanceKm), completed: true };
-    localStorage.setItem(`${PREFIX}${date}`, JSON.stringify(next));
+    localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next); report(next);
   }
 

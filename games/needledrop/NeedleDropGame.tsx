@@ -10,9 +10,13 @@ export const needledropDefinition = {
 };
 
 export default function NeedleDropGame({
-  onComplete
+  onComplete,
+  date,
+  storageScope
 }: {
   onComplete: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
 }) {
-  return <GameShell embedded onComplete={onComplete} />;
+  return <GameShell embedded onComplete={onComplete} date={date} storageScope={storageScope} />;
 }

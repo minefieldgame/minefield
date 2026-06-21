@@ -10,17 +10,21 @@ import type { MinefieldGameResult } from "@/types/minefield";
 
 const STORAGE_PREFIX = "minefield:top-three:v1:";
 
-function loadStored(date: string) {
+function storageKey(date: string, scope?: string) {
+  return scope ? `${STORAGE_PREFIX}${scope}:${date}` : `${STORAGE_PREFIX}${date}`;
+}
+
+function loadStored(date: string, scope?: string) {
   try {
-    const value = localStorage.getItem(`${STORAGE_PREFIX}${date}`);
+    const value = localStorage.getItem(storageKey(date, scope));
     return value ? (JSON.parse(value) as TopTenState) : null;
   } catch {
     return null;
   }
 }
 
-function saveStored(state: TopTenState) {
-  localStorage.setItem(`${STORAGE_PREFIX}${state.puzzle.date}`, JSON.stringify(state));
+function saveStored(state: TopTenState, scope?: string) {
+  localStorage.setItem(storageKey(state.puzzle.date, scope), JSON.stringify(state));
 }
 
 export const topTenDefinition = {
@@ -29,7 +33,15 @@ export const topTenDefinition = {
   maxScore: 100
 };
 
-export default function TopTenGame({ onComplete }: { onComplete: (result: MinefieldGameResult) => void }) {
+export default function TopTenGame({
+  onComplete,
+  date: selectedDate,
+  storageScope
+}: {
+  onComplete: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
+}) {
   const [state, setState] = useState<TopTenState | null>(null);
   const [guess, setGuess] = useState("");
   const [loading, setLoading] = useState(true);
@@ -65,8 +77,8 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
   }, [onComplete]);
 
   useEffect(() => {
-    const date = getDailyGameDate();
-    const stored = loadStored(date);
+    const date = selectedDate ?? getDailyGameDate();
+    const stored = loadStored(date, storageScope);
     if (stored) {
       setState(stored);
       if (stored.status !== "playing") reportCompletion(stored);
@@ -75,7 +87,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
     }
     fetchDailyPuzzle<TopTenPuzzle>("top3", date, `/api/top-ten/generate?date=${date}`)
       .then((puzzle) => {
-        if (puzzle.contentHash) markContentUsed({ gameId: "top3", contentHash: puzzle.contentHash, topic: puzzle.category.topicArea, answer: puzzle.answers.map((answer) => answer.name).join("|"), date });
+        if (!storageScope && puzzle.contentHash) markContentUsed({ gameId: "top3", contentHash: puzzle.contentHash, topic: puzzle.category.topicArea, answer: puzzle.answers.map((answer) => answer.name).join("|"), date });
         const next: TopTenState = {
           puzzle,
           found: [],
@@ -83,7 +95,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
           status: "playing",
           updatedAt: new Date().toISOString()
         };
-        saveStored(next);
+        saveStored(next, storageScope);
         setState(next);
       })
       .catch(() => {
@@ -104,10 +116,10 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
         });
       })
       .finally(() => setLoading(false));
-  }, [onComplete, reportCompletion]);
+  }, [onComplete, reportCompletion, selectedDate, storageScope]);
 
   function persist(next: TopTenState) {
-    saveStored(next);
+    saveStored(next, storageScope);
     setState(next);
   }
 
@@ -198,7 +210,7 @@ export default function TopTenGame({ onComplete }: { onComplete: (result: Minefi
               Submit answer
             </button>
             <button type="button" onClick={giveUp} className="h-12 rounded-xl px-4 text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-700 dark:text-slate-400 dark:hover:bg-red-400/10 dark:hover:text-red-300">
-              Reveal
+              Give Up
             </button>
           </div>
         </form>

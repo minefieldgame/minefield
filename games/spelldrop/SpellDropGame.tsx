@@ -11,8 +11,17 @@ type SpellDropState = { date: string; guess: string; correct: boolean; completed
 const STORAGE_PREFIX = "minefield:spelldrop:v2:";
 const REPLAY_LIMIT = 2;
 
-export default function SpellDropGame({ onComplete }: { onComplete: (result: MinefieldGameResult) => void }) {
-  const date = getDailyGameDate();
+export default function SpellDropGame({
+  onComplete,
+  date: selectedDate,
+  storageScope
+}: {
+  onComplete: (result: MinefieldGameResult) => void;
+  date?: string;
+  storageScope?: string;
+}) {
+  const date = selectedDate ?? getDailyGameDate();
+  const storageKey = storageScope ? `${STORAGE_PREFIX}${storageScope}:${date}` : `${STORAGE_PREFIX}${date}`;
   const [puzzle, setPuzzle] = useState<SpellDropPuzzle | null>(null);
   const [guess, setGuess] = useState("");
   const [plays, setPlays] = useState(0);
@@ -37,7 +46,7 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${date}`);
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as SpellDropState;
         setPuzzle(parsed.puzzle); setState(parsed); setGuess(parsed.guess);
@@ -48,7 +57,7 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
     fetchDailyPuzzle<SpellDropPuzzle>("spelldrop", date, `/api/spelldrop?date=${date}`)
       .then((loaded) => {
         setPuzzle(loaded);
-        if (loaded.contentHash) markContentUsed({ gameId: "spelldrop", contentHash: loaded.contentHash, topic: "spelling", answer: loaded.word, date });
+        if (!storageScope && loaded.contentHash) markContentUsed({ gameId: "spelldrop", contentHash: loaded.contentHash, topic: "spelling", answer: loaded.word, date });
       })
       .catch(() => {
         setError("Today’s SpellDrop could not be generated.");
@@ -60,7 +69,7 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
         });
       })
       .finally(() => setLoading(false));
-  }, [date, onComplete, report]);
+  }, [date, onComplete, report, storageKey]);
 
   function speak() {
     if (!puzzle || !("speechSynthesis" in window) || plays >= REPLAY_LIMIT + 1) return;
@@ -78,7 +87,7 @@ export default function SpellDropGame({ onComplete }: { onComplete: (result: Min
       date, puzzle, guess: guess.trim(),
       correct: guess.trim().toLowerCase() === puzzle.word.toLowerCase(), completed: true
     };
-    localStorage.setItem(`${STORAGE_PREFIX}${date}`, JSON.stringify(result));
+    localStorage.setItem(storageKey, JSON.stringify(result));
     setState(result); report(result);
   }
 

@@ -18,6 +18,10 @@ const GAME_DEFAULTS = {
   "landmark-drop": { displayName: "Landmark Drop", icon: "🗼", totalUnits: 1 }
 } as const;
 
+function boardKey(date: string, scope?: string) {
+  return scope ? `${BOARD_PREFIX}${scope}:${date}` : `${BOARD_PREFIX}${date}`;
+}
+
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -126,8 +130,8 @@ function recoverReviewData(
   return null;
 }
 
-export function loadGameProgress(date: string): MinefieldDailyBoard {
-  const board = read<MinefieldDailyBoard>(`${BOARD_PREFIX}${date}`, { date, results: {} });
+export function loadGameProgress(date: string, scope?: string): MinefieldDailyBoard {
+  const board = read<MinefieldDailyBoard>(boardKey(date, scope), { date, results: {} });
   const results = Object.fromEntries(
     Object.entries(board.results).map(([gameId, value]) => {
       const id = gameId as MinefieldGameResult["gameId"];
@@ -137,10 +141,10 @@ export function loadGameProgress(date: string): MinefieldDailyBoard {
   return { ...board, results };
 }
 
-export function saveGameProgress(date: string, result: MinefieldGameResult) {
-  const board = loadGameProgress(date);
+export function saveGameProgress(date: string, result: MinefieldGameResult, scope?: string) {
+  const board = loadGameProgress(date, scope);
   const next: MinefieldDailyBoard = { ...board, results: { ...board.results, [result.gameId]: result } };
-  localStorage.setItem(`${BOARD_PREFIX}${date}`, JSON.stringify(next));
+  localStorage.setItem(boardKey(date, scope), JSON.stringify(next));
   return next;
 }
 
@@ -164,9 +168,10 @@ function previousPacificDate(dateKey: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 7) {
+export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 7, scope?: string) {
   const summary = calculateDailySummary(board, totalGames);
   if (summary.gamesCompleted < totalGames) return summary;
+  if (scope) return summary;
   const archived = read<MinefieldSummary[]>(ARCHIVE_KEY, []);
   const existingEntry = archived.some((entry) => entry.date === board.date);
   localStorage.setItem(ARCHIVE_KEY, JSON.stringify([summary, ...archived.filter((entry) => entry.date !== board.date)].slice(0, 180)));

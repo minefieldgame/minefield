@@ -2,6 +2,8 @@ import { cleanArtistName, cleanSongTitle, similarity } from "@/lib/normalize";
 import type { SongSuggestion, TrackPreview } from "@/types/game";
 
 export type ITunesResult = {
+  wrapperType?: string;
+  artistId?: number;
   trackId?: number;
   trackName?: string;
   artistName?: string;
@@ -16,6 +18,14 @@ async function searchITunes(params: URLSearchParams) {
     next: { revalidate: 86400 }
   });
   if (!response.ok) throw new Error("iTunes search failed");
+  return (await response.json()) as { results?: ITunesResult[] };
+}
+
+async function lookupITunes(params: URLSearchParams) {
+  const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
+    next: { revalidate: 86400 }
+  });
+  if (!response.ok) throw new Error("iTunes lookup failed");
   return (await response.json()) as { results?: ITunesResult[] };
 }
 
@@ -99,21 +109,61 @@ export async function searchTrackPreviewDiagnostic(songTitle: string, artistName
 }
 
 export async function searchSongSuggestions(query: string): Promise<SongSuggestion[]> {
-  const params = new URLSearchParams({
+  const songParams = new URLSearchParams({
     term: query,
     media: "music",
     entity: "song",
-    limit: "8",
+    limit: "25",
     country: "US"
   });
-  const payload = await searchITunes(params);
+  const artistParams = new URLSearchParams({
+    term: query,
+    media: "music",
+    entity: "musicArtist",
+    limit: "5",
+    country: "US"
+  });
+  const [songPayload, artistPayload] = await Promise.all([
+    searchITunes(songParams),
+    searchITunes(artistParams).catch(() => ({ results: [] }))
+  ]);
+  const artistSongs = await Promise.all(
+    (artistPayload.results ?? [])
+      .filter((result) => result.artistId)
+      .slice(0, 2)
+      .map((result) =>
+        lookupITunes(new URLSearchParams({
+          id: String(result.artistId),
+          entity: "song",
+          limit: "20",
+          sort: "recent",
+          country: "US"
+        })).catch(() => ({ results: [] }))
+      )
+  );
+  const normalizedQuery = query.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
   const seen = new Set<string>();
-  return (payload.results ?? [])
+  return [
+    ...(songPayload.results ?? []),
+    ...artistSongs.flatMap((payload) => payload.results ?? [])
+  ]
     .filter((result) => result.trackName && result.artistName)
-    .flatMap((result) => {
+    .map((result) => {
       const title = cleanSongTitle(result.trackName!);
       const artist = cleanArtistName(result.artistName!);
-      const key = `${title.toLowerCase()}::${artist.toLowerCase()}`;
+      const normalizedTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      const normalizedArtist = artist.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      const score =
+        (normalizedTitle === normalizedQuery ? 5 : 0) +
+        (normalizedArtist === normalizedQuery ? 4.5 : 0) +
+        (normalizedTitle.includes(normalizedQuery) ? 2.5 : 0) +
+        (normalizedArtist.includes(normalizedQuery) ? 2.25 : 0) +
+        similarity(`${title} ${artist}`, query);
+      return { result, title, artist, normalizedTitle, normalizedArtist, score };
+    })
+    .sort((left, right) => right.score - left.score)
+    .flatMap(({ result, title, artist, normalizedTitle, normalizedArtist }) => {
+      const key = `${normalizedTitle}::${normalizedArtist}`;
       if (seen.has(key)) return [];
       seen.add(key);
       return [{
@@ -123,5 +173,5 @@ export async function searchSongSuggestions(query: string): Promise<SongSuggesti
         rawTitle: result.trackName!
       }];
     })
-    .slice(0, 7);
+    .slice(0, 10);
 }

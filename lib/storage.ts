@@ -24,12 +24,16 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-export function loadGame(dateKey: string) {
-  return read<GameState | null>(`${GAME_PREFIX}${dateKey}`, null);
+function gameKey(dateKey: string, scope?: string) {
+  return scope ? `${GAME_PREFIX}${scope}:${dateKey}` : `${GAME_PREFIX}${dateKey}`;
 }
 
-export function saveGame(state: GameState) {
-  localStorage.setItem(`${GAME_PREFIX}${state.puzzle.puzzleDate}`, JSON.stringify(state));
+export function loadGame(dateKey: string, scope?: string) {
+  return read<GameState | null>(gameKey(dateKey, scope), null);
+}
+
+export function saveGame(state: GameState, scope?: string) {
+  localStorage.setItem(gameKey(state.puzzle.puzzleDate, scope), JSON.stringify(state));
 }
 
 export function loadStats() {

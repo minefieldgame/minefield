@@ -9,7 +9,15 @@ import { formatChartDate, getDailyGameDate } from "@/lib/date";
 import { calculateDailySummary, loadGameProgress, loadMinefieldStats } from "@/lib/minefieldStorage";
 import type { MinefieldSummary } from "@/types/minefield";
 
-export default function ReviewPageClient({ requestedDate }: { requestedDate?: string }) {
+export default function ReviewPageClient({
+  requestedDate,
+  mode = "daily",
+  accessDenied = false
+}: {
+  requestedDate?: string;
+  mode?: "daily" | "admin-preview";
+  accessDenied?: boolean;
+}) {
   const [summary, setSummary] = useState<MinefieldSummary | null>(null);
   const [ready, setReady] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
@@ -18,9 +26,25 @@ export default function ReviewPageClient({ requestedDate }: { requestedDate?: st
     : getDailyGameDate();
 
   useEffect(() => {
-    setSummary(calculateDailySummary(loadGameProgress(date), 7));
+    setSummary(calculateDailySummary(loadGameProgress(date, mode === "admin-preview" ? "admin-preview" : undefined), 7));
     setReady(true);
-  }, [date]);
+  }, [date, mode]);
+
+  if (accessDenied) {
+    return (
+      <>
+        <Header />
+        <main className="mx-auto max-w-xl px-4 py-10 text-center">
+          <section className="theme-surface rounded-[2rem] border p-7">
+            <h1 className="text-2xl font-black text-slate-950 dark:text-white">Admin access required</h1>
+            <Link href="/admin" className="mt-5 inline-flex rounded-xl bg-violet px-6 py-3 font-extrabold text-white">
+              Open Admin
+            </Link>
+          </section>
+        </main>
+      </>
+    );
+  }
 
   async function share() {
     if (!summary) return;
@@ -72,13 +96,15 @@ export default function ReviewPageClient({ requestedDate }: { requestedDate?: st
     );
   }
 
-  const stats = loadMinefieldStats();
+  const stats = mode === "admin-preview" ? { currentStreak: 0, maxStreak: 0 } : loadMinefieldStats();
   return (
     <>
       <Header />
       <main className="mx-auto min-h-[calc(100dvh-68px)] w-full max-w-2xl px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-6">
         <div className="mb-6">
-          <p className="text-xs font-black uppercase tracking-[.2em] text-coral">Board complete</p>
+          <p className="text-xs font-black uppercase tracking-[.2em] text-coral">
+            {mode === "admin-preview" ? "Admin preview complete" : "Board complete"}
+          </p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-white">Daily Results</h1>
           <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-300">{formatChartDate(summary.date)}</p>
         </div>
@@ -116,11 +142,8 @@ export default function ReviewPageClient({ requestedDate }: { requestedDate?: st
           </button>
         </section>
 
-        <Link href="/" className="mt-4 flex h-12 w-full items-center justify-center rounded-xl border border-slate-300 bg-white font-extrabold text-slate-800 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
-          Return Home
-        </Link>
         <p className="mt-4 text-center text-sm font-semibold text-slate-500 dark:text-slate-300">
-          New daily board available at midnight Pacific.
+          {mode === "admin-preview" ? "This preview did not affect daily progress." : "New daily board available at midnight Pacific."}
         </p>
       </main>
     </>

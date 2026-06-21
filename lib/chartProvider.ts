@@ -1,6 +1,3 @@
-import { DEV_SAMPLE_CHART } from "@/data/devSampleCharts";
-import type { ChartSong } from "@/types/game";
-
 const ROOT = "https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main";
 
 type SourceChart = {
@@ -21,37 +18,33 @@ async function getValidDates() {
 async function activeChartIssueDate(month: number, day: number, year: number) {
   const dates = (await getValidDates()).filter((date) => date.startsWith(`${year}-`));
   const target = Date.UTC(year, month - 1, day);
-  const dated = dates
-    .map((date) => ({ date, timestamp: Date.parse(`${date}T00:00:00Z`) }))
-    .sort((a, b) => a.timestamp - b.timestamp);
-  return [...dated].reverse().find((candidate) => candidate.timestamp <= target)?.date ?? "";
+  return dates
+    .map((date) => ({
+      date,
+      distance: Math.abs(Date.parse(`${date}T00:00:00Z`) - target) / 86_400_000
+    }))
+    .filter((candidate) => candidate.distance <= 7)
+    .sort((left, right) => left.distance - right.distance || left.date.localeCompare(right.date))[0]?.date ?? "";
 }
 
 export async function getChartForDate(month: number, day: number, year: number) {
   const calendarDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  try {
-    const sourceDate = await activeChartIssueDate(month, day, year);
-    if (!sourceDate) throw new Error("No chart date found");
-    const response = await fetch(`${ROOT}/date/${sourceDate}.json`, {
-      next: { revalidate: 604800 }
-    });
-    if (!response.ok) throw new Error("Chart unavailable");
-    const chart = (await response.json()) as SourceChart;
-    return {
-      date: calendarDate,
-      sourceDate: chart.date,
-      songs: chart.data.map((entry) => ({
-        title: entry.song,
-        artist: entry.artist,
-        position: entry.this_week
-      }))
-    };
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      return { ...DEV_SAMPLE_CHART, date: calendarDate, sourceDate: DEV_SAMPLE_CHART.date };
-    }
-    throw error;
-  }
+  const sourceDate = await activeChartIssueDate(month, day, year);
+  if (!sourceDate) throw new Error(`No chart date within 7 days of ${calendarDate}`);
+  const response = await fetch(`${ROOT}/date/${sourceDate}.json`, {
+    next: { revalidate: 604800 }
+  });
+  if (!response.ok) throw new Error(`Chart unavailable for ${sourceDate}`);
+  const chart = (await response.json()) as SourceChart;
+  return {
+    date: calendarDate,
+    sourceDate: chart.date,
+    songs: chart.data.map((entry) => ({
+      title: entry.song,
+      artist: entry.artist,
+      position: entry.this_week
+    }))
+  };
 }
 
 export async function getTopTenForDate(month: number, day: number, year: number) {
