@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveCloserForDate } from "@/games/closer/providers";
+import { resolveCloserForDate } from "@/lib/content/dailyPuzzleResolvers";
 import { getPacificDateKey } from "@/lib/date";
 import {
   createDynamicApiError,

@@ -72,11 +72,11 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
       : { title: "Misspelled", detail: "Answer saved for final review", tone: "red" };
   }
   if (result.gameId === "closer") {
-    return result.score >= 65
-      ? { title: "Very close", detail: `${result.score} points`, tone: "green" }
-      : result.score >= 35
-        ? { title: "Getting closer", detail: `${result.score} points`, tone: "amber" }
-        : { title: "Way off", detail: `${result.score} points`, tone: "red" };
+    return {
+      title: result.summaryLabel,
+      detail: `${result.score} points`,
+      tone: result.score >= 65 ? "green" : result.score >= 35 ? "amber" : "red"
+    };
   }
   return result.score >= 65
     ? { title: "Close", detail: `${result.score} points`, tone: "green" }
@@ -206,7 +206,7 @@ export default function MinefieldFeed({
               />
             ))}
           </div>
-          <span className="text-sm font-black text-violet dark:text-[#9187f6]">{summary.totalScore}</span>
+          <span className="text-sm font-black text-violet dark:text-[#9187f6]">{runPerformance}/600</span>
         </div>
 
         <main className="relative flex-1 overflow-hidden">

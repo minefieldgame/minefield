@@ -89,7 +89,7 @@ export function calculateCloserScore(guess: number, answer: number): CloserScore
     percentError <= 0.20 ? 65 : percentError <= 0.35 ? 50 : percentError <= 0.50 ? 35 :
     percentError <= 0.75 ? 20 : 0;
   const labels: Record<number, string> = {
-    100: "Dead on", 90: "Extremely close", 80: "Very close", 65: "Close enough",
+    100: "Right on the money", 90: "Extremely close", 80: "Very close", 65: "Close one",
     50: "In the ballpark", 35: "A bit off", 20: "Way off", 0: "Not close"
   };
   return { score, percentError, distanceFromAnswer, scoreLabel: labels[score] };

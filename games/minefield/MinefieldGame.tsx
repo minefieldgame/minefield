@@ -77,6 +77,7 @@ export default function MinefieldGame({
         difficulty: puzzle.difficulty,
         runScore: puzzle.runScore,
         runMaxScore: puzzle.runMaxScore,
+        runPercentage: puzzle.runPercentage,
         mineCount: puzzle.mineCount,
         maxPicks: puzzle.maxPicks
       },
@@ -148,7 +149,9 @@ export default function MinefieldGame({
           <p className="mt-4 text-xs font-black uppercase tracking-[.22em] text-amber-300">Final challenge</p>
           <h3 className="mt-2 text-3xl font-black">Minefield Difficulty: {puzzle.difficulty}</h3>
           <p className="mx-auto mt-3 max-w-xs text-sm font-semibold leading-6 text-indigo-100">
-            You earned this difficulty by scoring {puzzle.runScore}/{puzzle.runMaxScore}.
+            You scored {puzzle.runScore}/{puzzle.runMaxScore} before Minefield ({puzzle.runPercentage.toFixed(1)}%).
+            <br />
+            That earns a {puzzle.difficulty} board: {puzzle.mineCount} mines, {puzzle.maxPicks} safe picks.
           </p>
           <div className="mx-auto mt-5 flex max-w-xs justify-center gap-2 text-xs font-black">
             <span className="rounded-full bg-white/10 px-3 py-2">{puzzle.mineCount} mines</span>

@@ -44,6 +44,7 @@ export type MinefieldGridReviewData = {
   difficulty: string;
   runScore: number;
   runMaxScore: number;
+  runPercentage: number;
   mineCount: number;
   maxPicks: number;
   clue?: string;

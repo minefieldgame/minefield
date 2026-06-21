@@ -30,7 +30,7 @@ export default function SpellDropGame({
 
   const report = useCallback((result: SpellDropState) => {
     const score = result.correct ? 100 : 0;
-    const summaryLabel = result.correct ? "Correct" : "Missed";
+    const summaryLabel = result.correct ? "Correct" : "Misspelled";
     onComplete({
       gameId: "spelldrop", displayName: "SpellDrop", icon: "🔤", score, maxScore: 100,
       completed: true, successUnits: result.correct ? 1 : 0, totalUnits: 1, summaryLabel,

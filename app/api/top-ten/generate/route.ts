@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPacificDateKey } from "@/lib/date";
-import { resolveRankedTop10ForDate } from "@/games/top-ten/providers";
+import { resolveRankedTop10ForDate } from "@/lib/content/dailyPuzzleResolvers";
 import {
   createDynamicApiError,
   dynamicResolverDiagnostics

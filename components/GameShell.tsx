@@ -39,6 +39,13 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
   const [showResult, setShowResult] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
+  function chartContext(puzzle: DailyPuzzle) {
+    const currentYear = Number(puzzle.puzzleDate.slice(0, 4));
+    const yearsAgo = Math.max(0, currentYear - puzzle.chartYear);
+    const chartIssueDate = puzzle.chartSourceDate ?? puzzle.chartDate;
+    return `Today’s track was #${puzzle.chartPosition} on the Billboard Hot 100 chart dated ${formatChartDate(chartIssueDate)}${yearsAgo ? ` — ${yearsAgo} years ago` : ""}.`;
+  }
+
   const loadPuzzle = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -209,7 +216,9 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
               <h1 className="mt-1 text-xl font-black tracking-[-.03em] text-slate-900 dark:text-white">
                 {formatChartDate(state.puzzle.chartDate)}
               </h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Billboard Hot 100 top-ten hit</p>
+              <p className="mx-auto mt-1 max-w-sm text-[11px] font-semibold leading-4 text-slate-500 dark:text-slate-400">
+                {chartContext(state.puzzle)}
+              </p>
             </div>
             <section className={embedded ? "" : "theme-surface rounded-[2rem] border p-5 sm:p-7"}>
               <AttemptTracker attempt={state.attempt} />

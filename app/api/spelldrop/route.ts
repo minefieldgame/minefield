@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveSpellDropForDate } from "@/games/spelldrop/providers";
+import { resolveSpellDropForDate } from "@/lib/content/dailyPuzzleResolvers";
 import { getPacificDateKey } from "@/lib/date";
 import {
   createDynamicApiError,

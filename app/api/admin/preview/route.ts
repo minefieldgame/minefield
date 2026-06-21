@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveRankedTop10ForDate, getTopTenProviderStatus, validateTopTenPuzzle } from "@/games/top-ten/providers";
-import { resolveSpellDropForDate } from "@/games/spelldrop/providers";
-import { resolveCloserForDate } from "@/games/closer/providers";
+import { getTopTenProviderStatus, validateTopTenPuzzle } from "@/games/top-ten/providers";
+import {
+  resolveCloserForDate,
+  resolveNeedleDropForDate,
+  resolveRankedTop10ForDate,
+  resolveSpellDropForDate
+} from "@/lib/content/dailyPuzzleResolvers";
 import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
 import { resolveLandmarkDropPuzzle, resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
 import { getAIStatus } from "@/lib/content/aiClient";
 import { hashString } from "@/lib/dailySeed";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
-import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
 import {
   classifyDynamicError,
   dynamicResolverDiagnostics,
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest) {
   };
 
   const [needledropResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
-    resolveNeedleDropDiagnostic(date),
+    resolveNeedleDropForDate(date),
     resolveRankedTop10ForDate(date, {
       force: topTenRetry > 0 || force,
       retryOffset: topTenRetry

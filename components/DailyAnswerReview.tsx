@@ -96,7 +96,7 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
             {review.type === "minefield" && (
               <div className="mt-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">
-                  {review.hitMine ? "Hit a mine" : "Minefield cleared"} · {review.difficulty} difficulty · {review.runScore}/{review.runMaxScore} earned
+                  {review.hitMine ? "Hit a mine" : "Minefield cleared"} · {review.difficulty} difficulty · {review.runScore}/{review.runMaxScore} ({(review.runPercentage ?? (review.runScore / review.runMaxScore) * 100).toFixed(1)}%)
                 </p>
                 <p className="mt-1 text-xs font-bold text-slate-500">
                   {review.mineCount} mines · {review.safePicks.length}/{review.maxPicks} safe picks

@@ -1,6 +1,7 @@
 .next
 .next-build
 .next-corrupt-backup
+.next-corrupt-backup-*
 node_modules
 out
 .env*

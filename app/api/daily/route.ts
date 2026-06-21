@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPacificToday } from "@/lib/date";
-import { resolveNeedleDropPuzzle } from "@/lib/needledropResolver";
+import { resolveNeedleDropForDate } from "@/lib/content/dailyPuzzleResolvers";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     ? requestedDate
     : today;
   try {
-    const puzzle = await resolveNeedleDropPuzzle(puzzleDate);
+    const { puzzle } = await resolveNeedleDropForDate(puzzleDate);
     if (process.env.NODE_ENV === "development") {
       console.info("[NeedleDrop daily puzzle]", {
         pacificDate: today,
