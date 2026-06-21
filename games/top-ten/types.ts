@@ -1,75 +1,60 @@
-export type TopTenDifficulty = "easy" | "medium" | "hard";
-export type TopTenGenerationMode = "live-ai";
+export type RankedTopTenDirection = "highest-to-lowest" | "lowest-to-highest";
 
-export type TopTenCategory = {
-  id: string;
-  title: string;
-  displayName: string;
-  prompt: string;
-  playerPrompt: string;
-  adminPrompt: string;
-  sourceNote: string;
-  validationNote: string;
-  topicArea: string;
-  rankingMetric: string;
-  expectedAnswerType: string;
-  answerType: string;
-  sourceStrategy: string;
-  source: string;
-  aliasStrategy: string;
-  difficulty: TopTenDifficulty;
-  safetyRating: "safe";
-};
-
-export type TopTenAnswer = {
+export type RankedTopTenAnswer = {
   rank: number;
-  name: string;
+  answer: string;
   displayAnswer: string;
-  simplifiedTitle: string;
   aliases: string[];
-  normalizedTokens: string[];
   value: string;
   sourceNote: string;
 };
 
-export type TopTenValidation = {
+export type RankedTopTenValidation = {
   valid: boolean;
   checks: {
-    rankedPrompt: boolean;
-    exactlyThreeAnswers: boolean;
+    exactlyTenAnswers: boolean;
+    sequentialRanks: boolean;
     uniqueAnswers: boolean;
-    objectiveRanking: boolean;
-    safeAliases: boolean;
-    understandableCategory: boolean;
+    valuesPresent: boolean;
+    directionClear: boolean;
+    objectiveCategory: boolean;
+    generalAudience: boolean;
+    concisePlayerPrompt: boolean;
+    sourceNotesPresent: boolean;
     reliableSources: boolean;
   };
   errors: string[];
 };
 
-export type TopTenPuzzle = {
+export type RankedTopTenPuzzle = {
+  gameId: "ranked-top-10";
   id: string;
   date: string;
-  category: TopTenCategory;
-  answers: TopTenAnswer[];
+  title: string;
+  playerPrompt: string;
+  adminPrompt: string;
+  category: string;
+  rankingMetric: string;
+  direction: RankedTopTenDirection;
+  answers: RankedTopTenAnswer[];
   sources: string[];
-  sourceUrl: string;
-  generatedAt: string;
   confidence: number;
-  validation: TopTenValidation;
-  generationMode: TopTenGenerationMode;
   contentHash?: string;
-  repeatCheck?: { repeated: boolean; lookback: number };
+  generatedAt: string;
   generator?: string;
   cacheHit?: boolean;
   generationDurationMs?: number;
-  warning?: string;
+  validation: RankedTopTenValidation;
   rawAIResponse?: unknown;
 };
 
-export type TopTenState = {
-  puzzle: TopTenPuzzle;
-  found: string[];
-  misses: string[];
+export type RankedTopTenState = {
+  dateKey: string;
+  puzzle: RankedTopTenPuzzle;
+  order: string[];
+  lockedPositions: number[];
+  attemptsUsed: number;
+  lastIncorrectPositions: number[];
   status: "playing" | "completed" | "gave-up";
   updatedAt: string;
 };

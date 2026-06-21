@@ -4,7 +4,7 @@ Minefield is a mobile-first daily feed of seven quick trivia and skill games:
 
 - NeedleDrop — identify a song from increasingly long official preview clips.
 - Minefield — choose up to five safe tiles while avoiding three hidden mines.
-- Top 3 — name three objectively ranked answers.
+- Top 10 — drag ten familiar items into the correct ranked order.
 - SpellDrop — spell one dynamically generated commonly misspelled word.
 - Closer — estimate one dynamically generated numeric fact.
 - Meet Me Halfway — place the geographic midpoint between two world cities.
@@ -49,7 +49,7 @@ npm start
 
 ## Dynamic content
 
-Top 3, SpellDrop, and Closer use the shared server-side content system in `lib/content/`:
+Top 10, SpellDrop, and Closer use the shared server-side content system in `lib/content/`:
 
 - `dailyContentEngine.ts` — seeded orchestration, retries, validation, cache envelopes, and diagnostics
 - `aiClient.ts` — server-only OpenAI structured-output requests
@@ -58,7 +58,7 @@ Top 3, SpellDrop, and Closer use the shared server-side content system in `lib/c
 - `cache.ts` — instance-local generated-content cache and in-flight request deduplication
 - `repeatPrevention.ts` — hashes, recent-content checks, and replaceable history storage
 
-Every request uses the Pacific date, game ID, and a deterministic seed. Generated factual content is validated before it reaches the player. Top 3 and Closer use web-backed source notes. The OpenAI key never enters the browser bundle.
+Every request uses the Pacific date, game ID, and a deterministic seed. Generated factual content is validated before it reaches the player. Top 10 and Closer use web-backed source notes. The OpenAI key never enters the browser bundle.
 
 If `OPENAI_API_KEY` is missing, dynamic games show a clean unavailable state and the board advances. Admin displays the full configuration error. Minefield does not silently substitute a small hardcoded daily puzzle bank.
 

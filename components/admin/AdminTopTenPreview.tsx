@@ -1,12 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { hashString } from "@/lib/dailySeed";
-import { diagnoseTopTenGuess } from "@/games/top-ten/logic";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { AdminTopTenPreview as Preview } from "@/types/admin";
 
 async function copyJson(value: unknown) {
   await navigator.clipboard.writeText(JSON.stringify(value, null, 2));
+}
+
+function Datum({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="theme-raised rounded-xl border p-3">
+      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p>
+      <div className="mt-1 break-words text-sm font-bold">{value}</div>
+    </div>
+  );
 }
 
 export default function AdminTopTenPreview({
@@ -21,32 +29,19 @@ export default function AdminTopTenPreview({
   onRetryCategory: () => void;
 }) {
   const [playerPreview, setPlayerPreview] = useState(false);
-  const [testGuess, setTestGuess] = useState("");
   if (preview.status === "error") {
-    const diagnostics = preview.diagnostics;
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-        <h2 className="text-2xl font-black text-slate-950 dark:text-white">Top 3</h2>
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">{preview.error || "Top 3 not installed."}</p>
-        {diagnostics && (
+        <h2 className="text-2xl font-black">Ranked Top 10</h2>
+        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
+          {preview.error || "Ranked Top 10 is unavailable."}
+        </p>
+        {preview.diagnostics && (
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {[
-              ["OPENAI_API_KEY", diagnostics.apiKeyConfigured ? "Detected" : "Missing"],
-              ["Live AI generation", diagnostics.liveAIEnabled ? "Enabled" : "Disabled"],
-              ["Generation mode", diagnostics.generationMode],
-              ["Model", diagnostics.model],
-              ["Generation status", diagnostics.generationStatus],
-              ["Validation status", diagnostics.validationStatus],
-              ["Fallback usage", diagnostics.fallbackUsed ? "Used" : "None"],
-              ["Content hash", diagnostics.contentHash ?? "Not generated"],
-              ["Source data", diagnostics.sourceData.join(", ") || "None"],
-              ["Exact failure", diagnostics.failureReason]
-            ].map(([label, value]) => (
-              <div key={label} className="theme-raised rounded-xl border p-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-950 dark:text-white">{value}</p>
-              </div>
-            ))}
+            <Datum label="Generation status" value={preview.diagnostics.generationStatus} />
+            <Datum label="Validation status" value={preview.diagnostics.validationStatus} />
+            <Datum label="Failure" value={preview.diagnostics.failureReason} />
+            <Datum label="Errors" value={preview.diagnostics.errors.join(" | ")} />
           </div>
         )}
       </section>
@@ -54,152 +49,75 @@ export default function AdminTopTenPreview({
   }
 
   const { puzzle, diagnostics } = preview;
-  const rawAI = puzzle.rawAIResponse as
-    | { category?: unknown; resolution?: unknown }
-    | undefined;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[.18em] text-[#db4e36] dark:text-[#ff826a]">Game diagnostics</p>
-          <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Top 3</h2>
+          <p className="text-[11px] font-black uppercase tracking-[.18em] text-coral">Game diagnostics</p>
+          <h2 className="mt-1 text-2xl font-black">Ranked Top 10</h2>
         </div>
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">{diagnostics.validationStatus}</span>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{diagnostics.validationStatus}</span>
       </div>
 
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
-        {[
-          ["Game date", puzzle.date],
-          ["Daily seed", hashString(`minefield:top-ten:${date}`)],
-          ["Selected category", puzzle.category.title],
-          ["Topic area", puzzle.category.topicArea],
-          ["Ranking metric", puzzle.category.rankingMetric],
-          ["Answer type", puzzle.category.expectedAnswerType],
-          ["Source strategy", puzzle.category.sourceStrategy],
-          ["Player prompt", puzzle.category.playerPrompt ?? puzzle.category.prompt],
-          ["Admin prompt", puzzle.category.adminPrompt ?? "—"],
-          ["Source note", puzzle.category.sourceNote ?? puzzle.category.source],
-          ["Validation note", puzzle.category.validationNote ?? "—"],
-          ["OPENAI_API_KEY detected", String(diagnostics.apiKeyConfigured)],
-          ["Live generation enabled", String(diagnostics.generationMode === "live-ai")],
-          ["Model used", puzzle.generator?.match(/\(([^)]+)\)/)?.[1] ?? "Configured model"],
-          ["Content hash", puzzle.contentHash ?? "—"],
-          ["Repeat check", puzzle.repeatCheck?.repeated ? "Recently appeared" : "Clear"],
-          ["Cache hit", String(puzzle.cacheHit ?? false)],
-          ["Generation duration", `${puzzle.generationDurationMs ?? 0} ms`]
-        ].map(([label, value]) => (
-          <div key={label} className="theme-raised rounded-xl border p-3">
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="mt-1 text-sm font-bold text-slate-950 dark:text-white">{value}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 rounded-2xl bg-violet/10 p-4 dark:bg-violet/20">
-        <p className="text-xs font-black uppercase tracking-wider text-violet dark:text-[#aaa2ff]">Prompt</p>
-        <p className="mt-1 text-lg font-black text-slate-950 dark:text-white">{puzzle.category.prompt}</p>
+        <Datum label="Selected date" value={date} />
+        <Datum label="Current Pacific date" value={getPacificDateKey()} />
+        <Datum label="Game cache key" value={getGameCacheKey("ranked-top-10", date)} />
+        <Datum label="Cache hit" value={String(puzzle.cacheHit ?? false)} />
+        <Datum label="Puzzle source" value={puzzle.cacheHit ? "server cache" : "generated fresh"} />
+        <Datum label="Generated at" value={puzzle.generatedAt} />
+        <Datum label="Content hash" value={puzzle.contentHash ?? "—"} />
+        <Datum label="Generation duration" value={`${puzzle.generationDurationMs ?? 0} ms`} />
+        <Datum label="Player prompt" value={puzzle.playerPrompt} />
+        <Datum label="Admin prompt" value={puzzle.adminPrompt} />
+        <Datum label="Category" value={puzzle.category} />
+        <Datum label="Ranking metric" value={puzzle.rankingMetric} />
+        <Datum label="Direction" value={puzzle.direction} />
+        <Datum label="Confidence" value={`${Math.round(puzzle.confidence * 100)}%`} />
       </div>
 
-      <h3 className="mb-3 mt-6 text-xs font-black uppercase tracking-[.16em] text-slate-500 dark:text-slate-300">All answers and aliases</h3>
-      <div className="space-y-2">
+      <h3 className="mb-2 mt-6 text-xs font-black uppercase tracking-wider text-slate-500">Correct ranking</h3>
+      <div className="space-y-1.5">
         {puzzle.answers.map((answer) => (
-          <div key={answer.rank} className="theme-raised rounded-xl border p-3">
-            <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-violet text-xs font-black text-white dark:bg-[#7569e5]">{answer.rank}</span>
-              <div>
-                <p className="font-black text-slate-950 dark:text-white">{answer.name}</p>
-                <p className="text-xs font-bold text-violet">{answer.displayAnswer ?? answer.name}</p>
-                <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{answer.aliases.join(" · ") || "No additional aliases"}</p>
-              </div>
+          <div key={answer.rank} className="theme-raised grid grid-cols-[2rem_1fr_auto] items-center gap-2 rounded-xl border px-3 py-2">
+            <span className="font-black text-violet">{answer.rank}</span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black">{answer.displayAnswer || answer.answer}</p>
+              <p className="truncate text-[11px] text-slate-500">{answer.sourceNote}</p>
             </div>
+            <span className="text-xs font-bold text-slate-500">{answer.value}</span>
           </div>
         ))}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 p-4 dark:border-[#3b424f]">
-        <h3 className="text-sm font-black text-slate-950 dark:text-white">Answer matching diagnostics</h3>
-        <input
-          value={testGuess}
-          onChange={(event) => setTestGuess(event.target.value)}
-          placeholder="Try a player guess"
-          className="mt-3 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold dark:border-[#454c5a] dark:bg-[#252a34]"
-        />
-        {testGuess.trim() && (
-          <div className="mt-3 space-y-2">
-            {diagnoseTopTenGuess(testGuess, puzzle).map((diagnostic) => (
-              <div key={diagnostic.canonicalAnswer} className="theme-raised rounded-xl border p-3 text-xs">
-                <p className="font-black">{diagnostic.displayAnswer} · {Math.round(diagnostic.matchScore * 100)}% · {diagnostic.accepted ? "accepted" : "rejected"}</p>
-                <p className="mt-1 text-slate-500">Raw: {diagnostic.rawGuess}</p>
-                <p className="text-slate-500">Normalized: {diagnostic.normalizedGuess}</p>
-                <p className="text-slate-500">Canonical: {diagnostic.canonicalAnswer}</p>
-                <p className="text-slate-500">Aliases: {diagnostic.aliasesChecked.join(" · ")}</p>
-                {!diagnostic.accepted && <p className="mt-1 font-bold text-red-600">{diagnostic.rejectionReason}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {diagnostics.warning && (
-        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
-          {diagnostics.warning}
-        </p>
-      )}
-
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <button onClick={() => copyJson(puzzle)} className="rounded-xl bg-violet px-3 py-3 text-sm font-extrabold text-white dark:bg-[#7569e5]">Copy Puzzle JSON</button>
-        <button onClick={() => navigator.clipboard.writeText(puzzle.category.prompt)} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Copy Prompt</button>
-        <button onClick={onRegenerate} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Generate Top 3</button>
-        <button onClick={onRetryCategory} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Retry Category</button>
-        <button onClick={() => setPlayerPreview((value) => !value)} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Preview as Player</button>
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <button onClick={() => copyJson(puzzle)} className="rounded-xl bg-violet px-3 py-3 text-sm font-extrabold text-white">Copy Puzzle JSON</button>
+        <button onClick={onRegenerate} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Generate Top 10</button>
+        <button onClick={onRetryCategory} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Retry Category</button>
+        <button onClick={() => setPlayerPreview((value) => !value)} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Preview as Player</button>
       </div>
 
       {playerPreview && (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#3b424f] dark:bg-[#20242c]">
-          <span className="rounded-full bg-violet/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">{puzzle.category.topicArea}</span>
-          <h3 className="mt-3 text-xl font-black text-slate-950 dark:text-white">{puzzle.category.prompt}</h3>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {Array.from({ length: 3 }, (_, index) => (
-              <div key={index} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-400 dark:border-[#343a47] dark:bg-[#252a34] dark:text-slate-500">
-                {index + 1} —
+        <div className="mt-4 rounded-2xl border p-4">
+          <p className="font-black">{puzzle.playerPrompt}</p>
+          <div className="mt-3 space-y-1">
+            {[...puzzle.answers].reverse().map((answer, index) => (
+              <div key={answer.answer} className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold dark:bg-[#292e38]">
+                {index + 1}. {answer.displayAnswer || answer.answer}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="mt-5 grid gap-2 sm:grid-cols-3">
-        {[
-          ["Source provider", diagnostics.sourceProvider],
-          ["Validation", diagnostics.validationStatus],
-          ["Data freshness", diagnostics.dataFreshness]
-          ,["Confidence", `${Math.round(diagnostics.confidence * 100)}%`]
-          ,["Generation mode", diagnostics.generationMode]
-          ,["API key", diagnostics.apiKeyConfigured ? "Configured" : "Missing"]
-        ].map(([label, value]) => (
-          <div key={label} className="theme-raised rounded-xl border p-3">
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="mt-1 text-sm font-bold text-slate-950 dark:text-white">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      <details className="mt-5 rounded-xl border border-slate-200 dark:border-[#3b424f]">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw puzzle JSON</summary>
-        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(puzzle, null, 2)}</pre>
+      <details className="mt-5 rounded-xl border">
+        <summary className="cursor-pointer px-4 py-3 font-extrabold">Raw AI response</summary>
+        <pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle.rawAIResponse, null, 2)}</pre>
       </details>
-      <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw AI response</summary>
-        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(puzzle.rawAIResponse ?? null, null, 2)}</pre>
+      <details className="mt-2 rounded-xl border">
+        <summary className="cursor-pointer px-4 py-3 font-extrabold">Final puzzle JSON</summary>
+        <pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre>
       </details>
-      <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw answer resolver response</summary>
-        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(rawAI?.resolution ?? null, null, 2)}</pre>
-      </details>
-      <details className="mt-2 rounded-xl border border-slate-200 dark:border-[#3b424f]">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold">Raw provider response</summary>
-        <pre className="max-h-80 overflow-auto border-t border-slate-200 p-4 text-[11px] dark:border-[#3b424f]">{JSON.stringify(preview.rawProviderResponse, null, 2)}</pre>
-      </details>
-      <button onClick={() => copyJson(preview.rawProviderResponse)} className="mt-2 w-full rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-extrabold text-slate-700 dark:bg-[#292e38] dark:text-white">Copy Provider JSON</button>
     </section>
   );
 }

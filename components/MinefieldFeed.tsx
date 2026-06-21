@@ -13,7 +13,7 @@ import MinefieldGame from "@/games/minefield/MinefieldGame";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
 import SpellDropGame from "@/games/spelldrop/SpellDropGame";
 import TopTenGame from "@/games/top-ten/TopTenGame";
-import { formatChartDate, getDailyGameDate } from "@/lib/date";
+import { formatChartDate, getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import {
   calculateDailySummary,
   completeDailyBoard,
@@ -25,7 +25,7 @@ import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "
 const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
   { id: "needledrop", title: "NeedleDrop", subtitle: "Name the song from an increasingly longer clip." },
   { id: "minefield", title: "Minefield", subtitle: "Tap up to 5 tiles and avoid the 3 hidden mines." },
-  { id: "top-ten", title: "Top 3", subtitle: "Name all three leaders in today’s ranked category." },
+  { id: "ranked-top-10", title: "Top 10", subtitle: "Drag the 10 items into the correct order." },
   { id: "spelldrop", title: "SpellDrop", subtitle: "Listen carefully and spell the word in one attempt." },
   { id: "closer", title: "Closer", subtitle: "Make one numeric guess and get as close as you can." },
   { id: "meet-me-halfway", title: "Meet Me Halfway", subtitle: "Drop a pin where you think the halfway point is." },
@@ -50,11 +50,11 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
       ? { title: "You hit a mine", detail: `${result.successUnits} safe tiles`, tone: "red" }
       : { title: "Score banked", detail: `${result.successUnits} safe tiles`, tone: result.score >= 80 ? "green" : "amber" };
   }
-  if (result.gameId === "top-ten") {
+  if (result.gameId === "ranked-top-10") {
     return {
-      title: `${result.successUnits}/3 found`,
+      title: result.score === 100 ? "Perfect ranking" : `${result.successUnits}/10 placed`,
       detail: `${result.score} points`,
-      tone: result.successUnits === 3 ? "green" : result.successUnits > 0 ? "amber" : "red"
+      tone: result.score >= 80 ? "green" : result.score >= 30 ? "amber" : "red"
     };
   }
   if (result.gameId === "spelldrop") {
@@ -84,11 +84,10 @@ export default function MinefieldFeed({
   mode?: FeedMode;
 }) {
   const router = useRouter();
-  const date = dateOverride ?? getDailyGameDate();
+  const [liveDate, setLiveDate] = useState(() => getPacificDateKey());
+  const date = dateOverride ?? liveDate;
   const storageScope = mode === "admin-preview" ? "admin-preview" : undefined;
-  const startedKey = storageScope
-    ? `minefield:started:${storageScope}:${date}`
-    : `minefield:started:${date}`;
+  const startedKey = getGameCacheKey("minefield-started", date, storageScope);
   const [board, setBoard] = useState<MinefieldDailyBoard>({ date, results: {} });
   const [activeIndex, setActiveIndex] = useState(0);
   const [ready, setReady] = useState(false);
@@ -96,6 +95,22 @@ export default function MinefieldFeed({
   const [completionResult, setCompletionResult] = useState<MinefieldGameResult | null>(null);
 
   useEffect(() => {
+    if (dateOverride) return;
+    const checkDate = () => setLiveDate((current) => {
+      const next = getPacificDateKey();
+      return next === current ? current : next;
+    });
+    const interval = window.setInterval(checkDate, 30_000);
+    document.addEventListener("visibilitychange", checkDate);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", checkDate);
+    };
+  }, [dateOverride]);
+
+  useEffect(() => {
+    setReady(false);
+    setCompletionResult(null);
     const loaded = loadGameProgress(date, storageScope);
     setBoard(loaded);
     setStarted(Boolean(localStorage.getItem(startedKey)) || Object.keys(loaded.results).length > 0);
@@ -223,7 +238,7 @@ export default function MinefieldFeed({
                             <NeedleDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "minefield" ? (
                             <MinefieldGame onComplete={handleComplete} date={date} storageScope={storageScope} />
-                          ) : game.id === "top-ten" ? (
+                          ) : game.id === "ranked-top-10" ? (
                             <TopTenGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "spelldrop" ? (
                             <SpellDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />

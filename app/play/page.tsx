@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import MinefieldFeed from "@/components/MinefieldFeed";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
-import { getDailyGameDate } from "@/lib/date";
+import { getPacificDateKey } from "@/lib/date";
 
 export default async function PlayPage({
   searchParams
@@ -30,6 +30,6 @@ export default async function PlayPage({
   }
   const date = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
     ? requestedDate
-    : getDailyGameDate();
+    : getPacificDateKey();
   return <MinefieldFeed dateOverride={date} mode="admin-preview" />;
 }

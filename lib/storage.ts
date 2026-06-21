@@ -1,6 +1,6 @@
 import type { ArchiveEntry, GameState, Stats } from "@/types/game";
+import { getGameCacheKey } from "@/lib/date";
 
-const GAME_PREFIX = "needledrop:game:";
 const STATS_KEY = "needledrop:stats";
 const ARCHIVE_KEY = "needledrop:archive";
 
@@ -25,7 +25,7 @@ function read<T>(key: string, fallback: T): T {
 }
 
 function gameKey(dateKey: string, scope?: string) {
-  return scope ? `${GAME_PREFIX}${scope}:${dateKey}` : `${GAME_PREFIX}${dateKey}`;
+  return getGameCacheKey("needledrop", dateKey, scope);
 }
 
 export function loadGame(dateKey: string, scope?: string) {

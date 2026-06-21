@@ -4,12 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import InteractiveGuessMap, { type MapPoint } from "@/components/InteractiveGuessMap";
 import { calculateMeetMeHalfwayScore, geographyScoreLabel, haversineDistanceKm } from "@/games/geography/logic";
 import { resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
-import { getDailyGameDate } from "@/lib/date";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
-type State = { guess: MapPoint; distanceKm: number; score: number; completed: boolean };
-const PREFIX = "minefield:meet-me-halfway:v1:";
-
+type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean };
 export default function MeetMeHalfwayGame({
   onComplete,
   date: selectedDate,
@@ -19,8 +17,8 @@ export default function MeetMeHalfwayGame({
   date?: string;
   storageScope?: string;
 }) {
-  const date = selectedDate ?? getDailyGameDate();
-  const storageKey = storageScope ? `${PREFIX}${storageScope}:${date}` : `${PREFIX}${date}`;
+  const date = selectedDate ?? getPacificDateKey();
+  const storageKey = getGameCacheKey("meet-me-halfway", date, storageScope);
   const puzzle = useMemo(() => resolveMeetMeHalfwayPuzzle(date), [date]);
   const [guess, setGuess] = useState<MapPoint | null>(null);
   const [state, setState] = useState<State | null>(null);
@@ -44,6 +42,10 @@ export default function MeetMeHalfwayGame({
       const stored = localStorage.getItem(storageKey);
       if (!stored) return;
       const parsed = JSON.parse(stored) as State;
+      if (parsed.dateKey !== date) {
+        localStorage.removeItem(storageKey);
+        return;
+      }
       setState(parsed); setGuess(parsed.guess);
       if (parsed.completed) report(parsed);
     } catch {}
@@ -52,7 +54,7 @@ export default function MeetMeHalfwayGame({
   function submit() {
     if (!guess || state?.completed) return;
     const distanceKm = haversineDistanceKm(guess, puzzle.midpoint);
-    const next = { guess, distanceKm, score: calculateMeetMeHalfwayScore(distanceKm), completed: true };
+    const next = { dateKey: date, guess, distanceKm, score: calculateMeetMeHalfwayScore(distanceKm), completed: true };
     localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next); report(next);
   }

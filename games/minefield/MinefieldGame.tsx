@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getDailyGameDate } from "@/lib/date";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import {
   minefieldScoreLabel,
   resolveMinefieldPuzzle
@@ -17,8 +17,6 @@ type GridState = {
   banked: boolean;
 };
 
-const STORAGE_PREFIX = "minefield:grid:v1:";
-
 export default function MinefieldGame({
   onComplete,
   date: selectedDate,
@@ -28,8 +26,8 @@ export default function MinefieldGame({
   date?: string;
   storageScope?: string;
 }) {
-  const date = selectedDate ?? getDailyGameDate();
-  const storageKey = storageScope ? `${STORAGE_PREFIX}${storageScope}:${date}` : `${STORAGE_PREFIX}${date}`;
+  const date = selectedDate ?? getPacificDateKey();
+  const storageKey = getGameCacheKey("minefield", date, storageScope);
   const puzzle = useMemo(() => resolveMinefieldPuzzle(date), [date]);
   const [state, setState] = useState<GridState>({
     date,
@@ -73,6 +71,10 @@ export default function MinefieldGame({
       const stored = localStorage.getItem(storageKey);
       if (!stored) return;
       const parsed = JSON.parse(stored) as GridState;
+      if (parsed.date !== date) {
+        localStorage.removeItem(storageKey);
+        return;
+      }
       setState(parsed);
       if (parsed.completed) report(parsed);
     } catch {

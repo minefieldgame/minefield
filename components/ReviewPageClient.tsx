@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import DailyAnswerReview from "@/components/DailyAnswerReview";
 import Header from "@/components/Header";
 import { buildMinefieldShare } from "@/components/DailySummary";
-import { formatChartDate, getDailyGameDate } from "@/lib/date";
+import { formatChartDate, getPacificDateKey } from "@/lib/date";
 import { calculateDailySummary, loadGameProgress, loadMinefieldStats } from "@/lib/minefieldStorage";
 import type { MinefieldSummary } from "@/types/minefield";
 
@@ -23,7 +23,7 @@ export default function ReviewPageClient({
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const date = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
     ? requestedDate
-    : getDailyGameDate();
+    : getPacificDateKey();
 
   useEffect(() => {
     setSummary(calculateDailySummary(loadGameProgress(date, mode === "admin-preview" ? "admin-preview" : undefined), 7));

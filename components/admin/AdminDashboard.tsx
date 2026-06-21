@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { adminGameRegistry } from "@/components/admin/adminGameRegistry";
 import { ADMIN_SESSION_KEY } from "@/lib/adminAuth";
 import { hashString } from "@/lib/dailySeed";
-import { getDailyGameDate, getPacificToday } from "@/lib/date";
+import { getPacificDateKey, getPacificToday } from "@/lib/date";
 import type { AdminPreviewResponse } from "@/types/admin";
 
 function shiftDate(dateKey: string, days: number) {
@@ -15,7 +15,7 @@ function shiftDate(dateKey: string, days: number) {
 
 function randomDate() {
   const start = Date.parse("1960-01-01T12:00:00Z");
-  const end = Date.parse(`${getDailyGameDate()}T12:00:00Z`);
+  const end = Date.parse(`${getPacificDateKey()}T12:00:00Z`);
   const value = start + Math.floor(Math.random() * (end - start + 1));
   return new Date(value).toISOString().slice(0, 10);
 }
@@ -76,7 +76,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 }
 
 export default function AdminDashboard({ environment }: { environment: string }) {
-  const today = getDailyGameDate();
+  const today = getPacificDateKey();
   const [authenticated, setAuthenticated] = useState(false);
   const [checking, setChecking] = useState(true);
   const [selectedDate, setSelectedDate] = useState(today);

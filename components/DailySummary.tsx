@@ -15,7 +15,9 @@ export function buildMinefieldShare(summary: MinefieldSummary) {
     ...summary.results.map((result) => result.shareLine),
     "",
     `${summary.results.length} games played`,
-    "Play: https://minefieldgame.com"
+    "Play: https://minefieldgame.com",
+    "",
+    "No spoilers."
   ].join("\n");
 }
 

@@ -1,17 +1,17 @@
 import type { MinefieldDailyBoard, MinefieldGameResult, MinefieldStats, MinefieldSummary } from "@/types/minefield";
+import { getBoardCacheKey, getGameCacheKey } from "@/lib/date";
 
-const BOARD_PREFIX = "minefield:board:";
 const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
 const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
-  "needledrop", "minefield", "top-ten", "spelldrop", "closer",
+  "needledrop", "minefield", "ranked-top-10", "spelldrop", "closer",
   "meet-me-halfway", "landmark-drop"
 ];
 const GAME_DEFAULTS = {
   needledrop: { displayName: "NeedleDrop", icon: "🎵", totalUnits: 7 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 5 },
-  "top-ten": { displayName: "Top 3", icon: "🏆", totalUnits: 3 },
+  "ranked-top-10": { displayName: "Top 10", icon: "🏆", totalUnits: 10 },
   spelldrop: { displayName: "SpellDrop", icon: "🔤", totalUnits: 1 },
   closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 },
   "meet-me-halfway": { displayName: "Meet Me Halfway", icon: "🌍", totalUnits: 1 },
@@ -19,7 +19,7 @@ const GAME_DEFAULTS = {
 } as const;
 
 function boardKey(date: string, scope?: string) {
-  return scope ? `${BOARD_PREFIX}${scope}:${date}` : `${BOARD_PREFIX}${date}`;
+  return getBoardCacheKey(date, scope);
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -66,19 +66,21 @@ function recoverReviewData(
 ): MinefieldGameResult["reviewData"] | null {
   if (typeof window === "undefined") return null;
   try {
-    if (gameId === "top-ten") {
+    if (gameId === "ranked-top-10") {
       const state = read<{
-        puzzle: { category: { prompt: string }; answers: Array<{ name: string }> };
-        found: string[];
-      } | null>(`minefield:top-three:v1:${date}`, null);
+        puzzle: { playerPrompt: string; answers: Array<{ rank: number; answer: string }> };
+        order: string[];
+        lockedPositions: number[];
+        attemptsUsed: number;
+      } | null>(getGameCacheKey("ranked-top-10", date), null);
       if (state) {
-        const answers = state.puzzle.answers.map((answer) => answer.name);
         return {
-          type: "top-three",
-          prompt: state.puzzle.category.prompt,
-          answers,
-          found: state.found,
-          missed: answers.filter((answer) => !state.found.includes(answer))
+          type: "ranked-top-10",
+          prompt: state.puzzle.playerPrompt,
+          userOrder: state.order,
+          correctOrder: [...state.puzzle.answers].sort((a, b) => a.rank - b.rank).map((answer) => answer.answer),
+          correctPositions: state.lockedPositions,
+          attemptsUsed: state.attemptsUsed
         };
       }
     }
@@ -87,7 +89,7 @@ function recoverReviewData(
         guess: string;
         correct: boolean;
         puzzle: { word: string; definition?: string };
-      } | null>(`minefield:spelldrop:v2:${date}`, null);
+      } | null>(getGameCacheKey("spelldrop", date), null);
       if (state?.puzzle) {
         return {
           type: "spelldrop",
@@ -108,7 +110,7 @@ function recoverReviewData(
           displayAnswer: string;
           sourceNote: string;
         };
-      } | null>(`minefield:closer:v2:${date}`, null);
+      } | null>(getGameCacheKey("closer", date), null);
       if (state?.puzzle) {
         const percentError = Math.abs(state.numericGuess - state.puzzle.answer) / Math.abs(state.puzzle.answer);
         return {
@@ -133,10 +135,12 @@ function recoverReviewData(
 export function loadGameProgress(date: string, scope?: string): MinefieldDailyBoard {
   const board = read<MinefieldDailyBoard>(boardKey(date, scope), { date, results: {} });
   const results = Object.fromEntries(
-    Object.entries(board.results).map(([gameId, value]) => {
+    Object.entries(board.results)
+      .filter(([gameId]) => RESULT_ORDER.includes(gameId as MinefieldGameResult["gameId"]))
+      .map(([gameId, value]) => {
       const id = gameId as MinefieldGameResult["gameId"];
       return [id, normalizeResult(id, value as MinefieldGameResult, board.date)];
-    })
+      })
   ) as MinefieldDailyBoard["results"];
   return { ...board, results };
 }

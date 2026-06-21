@@ -1,7 +1,7 @@
 export type MinefieldGameId =
   | "needledrop"
   | "minefield"
-  | "top-ten"
+  | "ranked-top-10"
   | "spelldrop"
   | "closer"
   | "meet-me-halfway"
@@ -18,12 +18,13 @@ export type NeedleDropReviewData = {
   won: boolean;
 };
 
-export type TopThreeReviewData = {
-  type: "top-three";
+export type RankedTopTenReviewData = {
+  type: "ranked-top-10";
   prompt: string;
-  answers: string[];
-  found: string[];
-  missed: string[];
+  userOrder: string[];
+  correctOrder: string[];
+  correctPositions: number[];
+  attemptsUsed: number;
 };
 
 export type SpellDropReviewData = {
@@ -77,7 +78,7 @@ export type LandmarkDropReviewData = {
 
 export type MinefieldReviewData =
   | NeedleDropReviewData
-  | TopThreeReviewData
+  | RankedTopTenReviewData
   | SpellDropReviewData
   | MinefieldGridReviewData
   | CloserReviewData

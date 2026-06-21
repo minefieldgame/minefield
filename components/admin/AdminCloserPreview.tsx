@@ -1,8 +1,9 @@
 "use client";
 
 import type { AdminCloserPreview as Preview } from "@/types/admin";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 
-export default function AdminCloserPreview({ preview, onRegenerate }: { preview: Preview; onRegenerate: () => void }) {
+export default function AdminCloserPreview({ preview, date, onRegenerate }: { preview: Preview; date: string; onRegenerate: () => void }) {
   if (preview.status === "error") return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <h2 className="text-2xl font-black">Closer</h2>
@@ -27,10 +28,15 @@ export default function AdminCloserPreview({ preview, onRegenerate }: { preview:
       <div className="flex items-center justify-between"><h2 className="text-2xl font-black">Closer</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {[
+          ["Selected date", date],
+          ["Current Pacific date", getPacificDateKey()],
+          ["Game cache key", getGameCacheKey("closer", date)],
           ["Generated prompt", puzzle.prompt], ["Answer", puzzle.displayAnswer], ["Unit", puzzle.unit],
           ["Source note", puzzle.sourceNote], ["Generator", preview.generator],
           ["Model used", preview.generator.match(/\(([^)]+)\)/)?.[1] ?? "Configured model"],
           ["Cache hit", String(preview.cacheHit)],
+          ["Puzzle source", preview.cacheHit ? "server cache" : "generated fresh"],
+          ["Generated at", preview.generatedAt],
           ["Generation duration", `${preview.generationDurationMs} ms`],
           ["Confidence", `${Math.round(preview.confidence * 100)}%`],
           ["Content hash", preview.contentHash],

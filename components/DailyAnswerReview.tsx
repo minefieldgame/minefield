@@ -44,24 +44,42 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
               </div>
             )}
 
-            {review.type === "top-three" && (
+            {review.type === "ranked-top-10" && (
               <div className="mt-3">
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{review.prompt}</p>
-                <ol className="mt-2 space-y-1.5">
-                  {review.answers.map((answer, index) => {
-                    const found = review.found.includes(answer);
-                    return (
-                      <li key={answer} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold ${
-                        found
-                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                          : "bg-slate-100 text-slate-600 dark:bg-[#292e38] dark:text-slate-300"
-                      }`}>
-                        <span>{index + 1}.</span><span>{answer}</span>
-                        <span className="ml-auto">{found ? "Found" : "Missed"}</span>
-                      </li>
-                    );
-                  })}
-                </ol>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Your final order</p>
+                    <ol className="mt-1.5 space-y-1">
+                      {review.userOrder.map((answer, index) => {
+                        const correct = review.correctOrder[index] === answer;
+                        return (
+                          <li key={`${answer}-${index}`} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-bold ${
+                            correct
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                              : "bg-red-500/10 text-red-700 dark:text-red-300"
+                          }`}>
+                            <span>{index + 1}.</span><span className="truncate">{answer}</span>
+                            <span className="ml-auto">{correct ? "✓" : "×"}</span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Correct order</p>
+                    <ol className="mt-1.5 space-y-1">
+                      {review.correctOrder.map((answer, index) => (
+                        <li key={answer} className="flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:bg-[#292e38] dark:text-slate-200">
+                          <span>{index + 1}.</span><span className="truncate">{answer}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {review.correctPositions.length}/10 correctly placed · {review.attemptsUsed} attempts used
+                </p>
               </div>
             )}
 

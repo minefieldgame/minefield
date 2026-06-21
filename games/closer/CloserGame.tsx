@@ -3,14 +3,12 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { calculateCloserScore, parseNumericGuess } from "@/games/closer/providers";
 import type { CloserPuzzle } from "@/games/closer/types";
-import { getDailyGameDate } from "@/lib/date";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import { markContentUsed } from "@/lib/content/repeatPrevention";
 import { fetchDailyPuzzle } from "@/lib/content/clientCache";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type CloserState = { date: string; rawGuess: string; numericGuess: number; completed: boolean; puzzle: CloserPuzzle };
-const STORAGE_PREFIX = "minefield:closer:v2:";
-
 export default function CloserGame({
   onComplete,
   date: selectedDate,
@@ -20,8 +18,8 @@ export default function CloserGame({
   date?: string;
   storageScope?: string;
 }) {
-  const date = selectedDate ?? getDailyGameDate();
-  const storageKey = storageScope ? `${STORAGE_PREFIX}${storageScope}:${date}` : `${STORAGE_PREFIX}${date}`;
+  const date = selectedDate ?? getPacificDateKey();
+  const storageKey = getGameCacheKey("closer", date, storageScope);
   const [puzzle, setPuzzle] = useState<CloserPuzzle | null>(null);
   const [input, setInput] = useState("");
   const [state, setState] = useState<CloserState | null>(null);
@@ -46,10 +44,19 @@ export default function CloserGame({
   }, [onComplete]);
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
+    setPuzzle(null);
+    setState(null);
+    setInput("");
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as CloserState;
+        if (parsed.date !== date || parsed.puzzle?.date !== date) {
+          localStorage.removeItem(storageKey);
+          throw new Error("Stale Closer state");
+        }
         setPuzzle(parsed.puzzle); setState(parsed); setInput(parsed.rawGuess);
         if (parsed.completed) report(parsed);
         setLoading(false); return;

@@ -44,11 +44,7 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
     setError("");
     const dateKey = date ?? getPacificDateKey();
     const stored = loadGame(dateKey, storageScope);
-    const [, todayMonth, todayDay] = dateKey.split("-");
-    const [, chartMonth, chartDay] = stored?.puzzle.chartDate?.split("-") ?? [];
-    const storedUsesExactCalendarDate =
-      stored && todayMonth === chartMonth && todayDay === chartDay;
-    if (stored && storedUsesExactCalendarDate) {
+    if (stored?.puzzle.puzzleDate === dateKey) {
       setState(stored);
       setShowResult(!embedded && stored.status !== "playing");
       if (stored.status !== "playing") {

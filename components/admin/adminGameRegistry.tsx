@@ -29,7 +29,7 @@ function TopTenModule({ data, onRegenerate, onRetryTopTen }: AdminGamePreviewPro
 }
 
 function SpellDropModule({ data }: AdminGamePreviewProps) {
-  return <AdminSpellDropPreview preview={data.games.spellDrop} />;
+  return <AdminSpellDropPreview preview={data.games.spellDrop} date={data.date} />;
 }
 
 function MinefieldModule({ data, onRegenerate }: AdminGamePreviewProps) {
@@ -37,7 +37,7 @@ function MinefieldModule({ data, onRegenerate }: AdminGamePreviewProps) {
 }
 
 function CloserModule({ data, onRegenerate }: AdminGamePreviewProps) {
-  return <AdminCloserPreview preview={data.games.closer} onRegenerate={onRegenerate} />;
+  return <AdminCloserPreview preview={data.games.closer} date={data.date} onRegenerate={onRegenerate} />;
 }
 
 function MeetMeHalfwayModule({ data }: AdminGamePreviewProps) {
@@ -64,8 +64,8 @@ export const adminGameRegistry: Array<{
     AdminPreviewComponent: MinefieldModule
   },
   {
-    gameId: "top-ten",
-    displayName: "Top 3",
+    gameId: "ranked-top-10",
+    displayName: "Top 10",
     AdminPreviewComponent: TopTenModule
   },
   {

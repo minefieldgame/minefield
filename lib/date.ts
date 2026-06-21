@@ -46,7 +46,19 @@ export function getPacificDateKey(date = new Date()) {
 }
 
 export function getDailyGameDate(date = new Date()) {
-  return getPacificToday(date).dateKey;
+  return getPacificDateKey(date);
+}
+
+export function getGameCacheKey(gameId: string, dateKey: string, scope?: string) {
+  return scope ? `${gameId}:${scope}:${dateKey}` : `${gameId}:${dateKey}`;
+}
+
+export function getBoardCacheKey(dateKey: string, scope?: string) {
+  return getGameCacheKey("minefield-board", dateKey, scope);
+}
+
+export function isTodayPacific(dateKey: string, now = new Date()) {
+  return dateKey === getPacificDateKey(now);
 }
 
 export function buildCalendarDate(year: number, month: number, day: number) {

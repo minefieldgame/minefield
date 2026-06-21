@@ -2,13 +2,12 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
-import { getDailyGameDate } from "@/lib/date";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import { markContentUsed } from "@/lib/content/repeatPrevention";
 import { fetchDailyPuzzle } from "@/lib/content/clientCache";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type SpellDropState = { date: string; guess: string; correct: boolean; completed: boolean; puzzle: SpellDropPuzzle };
-const STORAGE_PREFIX = "minefield:spelldrop:v2:";
 const REPLAY_LIMIT = 2;
 
 export default function SpellDropGame({
@@ -20,8 +19,8 @@ export default function SpellDropGame({
   date?: string;
   storageScope?: string;
 }) {
-  const date = selectedDate ?? getDailyGameDate();
-  const storageKey = storageScope ? `${STORAGE_PREFIX}${storageScope}:${date}` : `${STORAGE_PREFIX}${date}`;
+  const date = selectedDate ?? getPacificDateKey();
+  const storageKey = getGameCacheKey("spelldrop", date, storageScope);
   const [puzzle, setPuzzle] = useState<SpellDropPuzzle | null>(null);
   const [guess, setGuess] = useState("");
   const [plays, setPlays] = useState(0);
@@ -45,10 +44,20 @@ export default function SpellDropGame({
   }, [onComplete]);
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
+    setPuzzle(null);
+    setState(null);
+    setGuess("");
+    setPlays(0);
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as SpellDropState;
+        if (parsed.date !== date || parsed.puzzle?.date !== date) {
+          localStorage.removeItem(storageKey);
+          throw new Error("Stale SpellDrop state");
+        }
         setPuzzle(parsed.puzzle); setState(parsed); setGuess(parsed.guess);
         if (parsed.completed) report(parsed);
         setLoading(false); return;

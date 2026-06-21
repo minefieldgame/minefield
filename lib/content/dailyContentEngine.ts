@@ -9,6 +9,7 @@ import { generateContentHash, hasRecentlyAppeared, markContentUsed } from "@/lib
 import type { ValidationResult } from "@/lib/content/validation";
 import { hashString } from "@/lib/dailySeed";
 import { DYNAMIC_CONTENT_MAX_ATTEMPTS } from "@/lib/content/config";
+import { getGameCacheKey } from "@/lib/date";
 
 export type GeneratedContentEnvelope<T> = {
   puzzle: T;
@@ -50,7 +51,7 @@ export async function generateDailyContent<T>({
   validate: (puzzle: T) => ValidationResult;
   describe: (puzzle: T) => { topic: string; answer: string; hashInput?: unknown };
 }) {
-  const cacheKey = `${gameId}:${date}`;
+  const cacheKey = getGameCacheKey(gameId, date);
   if (!force) {
     const cached = getCachedContent<GeneratedContentEnvelope<T>>(cacheKey);
     if (cached) return { ...cached, cacheHit: true, generationDurationMs: 0 };

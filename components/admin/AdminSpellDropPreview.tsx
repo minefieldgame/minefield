@@ -1,8 +1,9 @@
 "use client";
 
 import type { AdminSpellDropPreview as Preview } from "@/types/admin";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 
-export default function AdminSpellDropPreview({ preview }: { preview: Preview }) {
+export default function AdminSpellDropPreview({ preview, date }: { preview: Preview; date: string }) {
   if (preview.status === "error") return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <h2 className="text-2xl font-black">SpellDrop</h2>
@@ -27,11 +28,16 @@ export default function AdminSpellDropPreview({ preview }: { preview: Preview })
       <div className="flex items-center justify-between"><h2 className="text-2xl font-black">SpellDrop</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {[
+          ["Selected date", date],
+          ["Current Pacific date", getPacificDateKey()],
+          ["Game cache key", getGameCacheKey("spelldrop", date)],
           ["Generated word", puzzle.word], ["Definition", puzzle.definition],
           ["Common misspellings", puzzle.commonMisspellings.join(", ")],
           ["Pronunciation hint", puzzle.pronunciationHint], ["Generator", preview.generator],
           ["Model used", preview.generator.match(/\(([^)]+)\)/)?.[1] ?? "Configured model"],
           ["Cache hit", String(preview.cacheHit)],
+          ["Puzzle source", preview.cacheHit ? "server cache" : "generated fresh"],
+          ["Generated at", preview.generatedAt],
           ["Generation duration", `${preview.generationDurationMs} ms`],
           ["Confidence", `${Math.round(preview.confidence * 100)}%`],
           ["Content hash", preview.contentHash],

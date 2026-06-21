@@ -1,4 +1,4 @@
-import type { TopTenPuzzle } from "@/games/top-ten/types";
+import type { RankedTopTenPuzzle } from "@/games/top-ten/types";
 import type { DailyPuzzle } from "@/types/game";
 import type { MinefieldPuzzle } from "@/games/minefield/logic";
 import type { CloserPuzzle } from "@/games/closer/types";
@@ -45,7 +45,7 @@ export type AdminNeedleDropPreview =
 export type AdminTopTenPreview =
   | {
       status: "ready";
-      puzzle: TopTenPuzzle;
+      puzzle: RankedTopTenPuzzle;
       diagnostics: {
         sourceProvider: string;
         validationStatus: string;
@@ -82,6 +82,11 @@ export type AdminPreviewResponse = {
   dailySeed: number;
   seedHash: string;
   generatedAt: string;
+  cacheKeys: {
+    rankedTopTen: string;
+    spellDrop: string;
+    closer: string;
+  };
   games: {
     needledrop: AdminNeedleDropPreview;
     topTen: AdminTopTenPreview;

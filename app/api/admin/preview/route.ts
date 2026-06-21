@@ -7,8 +7,12 @@ import { resolveLandmarkDropPuzzle, resolveMeetMeHalfwayPuzzle } from "@/games/g
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
 import { getAIStatus } from "@/lib/content/aiClient";
 import { hashString } from "@/lib/dailySeed";
-import { getDailyGameDate } from "@/lib/date";
+import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
+import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
+import type { SpellDropPuzzle } from "@/games/spelldrop/types";
+import type { CloserPuzzle } from "@/games/closer/types";
+import type { RankedTopTenPuzzle } from "@/games/top-ten/types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +21,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
   const selected = request.nextUrl.searchParams.get("date");
-  const date = selected && /^\d{4}-\d{2}-\d{2}$/.test(selected) ? selected : getDailyGameDate();
+  const date = selected && /^\d{4}-\d{2}-\d{2}$/.test(selected) ? selected : getPacificDateKey();
   const topTenRetry = Number(request.nextUrl.searchParams.get("topTenRetry") ?? 0);
   const force = request.nextUrl.searchParams.get("force") === "1";
   const aiStatus = getAIStatus();
@@ -38,11 +42,34 @@ export async function GET(request: NextRequest) {
   };
   };
 
+  async function fetchCanonical<T>(path: string) {
+    const response = await fetch(`${request.nextUrl.origin}${path}?date=${date}`, { cache: "force-cache" });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error ?? `${path} failed.`);
+    const cacheSignal = [
+      response.headers.get("x-cache"),
+      response.headers.get("x-vercel-cache"),
+      response.headers.get("cf-cache-status"),
+      response.headers.get("x-amz-cf-cache-status"),
+      response.headers.get("age")
+    ].filter(Boolean).join(" ");
+    if (payload && typeof payload === "object") {
+      payload.cacheHit = Boolean(payload.cacheHit || /\bhit\b/i.test(cacheSignal) || Number(response.headers.get("age") ?? 0) > 0);
+    }
+    return payload as T;
+  }
+
   const [needledropResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
     resolveNeedleDropDiagnostic(date),
-    resolveDailyTopTenPuzzle(date, { force: topTenRetry > 0 || force, retryOffset: topTenRetry }),
-    resolveDailySpellDropPuzzle(date, force),
-    resolveDailyCloserPuzzle(date, force)
+    force || topTenRetry > 0
+      ? resolveDailyTopTenPuzzle(date, { force: true, retryOffset: topTenRetry })
+      : fetchCanonical<RankedTopTenPuzzle>("/api/top-ten/generate"),
+    force
+      ? resolveDailySpellDropPuzzle(date, true)
+      : fetchCanonical<GeneratedContentEnvelope<SpellDropPuzzle> & SpellDropPuzzle>("/api/spelldrop"),
+    force
+      ? resolveDailyCloserPuzzle(date, true)
+      : fetchCanonical<GeneratedContentEnvelope<CloserPuzzle> & CloserPuzzle>("/api/closer")
   ]);
 
   const needledrop = needledropResult.status === "fulfilled"
@@ -59,7 +86,7 @@ export async function GET(request: NextRequest) {
           validationStatus: validateTopTenPuzzle(topTenResult.value).valid ? "valid" : "invalid",
           dataFreshness: `Generated ${topTenResult.value.generatedAt}`,
           confidence: topTenResult.value.confidence,
-          generationMode: topTenResult.value.generationMode,
+          generationMode: "live-ai",
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           warning: providerStatus.warning,
           errors: topTenResult.value.validation.errors
@@ -68,7 +95,7 @@ export async function GET(request: NextRequest) {
       }
     : {
         status: "error" as const,
-        error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Top 3 failed.",
+        error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Top 10 failed.",
         diagnostics: {
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           liveAIEnabled: providerStatus.mode === "live-ai",
@@ -94,7 +121,12 @@ export async function GET(request: NextRequest) {
   const dailySeed = hashString(`minefield:${date}`);
   return NextResponse.json({
     date,
-    pacificDate: date,
+    pacificDate: getPacificDateKey(),
+    cacheKeys: {
+      rankedTopTen: getGameCacheKey("ranked-top-10", date),
+      spellDrop: getGameCacheKey("spelldrop", date),
+      closer: getGameCacheKey("closer", date)
+    },
     dailySeed,
     seedHash: dailySeed.toString(16).padStart(8, "0"),
     generatedAt: new Date().toISOString(),
