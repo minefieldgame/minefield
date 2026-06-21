@@ -3,12 +3,12 @@
 Minefield is a mobile-first daily feed of seven quick trivia and skill games:
 
 - NeedleDrop — identify a song from increasingly long official preview clips.
-- Minefield — choose up to five safe tiles while avoiding three hidden mines.
 - Top 10 — drag ten familiar items into the correct ranked order.
 - SpellDrop — spell one dynamically generated commonly misspelled word.
 - Closer — estimate one dynamically generated numeric fact.
 - Meet Me Halfway — place the geographic midpoint between two world cities.
 - Landmark Drop — locate a famous landmark on the world map.
+- Minefield — survive a final board whose difficulty is earned across the first six games.
 
 The app uses Next.js App Router, React, TypeScript, Tailwind CSS, server route handlers, and browser-local progress. The full board is worth 700 points.
 
@@ -82,7 +82,7 @@ All games reset at midnight in `America/Los_Angeles`. Shared helpers include:
 - `loadGameProgress()`
 - `calculateDailySummary()`
 
-The feed allows only controlled forward progression. Completing a game advances to the next game, and answer review remains locked until the full board is complete.
+The feed allows only controlled forward progression. The first six scores determine the final Minefield difficulty. Completing Minefield unlocks the daily answer review.
 
 ## AWS Amplify
 

@@ -96,10 +96,13 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
             {review.type === "minefield" && (
               <div className="mt-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">
-                  {review.hitMine ? "Hit a mine" : "Banked safely"} · {review.safePicks.length} safe picks
+                  {review.hitMine ? "Hit a mine" : "Minefield cleared"} · {review.difficulty} difficulty · {review.runScore}/{review.runMaxScore} earned
                 </p>
-                <div className="mx-auto mt-3 grid max-w-[250px] grid-cols-5 gap-1.5">
-                  {Array.from({ length: 25 }, (_, index) => {
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  {review.mineCount} mines · {review.safePicks.length}/{review.maxPicks} safe picks
+                </p>
+                <div className="mx-auto mt-3 grid max-w-[260px] grid-cols-4 gap-2">
+                  {Array.from({ length: 16 }, (_, index) => {
                     const mine = review.minePositions.includes(index);
                     const picked = review.safePicks.includes(index);
                     return (

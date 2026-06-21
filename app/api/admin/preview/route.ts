@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     games: {
       needledrop,
-      minefield: { status: "ready", puzzle: resolveMinefieldPuzzle(date) },
+      minefield: { status: "ready", puzzle: resolveMinefieldPuzzle(date, 480, 600) },
       topTen,
       spellDrop,
       closer,

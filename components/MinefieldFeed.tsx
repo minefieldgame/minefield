@@ -24,12 +24,21 @@ import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "
 
 const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
   { id: "needledrop", title: "NeedleDrop", subtitle: "Name the song from an increasingly longer clip." },
-  { id: "minefield", title: "Minefield", subtitle: "Tap up to 5 tiles and avoid the 3 hidden mines." },
   { id: "ranked-top-10", title: "Top 10", subtitle: "Drag the 10 items into the correct order." },
   { id: "spelldrop", title: "SpellDrop", subtitle: "Listen carefully and spell the word in one attempt." },
   { id: "closer", title: "Closer", subtitle: "Make one numeric guess and get as close as you can." },
   { id: "meet-me-halfway", title: "Meet Me Halfway", subtitle: "Drop a pin where you think the halfway point is." },
-  { id: "landmark-drop", title: "Landmark Drop", subtitle: "Drop a pin where this landmark is located." }
+  { id: "landmark-drop", title: "Landmark Drop", subtitle: "Drop a pin where this landmark is located." },
+  { id: "minefield", title: "Minefield", subtitle: "Survive the final field using the difficulty you earned." }
+];
+
+const PRELIMINARY_GAME_IDS: MinefieldGameId[] = [
+  "needledrop",
+  "ranked-top-10",
+  "spelldrop",
+  "closer",
+  "meet-me-halfway",
+  "landmark-drop"
 ];
 
 type FeedMode = "daily" | "admin-preview";
@@ -48,7 +57,7 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
     const hitMine = result.reviewData?.type === "minefield" && result.reviewData.hitMine;
     return hitMine
       ? { title: "You hit a mine", detail: `${result.successUnits} safe tiles`, tone: "red" }
-      : { title: "Score banked", detail: `${result.successUnits} safe tiles`, tone: result.score >= 80 ? "green" : "amber" };
+      : { title: "Minefield Cleared", detail: `${result.score} points`, tone: "green" };
   }
   if (result.gameId === "ranked-top-10") {
     return {
@@ -112,14 +121,22 @@ export default function MinefieldFeed({
     setReady(false);
     setCompletionResult(null);
     const loaded = loadGameProgress(date, storageScope);
-    setBoard(loaded);
-    setStarted(Boolean(localStorage.getItem(startedKey)) || Object.keys(loaded.results).length > 0);
-    const firstIncomplete = GAMES.findIndex((game) => !loaded.results[game.id]?.completed);
+    const legacyMinefield = loaded.results.minefield?.reviewData.type === "minefield" &&
+      !loaded.results.minefield.reviewData.difficulty;
+    const normalized = legacyMinefield
+      ? { ...loaded, results: { ...loaded.results, minefield: undefined } }
+      : loaded;
+    setBoard(normalized);
+    setStarted(Boolean(localStorage.getItem(startedKey)) || Object.keys(normalized.results).length > 0);
+    const firstIncomplete = GAMES.findIndex((game) => !normalized.results[game.id]?.completed);
     setActiveIndex(firstIncomplete === -1 ? GAMES.length : firstIncomplete);
     setReady(true);
   }, [date, startedKey, storageScope]);
 
   const summary = useMemo(() => calculateDailySummary(board, GAMES.length), [board]);
+  const runPerformance = useMemo(() => PRELIMINARY_GAME_IDS.reduce((total, gameId) => {
+    return total + (board.results[gameId]?.score ?? 0);
+  }, 0), [board.results]);
 
   const handleComplete = useCallback((result: MinefieldGameResult) => {
     setCompletionResult(result);
@@ -237,7 +254,13 @@ export default function MinefieldFeed({
                           game.id === "needledrop" ? (
                             <NeedleDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "minefield" ? (
-                            <MinefieldGame onComplete={handleComplete} date={date} storageScope={storageScope} />
+                            <MinefieldGame
+                              onComplete={handleComplete}
+                              date={date}
+                              storageScope={storageScope}
+                              runScore={runPerformance}
+                              runMaxScore={600}
+                            />
                           ) : game.id === "ranked-top-10" ? (
                             <TopTenGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "spelldrop" ? (

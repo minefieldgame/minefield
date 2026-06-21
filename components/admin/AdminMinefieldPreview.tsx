@@ -23,6 +23,10 @@ export default function AdminMinefieldPreview({
         {[
           ["Selected date", preview.puzzle.date],
           ["Daily seed", preview.puzzle.seed],
+          ["Difficulty preview", preview.puzzle.difficulty],
+          ["Run score preview", `${preview.puzzle.runScore}/${preview.puzzle.runMaxScore}`],
+          ["Mine count", preview.puzzle.mineCount],
+          ["Picks allowed", preview.puzzle.maxPicks],
           ["Mine positions", preview.puzzle.minePositions.map((value) => value + 1).join(", ")]
         ].map(([label, value]) => (
           <div key={label} className="theme-raised rounded-xl border p-3">
@@ -31,8 +35,8 @@ export default function AdminMinefieldPreview({
           </div>
         ))}
       </div>
-      <div className="mx-auto mt-4 grid max-w-[280px] grid-cols-5 gap-1.5">
-        {Array.from({ length: 25 }, (_, index) => (
+      <div className="mx-auto mt-4 grid max-w-[280px] grid-cols-4 gap-2">
+        {Array.from({ length: 16 }, (_, index) => (
           <div key={index} className={`grid aspect-square place-items-center rounded-md border text-sm ${preview.puzzle.minePositions.includes(index) ? "border-red-500 bg-red-500 text-white" : "border-slate-200 bg-slate-100 dark:border-[#454c5a] dark:bg-[#292e38]"}`}>
             {preview.puzzle.minePositions.includes(index) ? "💣" : index + 1}
           </div>

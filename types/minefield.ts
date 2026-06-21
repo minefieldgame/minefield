@@ -41,6 +41,11 @@ export type MinefieldGridReviewData = {
   safePicks: number[];
   path: number[];
   hitMine: boolean;
+  difficulty: string;
+  runScore: number;
+  runMaxScore: number;
+  mineCount: number;
+  maxPicks: number;
   clue?: string;
 };
 

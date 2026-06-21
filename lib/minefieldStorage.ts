@@ -5,12 +5,12 @@ const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
 const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
-  "needledrop", "minefield", "ranked-top-10", "spelldrop", "closer",
-  "meet-me-halfway", "landmark-drop"
+  "needledrop", "ranked-top-10", "spelldrop", "closer",
+  "meet-me-halfway", "landmark-drop", "minefield"
 ];
 const GAME_DEFAULTS = {
   needledrop: { displayName: "NeedleDrop", icon: "🎵", totalUnits: 7 },
-  minefield: { displayName: "Minefield", icon: "💣", totalUnits: 5 },
+  minefield: { displayName: "Minefield", icon: "💣", totalUnits: 6 },
   "ranked-top-10": { displayName: "Top 10", icon: "🏆", totalUnits: 10 },
   spelldrop: { displayName: "SpellDrop", icon: "🔤", totalUnits: 1 },
   closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 },
@@ -142,6 +142,12 @@ export function loadGameProgress(date: string, scope?: string): MinefieldDailyBo
       return [id, normalizeResult(id, value as MinefieldGameResult, board.date)];
       })
   ) as MinefieldDailyBoard["results"];
+  if (
+    results.minefield?.reviewData.type === "minefield" &&
+    !results.minefield.reviewData.difficulty
+  ) {
+    delete results.minefield;
+  }
   return { ...board, results };
 }
 

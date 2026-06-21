@@ -2,6 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   correctOrder,
   evaluateRankedOrder,
   initialRankedOrder,
@@ -37,8 +55,12 @@ export default function TopTenGame({
   const [state, setState] = useState<RankedTopTenState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [draggedAnswer, setDraggedAnswer] = useState<string | null>(null);
+  const [activeAnswer, setActiveAnswer] = useState<string | null>(null);
   const [feedbackPositions, setFeedbackPositions] = useState<number[]>([]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const reportCompletion = useCallback((next: RankedTopTenState) => {
     const score = rankedTopTenScore(next.lockedPositions);
@@ -74,7 +96,7 @@ export default function TopTenGame({
     setError("");
     setState(null);
     setFeedbackPositions([]);
-    setDraggedAnswer(null);
+    setActiveAnswer(null);
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
@@ -127,6 +149,21 @@ export default function TopTenGame({
       .finally(() => setLoading(false));
   }, [date, onComplete, reportCompletion, storageKey]);
 
+  useEffect(() => {
+    if (!activeAnswer) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    const preventTouchMove = (event: TouchEvent) => event.preventDefault();
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.addEventListener("touchmove", preventTouchMove, { passive: false });
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+      document.removeEventListener("touchmove", preventTouchMove);
+    };
+  }, [activeAnswer]);
+
   function persist(next: RankedTopTenState) {
     localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next);
@@ -140,23 +177,15 @@ export default function TopTenGame({
     persist({ ...state, order, updatedAt: new Date().toISOString() });
   }
 
-  function moveDirection(index: number, direction: -1 | 1) {
-    if (!state) return;
-    const locked = new Set(state.lockedPositions);
-    let target = index + direction;
-    while (target >= 0 && target < state.order.length && locked.has(target)) target += direction;
-    if (target >= 0 && target < state.order.length) move(index, target);
+  function handleDragStart(event: DragStartEvent) {
+    setActiveAnswer(String(event.active.id));
+    if ("vibrate" in navigator) navigator.vibrate(15);
   }
 
-  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    if (!state || !draggedAnswer) return;
-    event.preventDefault();
-    const target = document.elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>("[data-order-index]");
-    if (!target) return;
-    const fromIndex = state.order.indexOf(draggedAnswer);
-    const toIndex = Number(target.dataset.orderIndex);
-    if (Number.isInteger(toIndex) && fromIndex !== toIndex) move(fromIndex, toIndex);
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveAnswer(null);
+    if (!state || !event.over || event.active.id === event.over.id) return;
+    move(state.order.indexOf(String(event.active.id)), state.order.indexOf(String(event.over.id)));
   }
 
   function submit() {
@@ -209,12 +238,9 @@ export default function TopTenGame({
   }
 
   const ended = state.status !== "playing";
+  const activeLabel = activeAnswer ? answerLabels.get(activeAnswer) ?? activeAnswer : "";
   return (
-    <div
-      onPointerMove={handlePointerMove}
-      onPointerUp={() => setDraggedAnswer(null)}
-      onPointerCancel={() => setDraggedAnswer(null)}
-    >
+    <div className="overscroll-none">
       <div className="flex items-center justify-between gap-3">
         <span className="rounded-full bg-violet/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">
           {state.puzzle.category}
@@ -227,50 +253,37 @@ export default function TopTenGame({
         {state.puzzle.playerPrompt}
       </h3>
 
-      <div className="mt-3 space-y-1.5">
-        {state.order.map((answer, index) => {
-          const locked = state.lockedPositions.includes(index);
-          const incorrect = feedbackPositions.includes(index);
-          return (
-            <div
-              key={answer}
-              data-order-index={index}
-              className={`flex min-h-10 items-center gap-2 rounded-xl border px-2 py-1.5 transition ${
-                locked
-                  ? "border-emerald-400 bg-emerald-500/12 text-emerald-800 dark:border-emerald-400/40 dark:text-emerald-200"
-                  : incorrect
-                    ? "border-red-400 bg-red-500/10 text-red-800 dark:border-red-400/40 dark:text-red-200"
-                    : draggedAnswer === answer
-                      ? "border-violet bg-violet/10 shadow-lg"
-                      : "border-slate-200 bg-white text-slate-800 dark:border-[#3b424f] dark:bg-[#252a34] dark:text-white"
-              }`}
-            >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-black/[.05] text-xs font-black dark:bg-white/[.07]">
-                {index + 1}
-              </span>
-              <button
-                type="button"
-                disabled={locked || ended}
-                onPointerDown={(event) => {
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  setDraggedAnswer(answer);
-                }}
-                className="touch-none select-none text-slate-400 disabled:cursor-default"
-                aria-label={locked ? `${answer} locked` : `Drag ${answer}`}
-              >
-                {locked ? "✓" : "☰"}
-              </button>
-              <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{answerLabels.get(answer)}</span>
-              {!locked && !ended && (
-                <span className="flex shrink-0 gap-1">
-                  <button type="button" onClick={() => moveDirection(index, -1)} className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-xs dark:bg-[#343a47]" aria-label={`Move ${answer} up`}>↑</button>
-                  <button type="button" onClick={() => moveDirection(index, 1)} className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-xs dark:bg-[#343a47]" aria-label={`Move ${answer} down`}>↓</button>
-                </span>
-              )}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragCancel={() => setActiveAnswer(null)}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={state.order} strategy={verticalListSortingStrategy}>
+          <div className="mt-3 touch-none space-y-1 overscroll-none">
+            {state.order.map((answer, index) => (
+              <SortableRankCard
+                key={answer}
+                id={answer}
+                index={index}
+                label={answerLabels.get(answer) ?? answer}
+                locked={state.lockedPositions.includes(index)}
+                incorrect={feedbackPositions.includes(index)}
+                disabled={ended}
+              />
+            ))}
+          </div>
+        </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 180, easing: "ease-out" }}>
+          {activeAnswer ? (
+            <div className="flex h-11 items-center gap-3 rounded-xl border-2 border-violet bg-white px-3 text-sm font-extrabold text-slate-900 shadow-2xl dark:bg-[#252a34] dark:text-white">
+              <span className="text-violet">☰</span>
+              <span className="truncate">{activeLabel}</span>
             </div>
-          );
-        })}
-      </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {!ended && (
         <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
@@ -282,6 +295,56 @@ export default function TopTenGame({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function SortableRankCard({
+  id,
+  index,
+  label,
+  locked,
+  incorrect,
+  disabled
+}: {
+  id: string;
+  index: number;
+  label: string;
+  locked: boolean;
+  incorrect: boolean;
+  disabled: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id, disabled: locked || disabled });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+      {...listeners}
+      className={`flex h-11 touch-none select-none items-center gap-3 rounded-xl border px-3 shadow-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-violet/25 ${
+        locked
+          ? "animate-[pulse_.35s_ease-out_1] border-emerald-400 bg-emerald-500/12 text-emerald-800 shadow-emerald-500/15 dark:border-emerald-400/40 dark:text-emerald-200"
+          : incorrect
+            ? "border-red-400 bg-red-500/10 text-red-800 dark:border-red-400/40 dark:text-red-200"
+            : isDragging
+              ? "border-violet bg-violet/10 opacity-30"
+              : "cursor-grab border-slate-200 bg-white text-slate-800 shadow-[0_3px_10px_rgba(15,23,42,.08)] active:cursor-grabbing dark:border-[#3b424f] dark:bg-[#252a34] dark:text-white"
+      }`}
+      aria-label={`${index + 1}. ${label}${locked ? ", locked" : ", draggable"}`}
+    >
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-black/[.05] text-xs font-black dark:bg-white/[.07]">
+        {index + 1}
+      </span>
+      <span className={`text-lg ${locked ? "text-emerald-600" : "text-slate-400"}`}>{locked ? "✓" : "☰"}</span>
+      <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{label}</span>
+      {locked && <span className="text-[10px] font-black uppercase tracking-wider">Locked</span>}
     </div>
   );
 }
