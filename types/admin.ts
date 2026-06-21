@@ -6,6 +6,19 @@ import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
 import type { resolveMeetMeHalfwayPuzzle, resolveLandmarkDropPuzzle } from "@/games/geography/puzzles";
 
+export type AdminResolverDiagnostics = {
+  route: string;
+  resolver: string;
+  date: string;
+  cacheKey: string;
+  cacheHit: boolean;
+  envDetected: boolean;
+  model: string;
+  generatedAt?: string;
+  errorType?: string;
+  errorMessage?: string;
+};
+
 export type AdminNeedleDropPreview =
   | {
       status: "ready";
@@ -55,6 +68,7 @@ export type AdminTopTenPreview =
         apiKeyConfigured: boolean;
         warning: string | null;
         errors: string[];
+        resolverDiagnostics: AdminResolverDiagnostics;
       };
       rawProviderResponse: unknown;
     }
@@ -73,6 +87,7 @@ export type AdminTopTenPreview =
         contentHash: null;
         fallbackUsed: false;
         errors: string[];
+        resolverDiagnostics: AdminResolverDiagnostics;
       };
     };
 
@@ -111,11 +126,12 @@ export type AdminDynamicError = {
     contentHash: null;
     fallbackUsed: false;
     errors: string[];
+    resolverDiagnostics: AdminResolverDiagnostics;
   };
 };
 
 export type AdminSpellDropPreview =
-  | ({ status: "ready" } & GeneratedContentEnvelope<SpellDropPuzzle>)
+  | ({ status: "ready"; diagnostics: AdminResolverDiagnostics } & GeneratedContentEnvelope<SpellDropPuzzle>)
   | AdminDynamicError;
 
 export type AdminMinefieldPreview = {
@@ -124,7 +140,7 @@ export type AdminMinefieldPreview = {
 };
 
 export type AdminCloserPreview =
-  | ({ status: "ready" } & GeneratedContentEnvelope<CloserPuzzle>)
+  | ({ status: "ready"; diagnostics: AdminResolverDiagnostics } & GeneratedContentEnvelope<CloserPuzzle>)
   | AdminDynamicError;
 
 export type AdminMeetMeHalfwayPreview = {

@@ -59,3 +59,5 @@ export async function resolveDailySpellDropPuzzle(
     describe: (puzzle) => ({ topic: "commonly misspelled English words", answer: puzzle.word, hashInput: puzzle.word })
   });
 }
+
+export const resolveSpellDropForDate = resolveDailySpellDropPuzzle;

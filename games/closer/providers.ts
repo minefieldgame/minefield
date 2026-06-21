@@ -65,6 +65,8 @@ export async function resolveDailyCloserPuzzle(
   });
 }
 
+export const resolveCloserForDate = resolveDailyCloserPuzzle;
+
 export function parseNumericGuess(input: string) {
   const normalized = input.trim().toLowerCase().replace(/[$,%\s,]/g, "");
   if (!normalized) return null;

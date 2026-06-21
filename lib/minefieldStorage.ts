@@ -148,6 +148,16 @@ export function loadGameProgress(date: string, scope?: string): MinefieldDailyBo
   ) {
     delete results.minefield;
   }
+  for (const gameId of ["ranked-top-10", "spelldrop", "closer"] as const) {
+    const result = results[gameId];
+    if (
+      result &&
+      (/unavailable/i.test(result.summaryLabel) ||
+        (result.reviewData.type === "legacy" && /unavailable|could not be loaded/i.test(result.reviewData.message)))
+    ) {
+      delete results[gameId];
+    }
+  }
   return { ...board, results };
 }
 

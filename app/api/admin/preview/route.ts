@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveDailyTopTenPuzzle, getTopTenProviderStatus, validateTopTenPuzzle } from "@/games/top-ten/providers";
-import { resolveDailySpellDropPuzzle } from "@/games/spelldrop/providers";
-import { resolveDailyCloserPuzzle } from "@/games/closer/providers";
+import { resolveRankedTop10ForDate, getTopTenProviderStatus, validateTopTenPuzzle } from "@/games/top-ten/providers";
+import { resolveSpellDropForDate } from "@/games/spelldrop/providers";
+import { resolveCloserForDate } from "@/games/closer/providers";
 import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
 import { resolveLandmarkDropPuzzle, resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
@@ -9,10 +9,11 @@ import { getAIStatus } from "@/lib/content/aiClient";
 import { hashString } from "@/lib/dailySeed";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
-import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
-import type { SpellDropPuzzle } from "@/games/spelldrop/types";
-import type { CloserPuzzle } from "@/games/closer/types";
-import type { RankedTopTenPuzzle } from "@/games/top-ten/types";
+import {
+  classifyDynamicError,
+  dynamicResolverDiagnostics,
+  type DynamicGameId
+} from "@/lib/content/dynamicErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +26,17 @@ export async function GET(request: NextRequest) {
   const topTenRetry = Number(request.nextUrl.searchParams.get("topTenRetry") ?? 0);
   const force = request.nextUrl.searchParams.get("force") === "1";
   const aiStatus = getAIStatus();
-  const dynamicError = (reason: unknown) => {
-    const message = reason instanceof Error ? reason.message : "Generation failed.";
+  const dynamicError = (gameId: DynamicGameId, route: string, reason: unknown) => {
+    const classified = classifyDynamicError(reason);
+    const resolverDiagnostics = {
+      ...dynamicResolverDiagnostics(gameId, date, route),
+      cacheHit: false,
+      errorType: classified.errorType,
+      errorMessage: classified.message
+    };
     return {
     status: "error" as const,
-    error: message,
+    error: classified.message,
     diagnostics: {
       ...aiStatus,
       generationStatus: "failed" as const,
@@ -37,45 +44,29 @@ export async function GET(request: NextRequest) {
       sourceData: [],
       contentHash: null,
       fallbackUsed: false as const,
-      errors: [message]
+      errors: [classified.message],
+      resolverDiagnostics
     }
   };
   };
-
-  async function fetchCanonical<T>(path: string) {
-    const response = await fetch(`${request.nextUrl.origin}${path}?date=${date}`, { cache: "force-cache" });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error ?? `${path} failed.`);
-    const cacheSignal = [
-      response.headers.get("x-cache"),
-      response.headers.get("x-vercel-cache"),
-      response.headers.get("cf-cache-status"),
-      response.headers.get("x-amz-cf-cache-status"),
-      response.headers.get("age")
-    ].filter(Boolean).join(" ");
-    if (payload && typeof payload === "object") {
-      payload.cacheHit = Boolean(payload.cacheHit || /\bhit\b/i.test(cacheSignal) || Number(response.headers.get("age") ?? 0) > 0);
-    }
-    return payload as T;
-  }
 
   const [needledropResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
     resolveNeedleDropDiagnostic(date),
-    force || topTenRetry > 0
-      ? resolveDailyTopTenPuzzle(date, { force: true, retryOffset: topTenRetry })
-      : fetchCanonical<RankedTopTenPuzzle>("/api/top-ten/generate"),
-    force
-      ? resolveDailySpellDropPuzzle(date, true)
-      : fetchCanonical<GeneratedContentEnvelope<SpellDropPuzzle> & SpellDropPuzzle>("/api/spelldrop"),
-    force
-      ? resolveDailyCloserPuzzle(date, true)
-      : fetchCanonical<GeneratedContentEnvelope<CloserPuzzle> & CloserPuzzle>("/api/closer")
+    resolveRankedTop10ForDate(date, {
+      force: topTenRetry > 0 || force,
+      retryOffset: topTenRetry
+    }),
+    resolveSpellDropForDate(date, force),
+    resolveCloserForDate(date, force)
   ]);
 
   const needledrop = needledropResult.status === "fulfilled"
     ? { status: "ready" as const, ...needledropResult.value }
     : { status: "error" as const, error: needledropResult.reason instanceof Error ? needledropResult.reason.message : "NeedleDrop failed." };
 
+  const topTenFailure = topTenResult.status === "rejected"
+    ? classifyDynamicError(topTenResult.reason)
+    : null;
   const providerStatus = getTopTenProviderStatus();
   const topTen = topTenResult.status === "fulfilled"
     ? {
@@ -89,7 +80,12 @@ export async function GET(request: NextRequest) {
           generationMode: "live-ai",
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           warning: providerStatus.warning,
-          errors: topTenResult.value.validation.errors
+          errors: topTenResult.value.validation.errors,
+          resolverDiagnostics: {
+            ...dynamicResolverDiagnostics("ranked-top-10", date, "/api/top-ten/generate"),
+            cacheHit: Boolean(topTenResult.value.cacheHit),
+            generatedAt: topTenResult.value.generatedAt
+          }
         },
         rawProviderResponse: topTenResult.value.rawAIResponse
       }
@@ -107,16 +103,38 @@ export async function GET(request: NextRequest) {
           sourceData: [],
           contentHash: null,
           fallbackUsed: false as const,
-          errors: [topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure."]
+          errors: [topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure."],
+          resolverDiagnostics: {
+            ...dynamicResolverDiagnostics("ranked-top-10", date, "/api/top-ten/generate"),
+            cacheHit: false,
+            errorType: topTenFailure?.errorType,
+            errorMessage: topTenFailure?.message
+          }
         }
       };
 
   const spellDrop = spellDropResult.status === "fulfilled"
-    ? { status: "ready" as const, ...spellDropResult.value }
-    : dynamicError(spellDropResult.reason);
+    ? {
+        status: "ready" as const,
+        ...spellDropResult.value,
+        diagnostics: {
+          ...dynamicResolverDiagnostics("spelldrop", date, "/api/spelldrop"),
+          cacheHit: spellDropResult.value.cacheHit,
+          generatedAt: spellDropResult.value.generatedAt
+        }
+      }
+    : dynamicError("spelldrop", "/api/spelldrop", spellDropResult.reason);
   const closer = closerResult.status === "fulfilled"
-    ? { status: "ready" as const, ...closerResult.value }
-    : dynamicError(closerResult.reason);
+    ? {
+        status: "ready" as const,
+        ...closerResult.value,
+        diagnostics: {
+          ...dynamicResolverDiagnostics("closer", date, "/api/closer"),
+          cacheHit: closerResult.value.cacheHit,
+          generatedAt: closerResult.value.generatedAt
+        }
+      }
+    : dynamicError("closer", "/api/closer", closerResult.reason);
 
   const dailySeed = hashString(`minefield:${date}`);
   return NextResponse.json({

@@ -69,12 +69,12 @@ export default function SpellDropGame({
         if (!storageScope && loaded.contentHash) markContentUsed({ gameId: "spelldrop", contentHash: loaded.contentHash, topic: "spelling", answer: loaded.word, date });
       })
       .catch(() => {
-        setError("Today’s SpellDrop could not be generated.");
+        setError("Today’s puzzle could not be loaded.");
         onComplete({
           gameId: "spelldrop", displayName: "SpellDrop", icon: "🔤", score: 0, maxScore: 100,
           completed: true, successUnits: 0, totalUnits: 1, summaryLabel: "Unavailable today",
           shareLine: "🔤 SpellDrop: unavailable",
-          reviewData: { type: "legacy", message: "Today’s puzzle was unavailable." }
+          reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })
       .finally(() => setLoading(false));
@@ -101,7 +101,7 @@ export default function SpellDropGame({
   }
 
   if (loading) return <div className="py-10 text-center text-sm font-semibold text-slate-500">Choosing today’s word…</div>;
-  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be generated. Moving on automatically.</div>;
+  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be loaded.</div>;
   const completed = Boolean(state?.completed);
   return (
     <div>

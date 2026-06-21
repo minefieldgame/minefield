@@ -8,8 +8,20 @@ export function fetchDailyPuzzle<T>(gameId: string, date: string, url: string): 
   if (existing) return existing;
   const request = fetch(url)
     .then(async (response) => {
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Today’s puzzle could not be generated.");
+      const body = await response.text();
+      let payload: Record<string, unknown>;
+      try {
+        payload = body ? JSON.parse(body) as Record<string, unknown> : {};
+      } catch {
+        throw new Error(`Dynamic puzzle route returned a non-JSON response (${response.status}).`);
+      }
+      if (!response.ok) {
+        throw new Error(
+          typeof payload.message === "string"
+            ? payload.message
+            : "Today’s puzzle could not be loaded."
+        );
+      }
       if (payload?.date && payload.date !== date) {
         throw new Error(`Puzzle date mismatch: requested ${date}, received ${payload.date}`);
       }

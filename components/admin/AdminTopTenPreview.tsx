@@ -40,6 +40,13 @@ export default function AdminTopTenPreview({
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Datum label="Generation status" value={preview.diagnostics.generationStatus} />
             <Datum label="Validation status" value={preview.diagnostics.validationStatus} />
+            <Datum label="Route called" value={preview.diagnostics.resolverDiagnostics.route} />
+            <Datum label="Resolver called" value={preview.diagnostics.resolverDiagnostics.resolver} />
+            <Datum label="Date used" value={preview.diagnostics.resolverDiagnostics.date} />
+            <Datum label="Cache key" value={preview.diagnostics.resolverDiagnostics.cacheKey} />
+            <Datum label="Environment detected" value={String(preview.diagnostics.resolverDiagnostics.envDetected)} />
+            <Datum label="Model" value={preview.diagnostics.resolverDiagnostics.model} />
+            <Datum label="Error type" value={preview.diagnostics.resolverDiagnostics.errorType ?? "generation"} />
             <Datum label="Failure" value={preview.diagnostics.failureReason} />
             <Datum label="Errors" value={preview.diagnostics.errors.join(" | ")} />
           </div>
@@ -74,6 +81,11 @@ export default function AdminTopTenPreview({
         <Datum label="Ranking metric" value={puzzle.rankingMetric} />
         <Datum label="Direction" value={puzzle.direction} />
         <Datum label="Confidence" value={`${Math.round(puzzle.confidence * 100)}%`} />
+        <Datum label="Route called" value={diagnostics.resolverDiagnostics.route} />
+        <Datum label="Resolver called" value={diagnostics.resolverDiagnostics.resolver} />
+        <Datum label="Resolver date" value={diagnostics.resolverDiagnostics.date} />
+        <Datum label="Environment detected" value={String(diagnostics.resolverDiagnostics.envDetected)} />
+        <Datum label="Model" value={diagnostics.resolverDiagnostics.model} />
       </div>
 
       <h3 className="mb-2 mt-6 text-xs font-black uppercase tracking-wider text-slate-500">Correct ranking</h3>

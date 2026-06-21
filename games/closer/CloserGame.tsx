@@ -68,12 +68,12 @@ export default function CloserGame({
         if (!storageScope && loaded.contentHash) markContentUsed({ gameId: "closer", contentHash: loaded.contentHash, topic: loaded.category, answer: String(loaded.answer), date });
       })
       .catch(() => {
-        setError("Today’s Closer could not be generated.");
+        setError("Today’s puzzle could not be loaded.");
         onComplete({
           gameId: "closer", displayName: "Closer", icon: "🎯", score: 0, maxScore: 100,
           completed: true, successUnits: 0, totalUnits: 1, summaryLabel: "Unavailable today",
           shareLine: "🎯 Closer: unavailable",
-          reviewData: { type: "legacy", message: "Today’s puzzle was unavailable." }
+          reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })
       .finally(() => setLoading(false));
@@ -92,7 +92,7 @@ export default function CloserGame({
   }
 
   if (loading) return <div className="py-10 text-center text-sm font-semibold text-slate-500">Generating today’s question…</div>;
-  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be generated. Moving on automatically.</div>;
+  if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be loaded.</div>;
   return (
     <div>
       <span className="rounded-full bg-violet/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">{puzzle.category}</span>

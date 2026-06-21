@@ -131,7 +131,7 @@ export default function TopTenGame({
         setState(next);
       })
       .catch(() => {
-        setError("Today’s Top 10 could not be loaded.");
+        setError("Today’s puzzle could not be loaded.");
         onComplete({
           gameId: GAME_ID,
           displayName: "Top 10",
@@ -143,7 +143,7 @@ export default function TopTenGame({
           totalUnits: 10,
           summaryLabel: "Unavailable today",
           shareLine: "🏆 Top 10: unavailable",
-          reviewData: { type: "legacy", message: "Today’s puzzle was unavailable." }
+          reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })
       .finally(() => setLoading(false));
@@ -234,7 +234,7 @@ export default function TopTenGame({
     return <div className="py-10 text-center text-sm font-semibold text-slate-500 dark:text-slate-300">Building today’s ranking…</div>;
   }
   if (error || !state) {
-    return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s Top 10 is unavailable. Moving on automatically.</div>;
+    return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be loaded.</div>;
   }
 
   const ended = state.status !== "playing";

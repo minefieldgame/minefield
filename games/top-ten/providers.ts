@@ -169,6 +169,8 @@ export async function resolveDailyTopTenPuzzle(
   };
 }
 
+export const resolveRankedTop10ForDate = resolveDailyTopTenPuzzle;
+
 export function getAvailableTopTenCategories() {
   return TOPICS.map((category) => ({ category, mode: "AI generated" }));
 }
