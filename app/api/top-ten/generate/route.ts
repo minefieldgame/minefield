@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPacificDateKey } from "@/lib/date";
-import { resolveRankedTop10ForDate } from "@/lib/content/dailyPuzzleResolvers";
+import { resolveRankedTop5ForDate } from "@/lib/content/dailyPuzzleResolvers";
 import {
   createDynamicApiError,
   dynamicResolverDiagnostics
@@ -15,24 +15,24 @@ export async function GET(request: NextRequest) {
   const date = datedRequest ? selected! : getPacificDateKey();
   const retryOffset = Number(request.nextUrl.searchParams.get("retry") ?? 0);
   try {
-    const puzzle = await resolveRankedTop10ForDate(date, {
+    const puzzle = await resolveRankedTop5ForDate(date, {
       force: retryOffset > 0,
       retryOffset: Number.isFinite(retryOffset) ? retryOffset : 0
     });
     return NextResponse.json({
       ...puzzle,
-      resolverDiagnostics: dynamicResolverDiagnostics("ranked-top-10", date, ROUTE)
+      resolverDiagnostics: dynamicResolverDiagnostics("ranked-top-5", date, ROUTE)
     }, {
       headers: { "Cache-Control": retryOffset > 0 || !datedRequest ? "no-store" : "public, s-maxage=31536000, immutable" }
     });
   } catch (error) {
-    console.error("[Ranked Top 10 API failure]", {
+    console.error("[Ranked Top 5 API failure]", {
       date,
       retryOffset,
       error: error instanceof Error ? error.message : "Unknown generation error"
     });
     return NextResponse.json(
-      createDynamicApiError({ gameId: "ranked-top-10", date, route: ROUTE, reason: error }),
+      createDynamicApiError({ gameId: "ranked-top-5", date, route: ROUTE, reason: error }),
       { status: 502 }
     );
   }

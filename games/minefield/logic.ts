@@ -6,7 +6,6 @@ export type MinefieldDifficulty =
   | "Easy"
   | "Comfortable"
   | "Normal"
-  | "Tense"
   | "Hard"
   | "Very Hard"
   | "Brutal"
@@ -26,7 +25,7 @@ export type MinefieldPuzzle = MinefieldDifficultyProfile & {
   gameId: "minefield";
   date: string;
   seed: number;
-  gridSize: 4;
+  gridSize: 5;
   minePositions: number[];
 };
 
@@ -34,22 +33,22 @@ export function getMinefieldDifficulty(runScore: number, runMaxScore = 600): Min
   const safeMax = Math.max(1, runMaxScore);
   const runPercentage = Math.max(0, Math.min(100, (runScore / safeMax) * 100));
   const settings =
-    runPercentage >= 98 ? { difficulty: "Gifted" as const, mineCount: 2, maxPicks: 6 } :
-    runPercentage >= 95 ? { difficulty: "Very Easy" as const, mineCount: 3, maxPicks: 6 } :
-    runPercentage >= 90 ? { difficulty: "Easy" as const, mineCount: 3, maxPicks: 5 } :
-    runPercentage >= 85 ? { difficulty: "Comfortable" as const, mineCount: 4, maxPicks: 5 } :
-    runPercentage >= 80 ? { difficulty: "Normal" as const, mineCount: 4, maxPicks: 4 } :
-    runPercentage >= 75 ? { difficulty: "Tense" as const, mineCount: 5, maxPicks: 4 } :
-    runPercentage >= 70 ? { difficulty: "Hard" as const, mineCount: 6, maxPicks: 4 } :
-    runPercentage >= 65 ? { difficulty: "Very Hard" as const, mineCount: 7, maxPicks: 3 } :
-    runPercentage >= 55 ? { difficulty: "Brutal" as const, mineCount: 8, maxPicks: 3 } :
-    { difficulty: "Nightmare" as const, mineCount: 9, maxPicks: 3 };
+    runPercentage >= 95 ? { difficulty: "Gifted" as const, mineCount: 2 } :
+    runPercentage >= 90 ? { difficulty: "Very Easy" as const, mineCount: 3 } :
+    runPercentage >= 85 ? { difficulty: "Easy" as const, mineCount: 4 } :
+    runPercentage >= 80 ? { difficulty: "Comfortable" as const, mineCount: 5 } :
+    runPercentage >= 70 ? { difficulty: "Normal" as const, mineCount: 6 } :
+    runPercentage >= 60 ? { difficulty: "Hard" as const, mineCount: 7 } :
+    runPercentage >= 50 ? { difficulty: "Very Hard" as const, mineCount: 8 } :
+    runPercentage >= 40 ? { difficulty: "Brutal" as const, mineCount: 9 } :
+    { difficulty: "Nightmare" as const, mineCount: 10 };
   return {
     ...settings,
+    maxPicks: 4,
     runScore,
     runMaxScore: safeMax,
     runPercentage,
-    safeTileCount: 16 - settings.mineCount
+    safeTileCount: 25 - settings.mineCount
   };
 }
 
@@ -61,14 +60,14 @@ export function resolveMinefieldPuzzle(
   const profile = getMinefieldDifficulty(runScore, runMaxScore);
   const seed = hashString(`minefield-final:${date}:${profile.difficulty}`);
   const minePositions = seededShuffle(
-    Array.from({ length: 16 }, (_, index) => index),
+    Array.from({ length: 25 }, (_, index) => index),
     seed
   ).slice(0, profile.mineCount).sort((a, b) => a - b);
   return {
     gameId: "minefield",
     date,
     seed,
-    gridSize: 4,
+    gridSize: 5,
     minePositions,
     ...profile
   };

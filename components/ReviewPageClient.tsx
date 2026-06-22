@@ -11,6 +11,7 @@ import {
 } from "@/components/DailySummary";
 import { formatChartDate, getPacificDateKey } from "@/lib/date";
 import { calculateDailySummary, loadGameProgress, loadMinefieldStats } from "@/lib/minefieldStorage";
+import { shareResult } from "@/lib/shareResult";
 import type { MinefieldSummary } from "@/types/minefield";
 
 export default function ReviewPageClient({
@@ -24,7 +25,7 @@ export default function ReviewPageClient({
 }) {
   const [summary, setSummary] = useState<MinefieldSummary | null>(null);
   const [ready, setReady] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "failed">("idle");
   const date = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
     ? requestedDate
     : getPacificDateKey();
@@ -39,22 +40,10 @@ export default function ReviewPageClient({
 
   async function share() {
     if (!summary) return;
-    const text = buildMinefieldShare(summary);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyStatus("copied");
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      const copied = document.execCommand("copy");
-      textarea.remove();
-      setCopyStatus(copied ? "copied" : "failed");
-    }
-    window.setTimeout(() => setCopyStatus("idle"), 1800);
+    const status = await shareResult(buildMinefieldShare(summary));
+    if (status === "cancelled") return;
+    setShareStatus(status);
+    window.setTimeout(() => setShareStatus("idle"), 1800);
   }
 
   if (accessDenied) {
@@ -148,13 +137,16 @@ export default function ReviewPageClient({
           {final && <p className="mt-3 text-sm font-bold text-slate-600 dark:text-slate-300">{final.summaryLabel}</p>}
         </section>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <button onClick={share} className="h-12 rounded-xl bg-violet font-extrabold text-white shadow-lg shadow-violet/20 active:scale-[.98]">
-            {copyStatus === "copied" ? "Copied!" : copyStatus === "failed" ? "Copy unavailable" : "Copy Result"}
+        <div className="mt-4">
+          <button onClick={share} className="h-12 w-full rounded-xl bg-violet font-extrabold text-white shadow-lg shadow-violet/20 active:scale-[.98]">
+            {shareStatus === "shared"
+              ? "Shared!"
+              : shareStatus === "copied"
+                ? "Copied result"
+                : shareStatus === "failed"
+                  ? "Share unavailable"
+                  : "Share Result"}
           </button>
-          <a href="#daily-answers" className="flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white font-extrabold text-slate-800 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
-            Review Answers
-          </a>
         </div>
 
         <h2 id="daily-answers" className="mb-3 mt-7 scroll-mt-24 text-lg font-black text-slate-950 dark:text-white">Individual game answers</h2>

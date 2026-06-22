@@ -1,7 +1,7 @@
 import { getAIStatus } from "@/lib/content/aiClient";
 import { getGameCacheKey } from "@/lib/date";
 
-export type DynamicGameId = "ranked-top-10" | "spelldrop" | "closer";
+export type DynamicGameId = "ranked-top-5" | "spelldrop" | "closer";
 
 export type DynamicApiError = {
   ok: false;
@@ -54,8 +54,8 @@ export function dynamicResolverDiagnostics(gameId: DynamicGameId, date: string, 
   const status = getAIStatus();
   return {
     route,
-    resolver: gameId === "ranked-top-10"
-      ? "resolveRankedTop10ForDate"
+    resolver: gameId === "ranked-top-5"
+      ? "resolveRankedTop5ForDate"
       : gameId === "spelldrop"
         ? "resolveSpellDropForDate"
         : "resolveCloserForDate",

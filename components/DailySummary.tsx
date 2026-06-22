@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { formatChartDate } from "@/lib/date";
 import { loadMinefieldStats } from "@/lib/minefieldStorage";
+import { shareResult } from "@/lib/shareResult";
 import type { MinefieldGameResult, MinefieldSummary } from "@/types/minefield";
 
 const PREP_IDS: MinefieldGameResult["gameId"][] = [
   "needledrop",
-  "ranked-top-10",
+  "ranked-top-5",
   "spelldrop",
   "closer",
   "meet-me-halfway",
@@ -52,20 +52,17 @@ export function buildMinefieldShare(summary: MinefieldSummary) {
 
 export default function DailySummary({ summary }: { summary: MinefieldSummary }) {
   const stats = loadMinefieldStats();
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "failed">("idle");
   const prepResults = getPrepResults(summary);
   const prepScore = prepResults.reduce((total, result) => total + result.score, 0);
   const final = getFinalMinefield(summary);
   const minefield = final?.reviewData.type === "minefield" ? final.reviewData : null;
 
-  async function copyResult() {
-    try {
-      await navigator.clipboard.writeText(buildMinefieldShare(summary));
-      setCopyStatus("copied");
-    } catch {
-      setCopyStatus("failed");
-    }
-    window.setTimeout(() => setCopyStatus("idle"), 1600);
+  async function handleShare() {
+    const status = await shareResult(buildMinefieldShare(summary));
+    if (status === "cancelled") return;
+    setShareStatus(status);
+    window.setTimeout(() => setShareStatus("idle"), 1800);
   }
 
   return (
@@ -107,13 +104,16 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
         {final && <p className="mt-1 text-xs font-bold text-slate-500">{final.summaryLabel}</p>}
       </section>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <button onClick={copyResult} className="h-12 rounded-xl bg-violet px-5 font-extrabold text-white shadow-lg shadow-violet/25 active:scale-[.98]">
-          {copyStatus === "copied" ? "Copied!" : copyStatus === "failed" ? "Copy unavailable" : "Copy Result"}
+      <div className="mt-4">
+        <button onClick={handleShare} className="h-12 w-full rounded-xl bg-violet px-5 font-extrabold text-white shadow-lg shadow-violet/25 active:scale-[.98]">
+          {shareStatus === "shared"
+            ? "Shared!"
+            : shareStatus === "copied"
+              ? "Copied result"
+              : shareStatus === "failed"
+                ? "Share unavailable"
+                : "Share Result"}
         </button>
-        <Link href={`/review?date=${summary.date}`} className="flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 font-extrabold text-slate-800 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
-          Review Answers
-        </Link>
       </div>
       <p className="mt-3 text-center text-sm font-semibold text-slate-500 dark:text-slate-300">
         🔥 {stats.currentStreak} day streak · New board at midnight Pacific.

@@ -12,7 +12,7 @@ export type RankedTopTenAnswer = {
 export type RankedTopTenValidation = {
   valid: boolean;
   checks: {
-    exactlyTenAnswers: boolean;
+    exactlyFiveAnswers: boolean;
     sequentialRanks: boolean;
     uniqueAnswers: boolean;
     valuesPresent: boolean;
@@ -27,7 +27,7 @@ export type RankedTopTenValidation = {
 };
 
 export type RankedTopTenPuzzle = {
-  gameId: "ranked-top-10";
+  gameId: "ranked-top-5";
   id: string;
   date: string;
   title: string;

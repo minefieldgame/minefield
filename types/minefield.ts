@@ -1,7 +1,7 @@
 export type MinefieldGameId =
   | "needledrop"
   | "minefield"
-  | "ranked-top-10"
+  | "ranked-top-5"
   | "spelldrop"
   | "closer"
   | "meet-me-halfway"
@@ -19,7 +19,7 @@ export type NeedleDropReviewData = {
 };
 
 export type RankedTopTenReviewData = {
-  type: "ranked-top-10";
+  type: "ranked-top-5";
   prompt: string;
   userOrder: string[];
   correctOrder: string[];
@@ -45,6 +45,7 @@ export type MinefieldGridReviewData = {
   runScore: number;
   runMaxScore: number;
   runPercentage: number;
+  gridSize: number;
   mineCount: number;
   maxPicks: number;
   clue?: string;

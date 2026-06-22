@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPacificDateKey } from "@/lib/date";
-import { resolveRankedTop10ForDate } from "@/lib/content/dailyPuzzleResolvers";
+import { resolveRankedTop5ForDate } from "@/lib/content/dailyPuzzleResolvers";
 import {
   createDynamicApiError,
   dynamicResolverDiagnostics
@@ -14,16 +14,16 @@ export async function GET(request: NextRequest) {
   const datedRequest = Boolean(requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate));
   const date = datedRequest ? requestedDate! : getPacificDateKey();
   try {
-    const puzzle = await resolveRankedTop10ForDate(date);
+    const puzzle = await resolveRankedTop5ForDate(date);
     return NextResponse.json({
       ...puzzle,
-      resolverDiagnostics: dynamicResolverDiagnostics("ranked-top-10", date, ROUTE)
+      resolverDiagnostics: dynamicResolverDiagnostics("ranked-top-5", date, ROUTE)
     }, {
       headers: { "Cache-Control": datedRequest ? "public, s-maxage=31536000, immutable" : "no-store" }
     });
   } catch (error) {
     return NextResponse.json(
-      createDynamicApiError({ gameId: "ranked-top-10", date, route: ROUTE, reason: error }),
+      createDynamicApiError({ gameId: "ranked-top-5", date, route: ROUTE, reason: error }),
       { status: 502 }
     );
   }

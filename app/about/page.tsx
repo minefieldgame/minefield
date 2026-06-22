@@ -11,7 +11,7 @@ export default function AboutPage() {
           <div className="mt-6 space-y-4 leading-7 text-slate-600 dark:text-slate-300">
             <p>Minefield is a vertical feed of fast daily mini-games. Play one, see your result, then move straight into the next.</p>
             <p>The daily board follows Pacific Time and is deterministic, so everyone receives the same games. Progress, streaks, scores, and the archive stay in your browser.</p>
-            <p>The run builds through NeedleDrop, Top 10, SpellDrop, Closer, Meet Me Halfway, and Landmark Drop before a final Minefield whose difficulty reflects your performance.</p>
+            <p>The run builds through NeedleDrop, Top 5, SpellDrop, Closer, Meet Me Halfway, and Landmark Drop before a final Minefield whose difficulty reflects your performance.</p>
             <p>Game data uses provider-based resolution with validation and clear failure states. Minefield never stores or redistributes audio files.</p>
           </div>
         </article>

@@ -3,7 +3,7 @@ import { getTopTenProviderStatus, validateTopTenPuzzle } from "@/games/top-ten/p
 import {
   resolveCloserForDate,
   resolveNeedleDropForDate,
-  resolveRankedTop10ForDate,
+  resolveRankedTop5ForDate,
   resolveSpellDropForDate
 } from "@/lib/content/dailyPuzzleResolvers";
 import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   const [needledropResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
     resolveNeedleDropForDate(date),
-    resolveRankedTop10ForDate(date, {
+    resolveRankedTop5ForDate(date, {
       force: topTenRetry > 0 || force,
       retryOffset: topTenRetry
     }),
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
           warning: providerStatus.warning,
           errors: topTenResult.value.validation.errors,
           resolverDiagnostics: {
-            ...dynamicResolverDiagnostics("ranked-top-10", date, "/api/top-ten/generate"),
+            ...dynamicResolverDiagnostics("ranked-top-5", date, "/api/top-ten/generate"),
             cacheHit: Boolean(topTenResult.value.cacheHit),
             generatedAt: topTenResult.value.generatedAt
           }
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       }
     : {
         status: "error" as const,
-        error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Top 10 failed.",
+        error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Top 5 failed.",
         diagnostics: {
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           liveAIEnabled: providerStatus.mode === "live-ai",
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
           fallbackUsed: false as const,
           errors: [topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure."],
           resolverDiagnostics: {
-            ...dynamicResolverDiagnostics("ranked-top-10", date, "/api/top-ten/generate"),
+            ...dynamicResolverDiagnostics("ranked-top-5", date, "/api/top-ten/generate"),
             cacheHit: false,
             errorType: topTenFailure?.errorType,
             errorMessage: topTenFailure?.message
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
     date,
     pacificDate: getPacificDateKey(),
     cacheKeys: {
-      rankedTopTen: getGameCacheKey("ranked-top-10", date),
+      rankedTopTen: getGameCacheKey("ranked-top-5", date),
       spellDrop: getGameCacheKey("spelldrop", date),
       closer: getGameCacheKey("closer", date)
     },

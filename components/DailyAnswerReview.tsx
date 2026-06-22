@@ -44,7 +44,7 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
               </div>
             )}
 
-            {review.type === "ranked-top-10" && (
+            {review.type === "ranked-top-5" && (
               <div className="mt-3">
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{review.prompt}</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -78,7 +78,7 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                   </div>
                 </div>
                 <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  {review.correctPositions.length}/10 correctly placed · {review.attemptsUsed} attempts used
+                  {review.correctPositions.length}/5 correctly placed · one attempt
                 </p>
               </div>
             )}
@@ -101,8 +101,11 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                 <p className="mt-1 text-xs font-bold text-slate-500">
                   {review.mineCount} mines · {review.safePicks.length}/{review.maxPicks} safe picks
                 </p>
-                <div className="mx-auto mt-3 grid max-w-[260px] grid-cols-4 gap-2">
-                  {Array.from({ length: 16 }, (_, index) => {
+                <div
+                  className="mx-auto mt-3 grid max-w-[320px] gap-2"
+                  style={{ gridTemplateColumns: `repeat(${review.gridSize ?? 4}, minmax(0, 1fr))` }}
+                >
+                  {Array.from({ length: (review.gridSize ?? 4) ** 2 }, (_, index) => {
                     const mine = review.minePositions.includes(index);
                     const picked = review.safePicks.includes(index);
                     return (

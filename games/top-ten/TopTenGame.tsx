@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   closestCenter,
   DndContext,
-  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -32,12 +31,11 @@ import { fetchDailyPuzzle } from "@/lib/content/clientCache";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
-const GAME_ID = "ranked-top-10";
-const MAX_ATTEMPTS = 3;
+const GAME_ID = "ranked-top-5";
 
 export const topTenDefinition = {
-  gameId: "ranked-top-10" as const,
-  displayName: "Top 10",
+  gameId: "ranked-top-5" as const,
+  displayName: "Top 5",
   maxScore: 100
 };
 
@@ -68,19 +66,19 @@ export default function TopTenGame({
     const label = rankedTopTenLabel(score);
     onComplete({
       gameId: GAME_ID,
-      displayName: "Top 10",
+      displayName: "Top 5",
       icon: "🏆",
       score,
       maxScore: 100,
       completed: true,
       successUnits: placed,
-      totalUnits: 10,
-      summaryLabel: score === 100 ? label : `${placed}/10 placed`,
+      totalUnits: 5,
+      summaryLabel: score === 100 ? label : `${placed}/5 placed`,
       shareLine: score === 100
-        ? "🏆 Top 10: 100/100, perfect ranking"
-        : `🏆 Top 10: ${score}/100, ${placed}/10 placed`,
+        ? "🏆 Top 5: 100/100, perfect ranking"
+        : `🏆 Top 5: ${score}/100, ${placed}/5 placed`,
       reviewData: {
-        type: "ranked-top-10",
+        type: "ranked-top-5",
         prompt: next.puzzle.playerPrompt,
         userOrder: next.order,
         correctOrder: correctOrder(next.puzzle),
@@ -115,7 +113,7 @@ export default function TopTenGame({
     fetchDailyPuzzle<RankedTopTenPuzzle>(GAME_ID, date, `/api/top-ten/generate?date=${date}`)
       .then((puzzle) => {
         if (puzzle.date !== date || puzzle.gameId !== GAME_ID) {
-          throw new Error("Ranked Top 10 returned the wrong date.");
+          throw new Error("Ranked Top 5 returned the wrong date.");
         }
         const next: RankedTopTenState = {
           dateKey: date,
@@ -134,15 +132,15 @@ export default function TopTenGame({
         setError("Today’s puzzle could not be loaded.");
         onComplete({
           gameId: GAME_ID,
-          displayName: "Top 10",
+          displayName: "Top 5",
           icon: "🏆",
           score: 0,
           maxScore: 100,
           completed: true,
           successUnits: 0,
-          totalUnits: 10,
+          totalUnits: 5,
           summaryLabel: "Unavailable today",
-          shareLine: "🏆 Top 10: unavailable",
+          shareLine: "🏆 Top 5: unavailable",
           reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })
@@ -194,33 +192,16 @@ export default function TopTenGame({
     const lockedPositions = [...new Set([...state.lockedPositions, ...correctPositions])].sort((a, b) => a - b);
     const incorrectPositions = state.order.map((_, index) => index).filter((index) => !lockedPositions.includes(index));
     const attemptsUsed = state.attemptsUsed + 1;
-    const completed = lockedPositions.length === 10 || attemptsUsed >= MAX_ATTEMPTS;
     const next: RankedTopTenState = {
       ...state,
       lockedPositions,
       attemptsUsed,
       lastIncorrectPositions: incorrectPositions,
-      status: completed ? "completed" : "playing",
+      status: "completed",
       updatedAt: new Date().toISOString()
     };
     setFeedbackPositions(incorrectPositions);
     window.setTimeout(() => setFeedbackPositions([]), 700);
-    persist(next);
-    if (completed) reportCompletion(next);
-  }
-
-  function giveUp() {
-    if (!state || state.status !== "playing") return;
-    const lockedPositions = [...new Set([
-      ...state.lockedPositions,
-      ...evaluateRankedOrder(state.order, state.puzzle)
-    ])].sort((a, b) => a - b);
-    const next: RankedTopTenState = {
-      ...state,
-      lockedPositions,
-      status: "gave-up",
-      updatedAt: new Date().toISOString()
-    };
     persist(next);
     reportCompletion(next);
   }
@@ -238,16 +219,13 @@ export default function TopTenGame({
   }
 
   const ended = state.status !== "playing";
-  const activeLabel = activeAnswer ? answerLabels.get(activeAnswer) ?? activeAnswer : "";
   return (
     <div className="overscroll-none">
       <div className="flex items-center justify-between gap-3">
         <span className="rounded-full bg-violet/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">
           {state.puzzle.category}
         </span>
-        <span className="shrink-0 text-xs font-black text-slate-600 dark:text-slate-200">
-          Attempt {Math.min(state.attemptsUsed + 1, MAX_ATTEMPTS)} of {MAX_ATTEMPTS}
-        </span>
+        <span className="shrink-0 text-xs font-black text-slate-600 dark:text-slate-200">One attempt</span>
       </div>
       <h3 className="mt-2 text-base font-black leading-tight text-slate-950 dark:text-white">
         {state.puzzle.playerPrompt}
@@ -275,23 +253,12 @@ export default function TopTenGame({
             ))}
           </div>
         </SortableContext>
-        <DragOverlay dropAnimation={{ duration: 180, easing: "ease-out" }}>
-          {activeAnswer ? (
-            <div className="flex h-11 items-center gap-3 rounded-xl border-2 border-violet bg-white px-3 text-sm font-extrabold text-slate-900 shadow-2xl dark:bg-[#252a34] dark:text-white">
-              <span className="text-violet">☰</span>
-              <span className="truncate">{activeLabel}</span>
-            </div>
-          ) : null}
-        </DragOverlay>
       </DndContext>
 
       {!ended && (
-        <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-          <button onClick={submit} className="h-11 rounded-xl bg-violet px-5 text-sm font-extrabold text-white shadow-md dark:bg-[#7569e5]">
+        <div className="mt-4">
+          <button onClick={submit} className="h-[52px] w-full rounded-xl bg-violet px-5 text-sm font-extrabold text-white shadow-md transition active:scale-[.98] dark:bg-[#7569e5]">
             Submit ranking
-          </button>
-          <button onClick={giveUp} className="h-11 rounded-xl px-4 text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-700 dark:text-slate-400 dark:hover:bg-red-400/10 dark:hover:text-red-300">
-            Give Up
           </button>
         </div>
       )}
@@ -328,22 +295,22 @@ function SortableRankCard({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      className={`flex h-11 touch-none select-none items-center gap-3 rounded-xl border px-3 shadow-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-violet/25 ${
+      className={`flex min-h-16 touch-none select-none items-center gap-3 rounded-2xl border px-4 py-3 shadow-sm outline-none transition-[transform,box-shadow,border-color,background-color] focus-visible:ring-4 focus-visible:ring-violet/25 ${
         locked
           ? "animate-[pulse_.35s_ease-out_1] border-emerald-400 bg-emerald-500/12 text-emerald-800 shadow-emerald-500/15 dark:border-emerald-400/40 dark:text-emerald-200"
           : incorrect
             ? "border-red-400 bg-red-500/10 text-red-800 dark:border-red-400/40 dark:text-red-200"
             : isDragging
-              ? "border-violet bg-violet/10 opacity-30"
+              ? "z-20 scale-[1.02] cursor-grabbing border-violet bg-white shadow-2xl dark:bg-[#252a34]"
               : "cursor-grab border-slate-200 bg-white text-slate-800 shadow-[0_3px_10px_rgba(15,23,42,.08)] active:cursor-grabbing dark:border-[#3b424f] dark:bg-[#252a34] dark:text-white"
       }`}
       aria-label={`${index + 1}. ${label}${locked ? ", locked" : ", draggable"}`}
     >
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-black/[.05] text-xs font-black dark:bg-white/[.07]">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black/[.05] text-sm font-black dark:bg-white/[.07]">
         {index + 1}
       </span>
       <span className={`text-lg ${locked ? "text-emerald-600" : "text-slate-400"}`}>{locked ? "✓" : "☰"}</span>
-      <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{label}</span>
+      <span className="min-w-0 flex-1 text-base font-extrabold leading-tight">{label}</span>
       {locked && <span className="text-[10px] font-black uppercase tracking-wider">Locked</span>}
     </div>
   );

@@ -9,7 +9,7 @@ export function correctOrder(puzzle: RankedTopTenPuzzle) {
 
 export function initialRankedOrder(puzzle: RankedTopTenPuzzle) {
   const correct = correctOrder(puzzle);
-  let shuffled = seededShuffle(correct, hashString(`ranked-top-10:shuffle:${puzzle.date}`));
+  let shuffled = seededShuffle(correct, hashString(`ranked-top-5:shuffle:${puzzle.date}`));
   if (shuffled.every((answer, index) => answer === correct[index])) {
     shuffled = [...shuffled.slice(1), shuffled[0]];
   }
@@ -45,13 +45,13 @@ export function moveAmongUnlocked(
 }
 
 export function rankedTopTenScore(lockedPositions: number[]) {
-  return new Set(lockedPositions).size * 10;
+  return new Set(lockedPositions).size * 20;
 }
 
 export function rankedTopTenLabel(score: number) {
   if (score === 100) return "Perfect ranking";
   if (score >= 80) return "Great order";
   if (score >= 60) return "Solid ranking";
-  if (score >= 30) return "Mixed up";
+  if (score >= 40) return "Mixed up";
   return "Way off";
 }

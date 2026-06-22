@@ -12,10 +12,10 @@ import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine"
 
 const CACHE_SECONDS = 60 * 60 * 24 * 370;
 
-const cachedRankedTop10 = unstable_cache(
+const cachedRankedTop5 = unstable_cache(
   async (date: string) => resolveDailyTopTenPuzzle(date),
-  ["minefield-daily-ranked-top-10-v1"],
-  { revalidate: CACHE_SECONDS, tags: ["minefield-daily-ranked-top-10"] }
+  ["minefield-daily-ranked-top-5-v1"],
+  { revalidate: CACHE_SECONDS, tags: ["minefield-daily-ranked-top-5"] }
 );
 
 const cachedSpellDrop = unstable_cache(
@@ -46,12 +46,12 @@ function withObservedCacheHit<T extends { generatedAt: string; generationDuratio
   };
 }
 
-export async function resolveRankedTop10ForDate(
+export async function resolveRankedTop5ForDate(
   date: string,
   options: Parameters<typeof resolveDailyTopTenPuzzle>[1] = {}
 ): Promise<RankedTopTenPuzzle> {
   if (options.force) return resolveDailyTopTenPuzzle(date, options);
-  return withObservedCacheHit(await cachedRankedTop10(date));
+  return withObservedCacheHit(await cachedRankedTop5(date));
 }
 
 export async function resolveSpellDropForDate(

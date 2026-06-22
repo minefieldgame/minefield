@@ -37,14 +37,14 @@ const SCHEMA = {
     direction: { type: "string", enum: ["highest-to-lowest", "lowest-to-highest"] },
     answers: {
       type: "array",
-      minItems: 10,
-      maxItems: 10,
+      minItems: 5,
+      maxItems: 5,
       items: {
         type: "object",
         additionalProperties: false,
         required: ["rank", "answer", "displayAnswer", "aliases", "value", "sourceNote"],
         properties: {
-          rank: { type: "integer", minimum: 1, maximum: 10 },
+          rank: { type: "integer", minimum: 1, maximum: 5 },
           answer: { type: "string" },
           displayAnswer: { type: "string" },
           aliases: { type: "array", items: { type: "string" }, minItems: 0, maxItems: 5 },
@@ -78,9 +78,9 @@ export function validateTopTenPuzzle(puzzle: RankedTopTenPuzzle): RankedTopTenVa
   const ranks = answers.map((answer) => answer.rank).sort((a, b) => a - b);
   const wordCount = puzzle.playerPrompt.trim().split(/\s+/).length;
   const checks = {
-    exactlyTenAnswers: answers.length === 10,
-    sequentialRanks: ranks.join(",") === "1,2,3,4,5,6,7,8,9,10",
-    uniqueAnswers: normalized.every(Boolean) && new Set(normalized).size === 10,
+    exactlyFiveAnswers: answers.length === 5,
+    sequentialRanks: ranks.join(",") === "1,2,3,4,5",
+    uniqueAnswers: normalized.every(Boolean) && new Set(normalized).size === 5,
     valuesPresent: answers.every((answer) => answer.value.trim().length > 0),
     directionClear: ["highest-to-lowest", "lowest-to-highest"].includes(puzzle.direction),
     objectiveCategory: puzzle.rankingMetric.trim().length > 2,
@@ -98,19 +98,19 @@ export async function resolveDailyTopTenPuzzle(
 ): Promise<RankedTopTenPuzzle> {
   const retryOffset = options.retryOffset ?? 0;
   const envelope = await generateDailyContent({
-    gameId: "ranked-top-10",
+    gameId: "ranked-top-5",
     date,
     force: options.force,
     attempts: 3,
     generate: async ({ seed, attempt }) => {
       const topic = TOPICS[(seed + attempt + retryOffset) % TOPICS.length];
       const result = await requestStructuredContent<GeneratedRankedTopTen>({
-        name: "minefield_ranked_top_10",
+        name: "minefield_ranked_top_5",
         instructions:
-          "Create one objective, easy-to-medium general-audience ranking game with exactly 10 familiar items. The player will reorder supplied items, so never ask them to name answers. Use a stable metric and clear direction. Avoid obscure, technical, political, grim, daily-changing, or methodology-heavy topics. playerPrompt must be natural, under 25 words, and start with 'Rank these 10'. Put sourcing and caveats only in adminPrompt and sourceNote. Verify ranks and values with reputable web sources.",
+          "Create one objective, easy-to-medium general-audience ranking game with exactly 5 familiar items. The player will reorder supplied items, so never ask them to name answers. Use a stable metric and clear direction. Avoid obscure, technical, political, grim, daily-changing, or methodology-heavy topics. playerPrompt must be natural, under 25 words, and start with 'Rank these 5'. Put sourcing and caveats only in adminPrompt and sourceNote. Verify ranks and values with reputable web sources.",
         input:
           `Pacific date ${date}; deterministic seed ${seed}; preferred category ${topic}; variant ${retryOffset}. ` +
-          "Return ranks 1 through 10 in correct order, concise display names, values, aliases, per-item source notes, and source URLs.",
+          "Return ranks 1 through 5 in correct order, concise display names, values, aliases, per-item source notes, and source URLs.",
         schema: SCHEMA,
         useWebSearch: true
       });
@@ -123,8 +123,8 @@ export async function resolveDailyTopTenPuzzle(
           aliases: [...new Set(answer.aliases.map((alias) => alias.trim()).filter(Boolean))]
         }));
       const puzzle: RankedTopTenPuzzle = {
-        gameId: "ranked-top-10",
-        id: `ranked-top-10:${date}`,
+        gameId: "ranked-top-5",
+        id: `ranked-top-5:${date}`,
         date,
         title: result.parsed.title,
         playerPrompt: result.parsed.playerPrompt.trim(),
@@ -169,7 +169,7 @@ export async function resolveDailyTopTenPuzzle(
   };
 }
 
-export const resolveRankedTop10ForDate = resolveDailyTopTenPuzzle;
+export const resolveRankedTop5ForDate = resolveDailyTopTenPuzzle;
 
 export function getAvailableTopTenCategories() {
   return TOPICS.map((category) => ({ category, mode: "AI generated" }));

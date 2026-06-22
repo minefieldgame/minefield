@@ -24,7 +24,7 @@ import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "
 
 const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
   { id: "needledrop", title: "NeedleDrop", subtitle: "Name the song from an increasingly longer clip." },
-  { id: "ranked-top-10", title: "Top 10", subtitle: "Drag the 10 items into the correct order." },
+  { id: "ranked-top-5", title: "Top 5", subtitle: "Drag the 5 items into the correct order." },
   { id: "spelldrop", title: "SpellDrop", subtitle: "Listen carefully and spell the word in one attempt." },
   { id: "closer", title: "Closer", subtitle: "Make one numeric guess and get as close as you can." },
   { id: "meet-me-halfway", title: "Meet Me Halfway", subtitle: "Drop a pin where you think the halfway point is." },
@@ -34,7 +34,7 @@ const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
 
 const PRELIMINARY_GAME_IDS: MinefieldGameId[] = [
   "needledrop",
-  "ranked-top-10",
+  "ranked-top-5",
   "spelldrop",
   "closer",
   "meet-me-halfway",
@@ -59,9 +59,9 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
       ? { title: "You hit a mine", detail: `${result.successUnits} safe tiles`, tone: "red" }
       : { title: "Minefield Cleared", detail: `${result.score} points`, tone: "green" };
   }
-  if (result.gameId === "ranked-top-10") {
+  if (result.gameId === "ranked-top-5") {
     return {
-      title: result.score === 100 ? "Perfect ranking" : `${result.successUnits}/10 placed`,
+      title: result.score === 100 ? "Perfect ranking" : `${result.successUnits}/5 placed`,
       detail: `${result.score} points`,
       tone: result.score >= 80 ? "green" : result.score >= 30 ? "amber" : "red"
     };
@@ -261,7 +261,7 @@ export default function MinefieldFeed({
                               runScore={runPerformance}
                               runMaxScore={600}
                             />
-                          ) : game.id === "ranked-top-10" ? (
+                          ) : game.id === "ranked-top-5" ? (
                             <TopTenGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "spelldrop" ? (
                             <SpellDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />

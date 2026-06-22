@@ -64,8 +64,8 @@ export const adminGameRegistry: Array<{
     AdminPreviewComponent: MinefieldModule
   },
   {
-    gameId: "ranked-top-10",
-    displayName: "Top 10",
+    gameId: "ranked-top-5",
+    displayName: "Top 5",
     AdminPreviewComponent: TopTenModule
   },
   {

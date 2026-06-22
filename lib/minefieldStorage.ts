@@ -5,13 +5,13 @@ const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
 const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
-  "needledrop", "ranked-top-10", "spelldrop", "closer",
+  "needledrop", "ranked-top-5", "spelldrop", "closer",
   "meet-me-halfway", "landmark-drop", "minefield"
 ];
 const GAME_DEFAULTS = {
   needledrop: { displayName: "NeedleDrop", icon: "🎵", totalUnits: 7 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 6 },
-  "ranked-top-10": { displayName: "Top 10", icon: "🏆", totalUnits: 10 },
+  "ranked-top-5": { displayName: "Top 5", icon: "🏆", totalUnits: 5 },
   spelldrop: { displayName: "SpellDrop", icon: "🔤", totalUnits: 1 },
   closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 },
   "meet-me-halfway": { displayName: "Meet Me Halfway", icon: "🌍", totalUnits: 1 },
@@ -66,16 +66,16 @@ function recoverReviewData(
 ): MinefieldGameResult["reviewData"] | null {
   if (typeof window === "undefined") return null;
   try {
-    if (gameId === "ranked-top-10") {
+    if (gameId === "ranked-top-5") {
       const state = read<{
         puzzle: { playerPrompt: string; answers: Array<{ rank: number; answer: string }> };
         order: string[];
         lockedPositions: number[];
         attemptsUsed: number;
-      } | null>(getGameCacheKey("ranked-top-10", date), null);
+      } | null>(getGameCacheKey("ranked-top-5", date), null);
       if (state) {
         return {
-          type: "ranked-top-10",
+          type: "ranked-top-5",
           prompt: state.puzzle.playerPrompt,
           userOrder: state.order,
           correctOrder: [...state.puzzle.answers].sort((a, b) => a.rank - b.rank).map((answer) => answer.answer),
@@ -148,7 +148,7 @@ export function loadGameProgress(date: string, scope?: string): MinefieldDailyBo
   ) {
     delete results.minefield;
   }
-  for (const gameId of ["ranked-top-10", "spelldrop", "closer"] as const) {
+  for (const gameId of ["ranked-top-5", "spelldrop", "closer"] as const) {
     const result = results[gameId];
     if (
       result &&
