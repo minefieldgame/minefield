@@ -231,8 +231,15 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
               {state.guesses.length > 0 && (
                 <div className="mb-2 flex max-h-7 gap-1.5 overflow-hidden">
                   {state.guesses.slice(-2).map((guess, index) => (
-                    <span key={`${guess}-${index}`} className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 line-through dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
-                      {guess}
+                    <span
+                      key={`${guess}-${index}`}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                        state.status === "won" && index === state.guesses.slice(-2).length - 1
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300"
+                          : "border-red-200 bg-red-50 text-red-700 line-through dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300"
+                      }`}
+                    >
+                      {state.status === "won" && index === state.guesses.slice(-2).length - 1 ? `✓ ${guess} · Correct` : `× ${guess}`}
                     </span>
                   ))}
                 </div>

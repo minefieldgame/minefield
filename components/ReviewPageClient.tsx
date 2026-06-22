@@ -11,7 +11,7 @@ import {
 } from "@/components/DailySummary";
 import { formatChartDate, getPacificDateKey } from "@/lib/date";
 import { calculateDailySummary, loadGameProgress, loadMinefieldStats } from "@/lib/minefieldStorage";
-import { shareResult } from "@/lib/shareResult";
+import { copyResultText, shareResult } from "@/lib/shareResult";
 import type { MinefieldSummary } from "@/types/minefield";
 import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
@@ -27,6 +27,7 @@ export default function ReviewPageClient({
   const [summary, setSummary] = useState<MinefieldSummary | null>(null);
   const [ready, setReady] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "failed">("idle");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const date = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
     ? requestedDate
     : getPacificDateKey();
@@ -45,6 +46,13 @@ export default function ReviewPageClient({
     if (status === "cancelled") return;
     setShareStatus(status);
     window.setTimeout(() => setShareStatus("idle"), 1800);
+  }
+
+  async function copy() {
+    if (!summary) return;
+    const status = await copyResultText(buildMinefieldShare(summary));
+    setCopyStatus(status);
+    window.setTimeout(() => setCopyStatus("idle"), 1800);
   }
 
   if (accessDenied) {
@@ -138,7 +146,7 @@ export default function ReviewPageClient({
           {final && <p className="mt-3 text-sm font-bold text-slate-600 dark:text-slate-300">{final.summaryLabel}</p>}
         </section>
 
-        <div className="mt-4">
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <button onClick={share} className="h-12 w-full rounded-xl bg-violet font-extrabold text-white shadow-lg shadow-violet/20 active:scale-[.98]">
             {shareStatus === "shared"
               ? "Shared!"
@@ -147,6 +155,9 @@ export default function ReviewPageClient({
                 : shareStatus === "failed"
                   ? "Share unavailable"
                   : "Share Result"}
+          </button>
+          <button onClick={copy} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-extrabold text-slate-800 shadow-sm active:scale-[.98] dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
+            {copyStatus === "copied" ? "Copied results." : copyStatus === "failed" ? "Copy unavailable" : "Copy Results as Text"}
           </button>
         </div>
 

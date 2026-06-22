@@ -32,3 +32,15 @@ export async function shareResult(text: string): Promise<ShareResultStatus> {
     return legacyCopy(text) ? "copied" : "failed";
   }
 }
+
+export async function copyResultText(text: string): Promise<"copied" | "failed"> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return "copied";
+    }
+    return legacyCopy(text) ? "copied" : "failed";
+  } catch {
+    return legacyCopy(text) ? "copied" : "failed";
+  }
+}

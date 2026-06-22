@@ -187,8 +187,10 @@ export default function MinefieldGame({
           phase === "exploding" ? "bg-red-600/75" : "bg-emerald-500/75"
         } text-white backdrop-blur-[2px]`}>
           <div className="animate-[pulse_.55s_ease-out_1] text-center">
-            <p className="text-6xl">{phase === "exploding" ? "💥" : "✓"}</p>
-            <p className="mt-2 text-2xl font-black">{phase === "exploding" ? "You hit a mine" : "Minefield Cleared"}</p>
+            {phase === "cleared" && <p className="text-6xl">✓</p>}
+            <p className={`${phase === "cleared" ? "mt-2" : ""} text-2xl font-black`}>
+              {phase === "exploding" ? "You hit a mine" : "Minefield Cleared"}
+            </p>
           </div>
         </div>
       )}

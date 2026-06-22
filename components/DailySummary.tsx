@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { formatChartDate } from "@/lib/date";
 import { loadMinefieldStats } from "@/lib/minefieldStorage";
-import { shareResult } from "@/lib/shareResult";
+import { copyResultText, shareResult } from "@/lib/shareResult";
 import type { MinefieldGameResult, MinefieldSummary } from "@/types/minefield";
 import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
@@ -54,6 +54,7 @@ export function buildMinefieldShare(summary: MinefieldSummary) {
 export default function DailySummary({ summary }: { summary: MinefieldSummary }) {
   const stats = loadMinefieldStats();
   const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "failed">("idle");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const prepResults = getPrepResults(summary);
   const prepScore = prepResults.reduce((total, result) => total + result.score, 0);
   const final = getFinalMinefield(summary);
@@ -64,6 +65,12 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
     if (status === "cancelled") return;
     setShareStatus(status);
     window.setTimeout(() => setShareStatus("idle"), 1800);
+  }
+
+  async function handleCopy() {
+    const status = await copyResultText(buildMinefieldShare(summary));
+    setCopyStatus(status);
+    window.setTimeout(() => setCopyStatus("idle"), 1800);
   }
 
   return (
@@ -105,7 +112,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
         {final && <p className="mt-1 text-xs font-bold text-slate-500">{final.summaryLabel}</p>}
       </section>
 
-      <div className="mt-4">
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button onClick={handleShare} className="h-12 w-full rounded-xl bg-violet px-5 font-extrabold text-white shadow-lg shadow-violet/25 active:scale-[.98]">
           {shareStatus === "shared"
             ? "Shared!"
@@ -114,6 +121,9 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
               : shareStatus === "failed"
                 ? "Share unavailable"
                 : "Share Result"}
+        </button>
+        <button onClick={handleCopy} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-5 font-extrabold text-slate-800 shadow-sm active:scale-[.98] dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
+          {copyStatus === "copied" ? "Copied results." : copyStatus === "failed" ? "Copy unavailable" : "Copy Results as Text"}
         </button>
       </div>
       <p className="mt-3 text-center text-sm font-semibold text-slate-500 dark:text-slate-300">
