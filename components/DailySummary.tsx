@@ -5,6 +5,7 @@ import { formatChartDate } from "@/lib/date";
 import { loadMinefieldStats } from "@/lib/minefieldStorage";
 import { shareResult } from "@/lib/shareResult";
 import type { MinefieldGameResult, MinefieldSummary } from "@/types/minefield";
+import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 const PREP_IDS: MinefieldGameResult["gameId"][] = [
   "needledrop",
@@ -35,7 +36,7 @@ export function buildMinefieldShare(summary: MinefieldSummary) {
     "",
     `Prep Score: ${prepScore} / 600`,
     "",
-    ...prepResults.map((result) => `${result.icon} ${result.displayName}: ${result.score}`),
+    ...prepResults.map((result) => `${GAME_DISPLAY[result.gameId].icon} ${GAME_DISPLAY[result.gameId].name}: ${result.score}`),
     "",
     `Final Minefield: ${survived ? "Survived" : "Did not survive"}`,
     `Difficulty: ${review?.difficulty ?? "Unavailable"}`,
@@ -80,7 +81,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
         <div className="mt-3 space-y-1.5">
           {prepResults.map((result) => (
             <div key={result.gameId} className="flex items-center justify-between text-sm">
-              <span className="font-bold text-slate-700 dark:text-slate-200">{result.icon} {result.displayName}</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">{GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}</span>
               <span className="font-black text-violet">{result.score}</span>
             </div>
           ))}

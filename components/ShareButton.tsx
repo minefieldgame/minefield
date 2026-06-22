@@ -10,7 +10,7 @@ export function buildShareText(state: GameState) {
     won && index <= state.attempt ? "🟩" : "⬜"
   ).join("");
   return [
-    `NeedleDrop #${state.puzzle.number}`,
+    `Rewind #${state.puzzle.number}`,
     formatChartDate(state.puzzle.chartDate),
     "Top 10 Billboard Hit",
     won ? `Solved in ${state.attempt + 1}/7` : "Failed",

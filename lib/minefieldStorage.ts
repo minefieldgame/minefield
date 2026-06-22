@@ -1,5 +1,6 @@
 import type { MinefieldDailyBoard, MinefieldGameResult, MinefieldStats, MinefieldSummary } from "@/types/minefield";
 import { getBoardCacheKey, getGameCacheKey } from "@/lib/date";
+import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
@@ -9,13 +10,13 @@ const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
   "meet-me-halfway", "landmark-drop", "minefield"
 ];
 const GAME_DEFAULTS = {
-  needledrop: { displayName: "NeedleDrop", icon: "🎵", totalUnits: 7 },
+  needledrop: { displayName: "Rewind", icon: "🎵", totalUnits: 7 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 6 },
-  "ranked-top-5": { displayName: "Top 5", icon: "🏆", totalUnits: 5 },
-  spelldrop: { displayName: "SpellDrop", icon: "🔤", totalUnits: 1 },
-  closer: { displayName: "Closer", icon: "🎯", totalUnits: 1 },
+  "ranked-top-5": { displayName: "In Order", icon: "🏆", totalUnits: 5 },
+  spelldrop: { displayName: "Buzzword", icon: "🔤", totalUnits: 1 },
+  closer: { displayName: "In the Ballpark", icon: "🎯", totalUnits: 1 },
   "meet-me-halfway": { displayName: "Meet Me Halfway", icon: "🌍", totalUnits: 1 },
-  "landmark-drop": { displayName: "Landmark Drop", icon: "🗼", totalUnits: 1 }
+  "landmark-drop": { displayName: "On a Postcard", icon: "🗼", totalUnits: 1 }
 } as const;
 
 function boardKey(date: string, scope?: string) {
@@ -47,14 +48,14 @@ function normalizeResult(gameId: MinefieldGameResult["gameId"], result: Minefiel
     : reviewData;
   return {
     ...result, gameId,
-    displayName: result.displayName ?? defaults.displayName,
+    displayName: GAME_DISPLAY[gameId].name,
     icon: result.icon ?? defaults.icon,
     maxScore: result.maxScore ?? 100,
     successUnits: result.successUnits ?? 0,
     totalUnits: result.totalUnits ?? defaults.totalUnits,
     summaryLabel,
     shareLine: result.shareLine ??
-      `${defaults.icon} ${result.displayName ?? defaults.displayName}: ${result.score ?? 0}/${result.maxScore ?? 100}, ${summaryLabel.toLowerCase()}`,
+      `${defaults.icon} ${GAME_DISPLAY[gameId].name}: ${result.score ?? 0}/${result.maxScore ?? 100}, ${summaryLabel.toLowerCase()}`,
     reviewData: safeReviewData,
     detail: result.detail ?? summaryLabel
   } satisfies MinefieldGameResult;

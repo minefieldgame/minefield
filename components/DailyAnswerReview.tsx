@@ -4,6 +4,7 @@ import Image from "next/image";
 import InteractiveGuessMap from "@/components/InteractiveGuessMap";
 import { formatChartDate } from "@/lib/date";
 import type { MinefieldSummary } from "@/types/minefield";
+import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 function unavailableMessage(message: string) {
   return /error|generate|unavailable|failed/i.test(message)
@@ -20,7 +21,7 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
           <article key={result.gameId} className="theme-surface rounded-2xl border p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-black text-slate-950 dark:text-white">
-                {result.icon} {result.displayName}
+                {GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}
               </h2>
               <span className="font-black text-violet dark:text-[#9187f6]">
                 {result.score}/{result.maxScore}

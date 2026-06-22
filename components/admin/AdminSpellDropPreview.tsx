@@ -6,7 +6,7 @@ import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 export default function AdminSpellDropPreview({ preview, date }: { preview: Preview; date: string }) {
   if (preview.status === "error") return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <h2 className="text-2xl font-black">SpellDrop</h2>
+      <h2 className="text-2xl font-black">Buzzword</h2>
       <p className="mt-3 rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">{preview.error}</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {[
@@ -30,7 +30,7 @@ export default function AdminSpellDropPreview({ preview, date }: { preview: Prev
   const { puzzle } = preview;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <div className="flex items-center justify-between"><h2 className="text-2xl font-black">SpellDrop</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
+      <div className="flex items-center justify-between"><h2 className="text-2xl font-black">Buzzword</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {[
           ["Selected date", date],

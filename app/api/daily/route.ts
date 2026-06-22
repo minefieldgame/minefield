@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     });
   } catch {
     return NextResponse.json(
-      { error: "Today’s NeedleDrop could not be loaded." },
+      { error: "Today’s Rewind puzzle could not be loaded." },
       { status: 502 }
     );
   }

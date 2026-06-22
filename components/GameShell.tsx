@@ -60,7 +60,7 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
         const summaryLabel = won ? `Solved in ${solvedIn}` : "Not solved";
         onComplete?.({
           gameId: "needledrop",
-          displayName: "NeedleDrop",
+          displayName: "Rewind",
           icon: "🎵",
           score: stored.score,
           maxScore: 100,
@@ -68,7 +68,7 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
           successUnits: won ? solvedIn : 0,
           totalUnits: 7,
           summaryLabel,
-          shareLine: `🎵 NeedleDrop: ${stored.score}/100, ${summaryLabel.toLowerCase()}`,
+          shareLine: `🎵 Rewind: ${stored.score}/100, ${summaryLabel.toLowerCase()}`,
           reviewData: {
             type: "needledrop",
             songTitle: stored.puzzle.title,
@@ -150,7 +150,7 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
     const summaryLabel = won ? `Solved in ${solvedIn}` : "Not solved";
     onComplete?.({
       gameId: "needledrop",
-      displayName: "NeedleDrop",
+      displayName: "Rewind",
       icon: "🎵",
       score: next.score,
       maxScore: 100,
@@ -158,7 +158,7 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
       successUnits: won ? solvedIn : 0,
       totalUnits: 7,
       summaryLabel,
-      shareLine: `🎵 NeedleDrop: ${next.score}/100, ${summaryLabel.toLowerCase()}`,
+      shareLine: `🎵 Rewind: ${next.score}/100, ${summaryLabel.toLowerCase()}`,
       reviewData: {
         type: "needledrop",
         songTitle: next.puzzle.title,

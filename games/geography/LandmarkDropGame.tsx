@@ -28,10 +28,10 @@ export default function LandmarkDropGame({
   const report = useCallback((next: State) => {
     const label = geographyScoreLabel(next.score);
     onComplete({
-      gameId: "landmark-drop", displayName: "Landmark Drop", icon: "🗼",
+      gameId: "landmark-drop", displayName: "On a Postcard", icon: "🗼",
       score: next.score, maxScore: 100, completed: true, successUnits: next.score >= 65 ? 1 : 0,
       totalUnits: 1, summaryLabel: `${label} · ${Math.round(next.distanceKm).toLocaleString()} km`,
-      shareLine: `🗼 Landmark Drop: ${next.score}/100, ${label.toLowerCase()}`,
+      shareLine: `🗼 On a Postcard: ${next.score}/100, ${label.toLowerCase()}`,
       reviewData: {
         type: "landmark-drop", landmark: puzzle.landmark.name, city: puzzle.landmark.city,
         country: puzzle.landmark.country, correct: target, guess: next.guess,

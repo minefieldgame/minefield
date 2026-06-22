@@ -55,7 +55,7 @@ export const adminGameRegistry: Array<{
 }> = [
   {
     gameId: "needledrop",
-    displayName: "NeedleDrop",
+    displayName: "Rewind",
     AdminPreviewComponent: NeedleDropModule
   },
   {
@@ -65,17 +65,17 @@ export const adminGameRegistry: Array<{
   },
   {
     gameId: "ranked-top-5",
-    displayName: "Top 5",
+    displayName: "In Order",
     AdminPreviewComponent: TopTenModule
   },
   {
     gameId: "spelldrop",
-    displayName: "SpellDrop",
+    displayName: "Buzzword",
     AdminPreviewComponent: SpellDropModule
   },
   {
     gameId: "closer",
-    displayName: "Closer",
+    displayName: "In the Ballpark",
     AdminPreviewComponent: CloserModule
   },
   {
@@ -85,7 +85,7 @@ export const adminGameRegistry: Array<{
   },
   {
     gameId: "landmark-drop",
-    displayName: "Landmark Drop",
+    displayName: "On a Postcard",
     AdminPreviewComponent: LandmarkDropModule
   }
 ];

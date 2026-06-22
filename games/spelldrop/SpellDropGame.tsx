@@ -32,9 +32,9 @@ export default function SpellDropGame({
     const score = result.correct ? 100 : 0;
     const summaryLabel = result.correct ? "Correct" : "Misspelled";
     onComplete({
-      gameId: "spelldrop", displayName: "SpellDrop", icon: "🔤", score, maxScore: 100,
+      gameId: "spelldrop", displayName: "Buzzword", icon: "🔤", score, maxScore: 100,
       completed: true, successUnits: result.correct ? 1 : 0, totalUnits: 1, summaryLabel,
-      shareLine: `🔤 SpellDrop: ${score}/100, ${summaryLabel.toLowerCase()}`,
+      shareLine: `🔤 Buzzword: ${score}/100, ${summaryLabel.toLowerCase()}`,
       reviewData: {
         type: "spelldrop", correctWord: result.puzzle.word, userSpelling: result.guess,
         correct: result.correct, definition: result.puzzle.definition
@@ -71,9 +71,9 @@ export default function SpellDropGame({
       .catch(() => {
         setError("Today’s puzzle could not be loaded.");
         onComplete({
-          gameId: "spelldrop", displayName: "SpellDrop", icon: "🔤", score: 0, maxScore: 100,
+          gameId: "spelldrop", displayName: "Buzzword", icon: "🔤", score: 0, maxScore: 100,
           completed: true, successUnits: 0, totalUnits: 1, summaryLabel: "Unavailable today",
-          shareLine: "🔤 SpellDrop: unavailable",
+          shareLine: "🔤 Buzzword: unavailable",
           reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })

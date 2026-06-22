@@ -29,10 +29,10 @@ export default function CloserGame({
   const report = useCallback((next: CloserState) => {
     const result = calculateCloserScore(next.numericGuess, next.puzzle.answer);
     onComplete({
-      gameId: "closer", displayName: "Closer", icon: "🎯", score: result.score, maxScore: 100,
+      gameId: "closer", displayName: "In the Ballpark", icon: "🎯", score: result.score, maxScore: 100,
       completed: true, successUnits: result.score >= 65 ? 1 : 0, totalUnits: 1,
       summaryLabel: result.scoreLabel,
-      shareLine: `🎯 Closer: ${result.score}/100, ${result.scoreLabel.toLowerCase()}`,
+      shareLine: `🎯 In the Ballpark: ${result.score}/100, ${result.scoreLabel.toLowerCase()}`,
       reviewData: {
         type: "closer", prompt: next.puzzle.prompt, userGuess: next.numericGuess,
         rawGuess: next.rawGuess, actualAnswer: next.puzzle.answer,
@@ -70,9 +70,9 @@ export default function CloserGame({
       .catch(() => {
         setError("Today’s puzzle could not be loaded.");
         onComplete({
-          gameId: "closer", displayName: "Closer", icon: "🎯", score: 0, maxScore: 100,
+          gameId: "closer", displayName: "In the Ballpark", icon: "🎯", score: 0, maxScore: 100,
           completed: true, successUnits: 0, totalUnits: 1, summaryLabel: "Unavailable today",
-          shareLine: "🎯 Closer: unavailable",
+          shareLine: "🎯 In the Ballpark: unavailable",
           reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })

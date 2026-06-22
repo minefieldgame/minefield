@@ -35,7 +35,7 @@ const GAME_ID = "ranked-top-5";
 
 export const topTenDefinition = {
   gameId: "ranked-top-5" as const,
-  displayName: "Top 5",
+  displayName: "In Order",
   maxScore: 100
 };
 
@@ -66,7 +66,7 @@ export default function TopTenGame({
     const label = rankedTopTenLabel(score);
     onComplete({
       gameId: GAME_ID,
-      displayName: "Top 5",
+      displayName: "In Order",
       icon: "🏆",
       score,
       maxScore: 100,
@@ -75,8 +75,8 @@ export default function TopTenGame({
       totalUnits: 5,
       summaryLabel: score === 100 ? label : `${placed}/5 placed`,
       shareLine: score === 100
-        ? "🏆 Top 5: 100/100, perfect ranking"
-        : `🏆 Top 5: ${score}/100, ${placed}/5 placed`,
+        ? "🏆 In Order: 100/100, perfect ranking"
+        : `🏆 In Order: ${score}/100, ${placed}/5 placed`,
       reviewData: {
         type: "ranked-top-5",
         prompt: next.puzzle.playerPrompt,
@@ -113,7 +113,7 @@ export default function TopTenGame({
     fetchDailyPuzzle<RankedTopTenPuzzle>(GAME_ID, date, `/api/top-ten/generate?date=${date}`)
       .then((puzzle) => {
         if (puzzle.date !== date || puzzle.gameId !== GAME_ID) {
-          throw new Error("Ranked Top 5 returned the wrong date.");
+          throw new Error("In Order returned the wrong date.");
         }
         const next: RankedTopTenState = {
           dateKey: date,
@@ -132,7 +132,7 @@ export default function TopTenGame({
         setError("Today’s puzzle could not be loaded.");
         onComplete({
           gameId: GAME_ID,
-          displayName: "Top 5",
+          displayName: "In Order",
           icon: "🏆",
           score: 0,
           maxScore: 100,
@@ -140,7 +140,7 @@ export default function TopTenGame({
           successUnits: 0,
           totalUnits: 5,
           summaryLabel: "Unavailable today",
-          shareLine: "🏆 Top 5: unavailable",
+          shareLine: "🏆 In Order: unavailable",
           reviewData: { type: "legacy", message: "Today’s puzzle could not be loaded." }
         });
       })

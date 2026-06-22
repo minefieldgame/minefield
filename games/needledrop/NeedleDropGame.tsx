@@ -5,7 +5,7 @@ import type { MinefieldGameResult } from "@/types/minefield";
 
 export const needledropDefinition = {
   gameId: "needledrop" as const,
-  displayName: "NeedleDrop",
+  displayName: "Rewind",
   maxScore: 100
 };
 

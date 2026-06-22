@@ -30,7 +30,7 @@ export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDr
   const [imageStatus, setImageStatus] = useState<"loading" | "loaded" | "failed">("loading");
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <h2 className="text-2xl font-black">Landmark Drop</h2>
+      <h2 className="text-2xl font-black">On a Postcard</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {[
           ["Landmark", puzzle.landmark.name], ["Location", `${puzzle.landmark.city}, ${puzzle.landmark.country}`],

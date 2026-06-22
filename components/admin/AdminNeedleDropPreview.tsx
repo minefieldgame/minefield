@@ -34,7 +34,7 @@ export default function AdminNeedleDropPreview({
   if (preview.status === "error") {
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-        <h2 className="text-2xl font-black text-slate-950 dark:text-white">NeedleDrop</h2>
+        <h2 className="text-2xl font-black text-slate-950 dark:text-white">Rewind</h2>
         <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">{preview.error}</p>
       </section>
     );
@@ -52,7 +52,7 @@ export default function AdminNeedleDropPreview({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[.18em] text-[#db4e36] dark:text-[#ff826a]">Game diagnostics</p>
-          <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">NeedleDrop</h2>
+          <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Rewind</h2>
         </div>
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">Ready</span>
       </div>

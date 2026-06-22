@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
   const needledrop = needledropResult.status === "fulfilled"
     ? { status: "ready" as const, ...needledropResult.value }
-    : { status: "error" as const, error: needledropResult.reason instanceof Error ? needledropResult.reason.message : "NeedleDrop failed." };
+    : { status: "error" as const, error: needledropResult.reason instanceof Error ? needledropResult.reason.message : "Rewind failed." };
 
   const topTenFailure = topTenResult.status === "rejected"
     ? classifyDynamicError(topTenResult.reason)
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       }
     : {
         status: "error" as const,
-        error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Top 5 failed.",
+        error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "In Order failed.",
         diagnostics: {
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           liveAIEnabled: providerStatus.mode === "live-ai",

@@ -32,9 +32,9 @@ export default function AdminTopTenPreview({
   if (preview.status === "error") {
     return (
       <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-        <h2 className="text-2xl font-black">Ranked Top 5</h2>
+        <h2 className="text-2xl font-black">In Order</h2>
         <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
-          {preview.error || "Ranked Top 5 is unavailable."}
+          {preview.error || "In Order is unavailable."}
         </p>
         {preview.diagnostics && (
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -61,7 +61,7 @@ export default function AdminTopTenPreview({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[.18em] text-coral">Game diagnostics</p>
-          <h2 className="mt-1 text-2xl font-black">Ranked Top 5</h2>
+          <h2 className="mt-1 text-2xl font-black">In Order</h2>
         </div>
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{diagnostics.validationStatus}</span>
       </div>
@@ -104,7 +104,7 @@ export default function AdminTopTenPreview({
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <button onClick={() => copyJson(puzzle)} className="rounded-xl bg-violet px-3 py-3 text-sm font-extrabold text-white">Copy Puzzle JSON</button>
-        <button onClick={onRegenerate} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Generate Top 5</button>
+        <button onClick={onRegenerate} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Generate In Order</button>
         <button onClick={onRetryCategory} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Retry Category</button>
         <button onClick={() => setPlayerPreview((value) => !value)} className="rounded-xl border px-3 py-3 text-sm font-extrabold">Preview as Player</button>
       </div>

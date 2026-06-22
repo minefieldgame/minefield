@@ -21,16 +21,21 @@ import {
   saveGameProgress
 } from "@/lib/minefieldStorage";
 import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "@/types/minefield";
+import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
-  { id: "needledrop", title: "NeedleDrop", subtitle: "Name the song from an increasingly longer clip." },
-  { id: "ranked-top-5", title: "Top 5", subtitle: "Drag the 5 items into the correct order." },
-  { id: "spelldrop", title: "SpellDrop", subtitle: "Listen carefully and spell the word in one attempt." },
-  { id: "closer", title: "Closer", subtitle: "Make one numeric guess and get as close as you can." },
-  { id: "meet-me-halfway", title: "Meet Me Halfway", subtitle: "Drop a pin where you think the halfway point is." },
-  { id: "landmark-drop", title: "Landmark Drop", subtitle: "Drop a pin where this landmark is located." },
-  { id: "minefield", title: "Minefield", subtitle: "Survive the final field using the difficulty you earned." }
-];
+  "needledrop",
+  "ranked-top-5",
+  "spelldrop",
+  "closer",
+  "meet-me-halfway",
+  "landmark-drop",
+  "minefield"
+].map((id) => ({
+  id: id as MinefieldGameId,
+  title: GAME_DISPLAY[id as MinefieldGameId].name,
+  subtitle: GAME_DISPLAY[id as MinefieldGameId].instruction
+}));
 
 const PRELIMINARY_GAME_IDS: MinefieldGameId[] = [
   "needledrop",
@@ -223,6 +228,19 @@ export default function MinefieldFeed({
                 <p className="mx-auto mt-3 max-w-sm text-base font-semibold leading-7 text-slate-500 dark:text-slate-300">
                   A daily collection of quick trivia and skill games.
                 </p>
+                <div className="mx-auto mt-5 max-w-sm text-left">
+                  <div className="grid grid-cols-2 gap-2">
+                    {GAMES.slice(0, 6).map((game) => (
+                      <div key={game.id} className="theme-muted rounded-xl px-3 py-2 text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                        {GAME_DISPLAY[game.id].icon} {game.title}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 rounded-2xl border border-violet/25 bg-violet/10 px-4 py-3 text-center">
+                    <p className="font-black text-slate-950 dark:text-white">💣 Minefield</p>
+                    <p className="text-[10px] font-black uppercase tracking-[.16em] text-violet dark:text-[#aaa2ff]">Final Challenge</p>
+                  </div>
+                </div>
                 <button onClick={startBoard} className="mt-7 h-14 w-full rounded-2xl bg-violet px-6 font-extrabold text-white shadow-lg shadow-violet/25 active:scale-[.98] dark:bg-[#7569e5]">
                   {mode === "admin-preview" ? "Start Preview Board" : "Start Today’s Board"}
                 </button>

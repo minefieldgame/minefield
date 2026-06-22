@@ -13,6 +13,7 @@ import { formatChartDate, getPacificDateKey } from "@/lib/date";
 import { calculateDailySummary, loadGameProgress, loadMinefieldStats } from "@/lib/minefieldStorage";
 import { shareResult } from "@/lib/shareResult";
 import type { MinefieldSummary } from "@/types/minefield";
+import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 export default function ReviewPageClient({
   requestedDate,
@@ -110,7 +111,7 @@ export default function ReviewPageClient({
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {prepResults.map((result) => (
               <div key={result.gameId} className="theme-raised flex items-center justify-between rounded-xl border px-3 py-2.5">
-                <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{result.icon} {result.displayName}</span>
+                <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}</span>
                 <span className="font-black text-violet">{result.score}</span>
               </div>
             ))}

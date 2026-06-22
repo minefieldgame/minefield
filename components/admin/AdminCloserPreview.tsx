@@ -6,7 +6,7 @@ import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 export default function AdminCloserPreview({ preview, date, onRegenerate }: { preview: Preview; date: string; onRegenerate: () => void }) {
   if (preview.status === "error") return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <h2 className="text-2xl font-black">Closer</h2>
+      <h2 className="text-2xl font-black">In the Ballpark</h2>
       <p className="mt-3 rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">{preview.error}</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {[
@@ -30,7 +30,7 @@ export default function AdminCloserPreview({ preview, date, onRegenerate }: { pr
   const { puzzle } = preview;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <div className="flex items-center justify-between"><h2 className="text-2xl font-black">Closer</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
+      <div className="flex items-center justify-between"><h2 className="text-2xl font-black">In the Ballpark</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">valid</span></div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {[
           ["Selected date", date],
@@ -53,7 +53,7 @@ export default function AdminCloserPreview({ preview, date, onRegenerate }: { pr
           ["Repeat check", preview.repeatCheck.repeated ? "Recently appeared" : "Clear"]
         ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 break-words text-sm font-bold">{value}</p></div>)}
       </div>
-      <button onClick={onRegenerate} className="mt-4 rounded-xl bg-violet px-5 py-3 text-sm font-extrabold text-white">Generate Closer</button>
+      <button onClick={onRegenerate} className="mt-4 rounded-xl bg-violet px-5 py-3 text-sm font-extrabold text-white">Generate In the Ballpark</button>
       <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw AI response</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(preview.rawAIResponse, null, 2)}</pre></details>
       <details className="mt-2 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Final puzzle JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
