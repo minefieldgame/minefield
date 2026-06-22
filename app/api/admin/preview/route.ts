@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       spellDrop,
       closer,
       meetMeHalfway: { status: "ready", puzzle: resolveMeetMeHalfwayPuzzle(date) },
-      landmarkDrop: { status: "ready", puzzle: resolveLandmarkDropPuzzle(date), imageStatus: "Loaded client-side with graceful fallback" }
+      landmarkDrop: { status: "ready", puzzle: resolveLandmarkDropPuzzle(date), imageStatus: "Client image check pending" }
     }
   }, { headers: { "Cache-Control": "no-store" } });
 }

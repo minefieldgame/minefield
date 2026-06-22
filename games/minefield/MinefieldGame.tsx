@@ -143,28 +143,28 @@ export default function MinefieldGame({
 
   if (phase === "intro") {
     return (
-      <div className="grid min-h-[390px] place-items-center rounded-3xl bg-[radial-gradient(circle_at_top,#312e81,#111827_65%)] p-6 text-center text-white shadow-2xl">
+      <div className="theme-surface grid min-h-[390px] place-items-center rounded-3xl border p-6 text-center">
         <div className="w-full animate-[pulse_1.1s_ease-in-out_1]">
           <p className="text-5xl" aria-hidden="true">💣</p>
-          <p className="mt-4 text-xs font-black uppercase tracking-[.22em] text-amber-300">Final challenge</p>
-          <h3 className="mt-2 text-3xl font-black">Minefield Difficulty: {puzzle.difficulty}</h3>
-          <p className="mx-auto mt-3 max-w-xs text-sm font-semibold leading-6 text-indigo-100">
+          <p className="mt-4 text-xs font-black uppercase tracking-[.22em] text-coral">Final challenge</p>
+          <h3 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">Minefield Difficulty: {puzzle.difficulty}</h3>
+          <p className="mx-auto mt-3 max-w-xs text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">
             You scored {puzzle.runScore}/{puzzle.runMaxScore} before Minefield.
           </p>
-          <p className="mt-3 text-base font-black text-amber-200">
+          <p className="mt-3 text-base font-black text-violet dark:text-[#aaa2ff]">
             That earns {puzzle.difficulty} difficulty.
           </p>
           <div className="mx-auto mt-5 grid max-w-xs grid-cols-2 gap-2 text-sm font-black">
-            <span className="rounded-2xl bg-white/10 px-3 py-3">{puzzle.mineCount} mines</span>
-            <span className="rounded-2xl bg-white/10 px-3 py-3">{puzzle.maxPicks} safe picks required</span>
+            <span className="theme-muted rounded-2xl border border-slate-200 px-3 py-3 text-slate-800 dark:border-white/10 dark:text-white">{puzzle.mineCount} mines</span>
+            <span className="theme-muted rounded-2xl border border-slate-200 px-3 py-3 text-slate-800 dark:border-white/10 dark:text-white">{puzzle.maxPicks} safe picks required</span>
           </div>
-          <p className="mx-auto mt-5 max-w-sm text-sm font-semibold leading-6 text-white/90">
+          <p className="mx-auto mt-5 max-w-sm text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">
             Find {puzzle.maxPicks} safe tiles to survive. Hit a mine before then and your run ends.
           </p>
           <button
             type="button"
             onClick={() => setPhase("playing")}
-            className="mt-6 h-14 w-full max-w-sm rounded-2xl bg-white px-6 text-base font-black text-indigo-950 shadow-xl shadow-black/20 transition active:scale-[.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/60"
+            className="mt-6 h-14 w-full max-w-sm rounded-2xl bg-violet px-6 text-base font-black text-white shadow-xl shadow-violet/25 transition hover:bg-[#574bbf] active:scale-[.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/30 dark:bg-[#7569e5] dark:hover:bg-[#857af0]"
           >
             Start Minefield
           </button>

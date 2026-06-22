@@ -81,6 +81,20 @@ export function parseNumericGuess(input: string) {
 
 export const normalizeNumericGuess = parseNumericGuess;
 
+export function getCloserPlaceholder(puzzle: Pick<CloserPuzzle, "prompt" | "unit">) {
+  const unit = puzzle.unit.trim();
+  const context = `${puzzle.prompt} ${unit}`.toLowerCase();
+  const promptAlreadyDefinesMeasurement =
+    /\b(in|measured in|answer in)\s+(millions?|billions?|thousands?|feet|foot|miles?|meters?|metres?|kilometers?|kilometres?|years?|seconds?|minutes?|hours?|degrees?|percent|percentage)\b/.test(context);
+  const conciseMeasurementUnit =
+    /^(?:millions?|billions?|thousands?)(?:\s+of)?(?:\s+\w+){0,2}$|^(?:feet|foot|miles?|meters?|metres?|kilometers?|kilometres?|years?|seconds?|minutes?|hours?|degrees?|percent|percentage)$/i.test(unit);
+
+  if (promptAlreadyDefinesMeasurement && conciseMeasurementUnit) {
+    return `Enter your guess in ${unit}`;
+  }
+  return "Enter your guess";
+}
+
 export function calculateCloserScore(guess: number, answer: number): CloserScore {
   const distanceFromAnswer = Math.abs(guess - answer);
   const percentError = distanceFromAnswer / Math.abs(answer);

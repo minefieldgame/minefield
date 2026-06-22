@@ -3,7 +3,7 @@ export type Landmark = {
   imageUrl: string; imageAlt: string; sourceNote: string;
 };
 
-const wm = (file: string) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=900`;
+const landmarkImage = (name: string) => `/api/landmark-image?name=${encodeURIComponent(name)}`;
 const sourceNote = "Image and location reference: Wikimedia Commons";
 
 const RAW: Array<[string,string,string,number,number,string]> = [
@@ -65,6 +65,6 @@ const RAW: Array<[string,string,string,number,number,string]> = [
 ];
 
 export const LANDMARKS: Landmark[] = RAW.map(([name, city, country, latitude, longitude, file]) => ({
-  name, city, country, latitude, longitude, imageUrl: wm(file),
+  name, city, country, latitude, longitude, imageUrl: landmarkImage(name),
   imageAlt: `${name} in ${city}, ${country}`, sourceNote
 }));

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { calculateCloserScore, parseNumericGuess } from "@/games/closer/providers";
+import { calculateCloserScore, getCloserPlaceholder, parseNumericGuess } from "@/games/closer/providers";
 import type { CloserPuzzle } from "@/games/closer/types";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import { markContentUsed } from "@/lib/content/repeatPrevention";
@@ -84,7 +84,7 @@ export default function CloserGame({
     if (!puzzle || state?.completed) return;
     const numericGuess = parseNumericGuess(input);
     if (numericGuess === null || (!puzzle.allowNegative && numericGuess < 0)) {
-      setError("Enter a valid positive number, such as 1.5m or 500k."); return;
+      setError("Enter a valid number. Commas and decimals are supported."); return;
     }
     const next: CloserState = { date, puzzle, rawGuess: input.trim(), numericGuess, completed: true };
     localStorage.setItem(storageKey, JSON.stringify(next));
@@ -100,7 +100,7 @@ export default function CloserGame({
       <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-300">Answer in {puzzle.unit} · one guess only</p>
       <form onSubmit={submit} className="mt-5">
         <input value={input} disabled={state?.completed} onChange={(event) => { setInput(event.target.value); setError(""); }}
-          inputMode="decimal" placeholder="e.g. 1.5m, 500k, 8,848" autoComplete="off"
+          inputMode="decimal" placeholder={getCloserPlaceholder(puzzle)} autoComplete="off"
           className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 text-center text-lg font-black text-slate-950 outline-none focus:border-violet focus:ring-4 focus:ring-violet/15 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white" />
         {error && <p role="alert" className="mt-2 text-center text-xs font-bold text-red-600 dark:text-red-300">{error}</p>}
         {!state?.completed && <button disabled={!input.trim()} className="mt-3 h-12 w-full rounded-xl bg-violet font-extrabold text-white shadow-md disabled:opacity-35 dark:bg-[#7569e5]">Lock in guess</button>}

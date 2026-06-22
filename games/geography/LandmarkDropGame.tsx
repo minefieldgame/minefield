@@ -65,12 +65,19 @@ export default function LandmarkDropGame({
   return (
     <div>
       <div className="mb-3 flex items-center gap-3">
-        <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-[#292e38]">
+        <div className="h-24 w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-white/10 dark:bg-[#292e38]">
           {!imageFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={puzzle.landmark.imageUrl} alt={puzzle.landmark.imageAlt}
               onError={() => setImageFailed(true)} className="h-full w-full object-cover" />
-          ) : <div className="grid h-full place-items-center text-3xl" aria-label="Landmark image unavailable">🗺️</div>}
+          ) : (
+            <div className="grid h-full place-items-center bg-gradient-to-br from-violet/10 to-coral/10 p-3 text-center" role="img" aria-label={`${puzzle.landmark.name} image unavailable`}>
+              <div>
+                <span className="text-2xl" aria-hidden="true">🗺️</span>
+                <p className="mt-1 text-[10px] font-black leading-tight text-slate-700 dark:text-slate-200">{puzzle.landmark.name}</p>
+              </div>
+            </div>
+          )}
         </div>
         <div>
           <p className="text-[10px] font-black uppercase tracking-[.16em] text-coral">Today’s landmark</p>
