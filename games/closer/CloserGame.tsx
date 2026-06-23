@@ -27,7 +27,7 @@ export default function CloserGame({
   const [loading, setLoading] = useState(true);
 
   const report = useCallback((next: CloserState) => {
-    const result = calculateCloserScore(next.numericGuess, next.puzzle.answer);
+    const result = calculateCloserScore(next.numericGuess, next.puzzle.answer, next.puzzle.scoringProfile);
     onComplete({
       gameId: "closer", displayName: "In the Ballpark", icon: "🎯", score: result.score, maxScore: 100,
       completed: true, successUnits: result.score >= 65 ? 1 : 0, totalUnits: 1,
@@ -37,7 +37,8 @@ export default function CloserGame({
         type: "closer", prompt: next.puzzle.prompt, userGuess: next.numericGuess,
         rawGuess: next.rawGuess, actualAnswer: next.puzzle.answer,
         displayAnswer: next.puzzle.displayAnswer, percentError: result.percentError,
-        sourceNote: next.puzzle.sourceNote, scoreLabel: result.scoreLabel
+        sourceNote: next.puzzle.sourceNote, scoreLabel: result.scoreLabel,
+        scoringProfile: result.scoringProfile, absoluteDifference: result.distanceFromAnswer
       },
       detail: result.scoreLabel
     });
@@ -94,11 +95,11 @@ export default function CloserGame({
   if (loading) return <div className="py-10 text-center text-sm font-semibold text-slate-500">Generating today’s question…</div>;
   if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be loaded.</div>;
   return (
-    <div>
-      <span className="rounded-full bg-violet/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">{puzzle.category}</span>
-      <h3 className="mt-3 text-xl font-black leading-tight text-slate-950 dark:text-white">{puzzle.prompt}</h3>
+    <div className="min-w-0">
+      <span className="inline-block max-w-full break-words rounded-full bg-violet/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff] sm:text-[11px]">{puzzle.category}</span>
+      <h3 className="mt-3 break-words text-lg font-black leading-tight text-slate-950 dark:text-white sm:text-xl">{puzzle.prompt}</h3>
       <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-300">Answer in {puzzle.unit} · one guess only</p>
-      <form onSubmit={submit} className="mt-5">
+      <form onSubmit={submit} className="mt-4">
         <input value={input} disabled={state?.completed} onChange={(event) => { setInput(event.target.value); setError(""); }}
           inputMode="decimal" placeholder={getCloserPlaceholder(puzzle)} autoComplete="off"
           className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 text-center text-lg font-black text-slate-950 outline-none focus:border-violet focus:ring-4 focus:ring-violet/15 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white" />

@@ -104,9 +104,9 @@ export default function SpellDropGame({
   if (error || !puzzle) return <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">Today’s puzzle could not be loaded.</div>;
   const completed = Boolean(state?.completed);
   return (
-    <div>
-      <div className="rounded-xl border border-violet/15 bg-violet/5 p-4 text-center dark:border-violet/25 dark:bg-violet/10">
-        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{puzzle.definition}</p>
+    <div className="min-w-0">
+      <div className="rounded-xl border border-violet/15 bg-violet/5 p-3 text-center dark:border-violet/25 dark:bg-violet/10 sm:p-4">
+        <p className="break-words text-sm font-bold leading-5 text-slate-700 dark:text-slate-200">{puzzle.definition}</p>
         <button type="button" onClick={speak} disabled={completed || plays >= REPLAY_LIMIT + 1}
           className="mx-auto mt-3 flex h-12 items-center justify-center gap-3 rounded-xl bg-violet px-6 font-extrabold text-white shadow-md active:scale-[.97] disabled:opacity-45 dark:bg-[#7569e5]">
           <span aria-hidden="true">🔊</span>{plays === 0 ? "Play word" : "Play again"}

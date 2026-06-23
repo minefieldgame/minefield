@@ -123,7 +123,9 @@ function recoverReviewData(
           displayAnswer: state.puzzle.displayAnswer,
           percentError,
           sourceNote: state.puzzle.sourceNote,
-          scoreLabel: percentError <= 0.01 ? "Right on the money" : percentError <= 0.1 ? "Very close" : "Completed"
+          scoreLabel: percentError <= 0.01 ? "Right on the money" : percentError <= 0.1 ? "Very close" : "Completed",
+          absoluteDifference: Math.abs(state.numericGuess - state.puzzle.answer),
+          scoringProfile: "large-estimate"
         };
       }
     }

@@ -43,22 +43,22 @@ export default function Header({ onStats }: Props) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-white/[.08] dark:bg-[#111318]/85">
-      <div className="mx-auto flex h-[68px] w-full max-w-3xl items-center justify-between px-4">
-        <Link href="/" className="group rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/25" aria-label="Minefield home">
-          <BrandLogo priority className="h-12 w-auto object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.04] sm:h-14" />
+      <div className="mx-auto flex h-[68px] w-full min-w-0 max-w-3xl items-center justify-between gap-2 px-3 sm:px-4">
+        <Link href="/" className="group min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/25" aria-label="Minefield home">
+          <BrandLogo priority className="h-11 w-auto max-w-[96px] object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.04] sm:h-14 sm:max-w-none" />
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <Link
             href="/archive"
-            className="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+            className="rounded-xl px-2 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 sm:px-3 sm:text-sm dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
           >
             Archive
           </Link>
           {onStats && (
             <button
               onClick={onStats}
-              className="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+              className="rounded-xl px-2 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 sm:px-3 sm:text-sm dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
             >
               Stats
             </button>
@@ -67,9 +67,9 @@ export default function Header({ onStats }: Props) {
             onClick={toggleTheme}
             aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
             aria-pressed={dark}
-            className="relative ml-1 flex h-10 w-[66px] items-center rounded-full border border-slate-300 bg-slate-100 p-1 shadow-inner outline-none focus-visible:ring-4 focus-visible:ring-violet/30 active:scale-[.96] dark:border-[#444b59] dark:bg-[#252a34]"
+            className="relative ml-0.5 flex h-10 w-[58px] items-center rounded-full border border-slate-300 bg-slate-100 p-1 shadow-inner outline-none focus-visible:ring-4 focus-visible:ring-violet/30 active:scale-[.96] sm:ml-1 sm:w-[66px] dark:border-[#444b59] dark:bg-[#252a34]"
           >
-            <span className={`absolute top-1 grid h-8 w-8 place-items-center rounded-full shadow-md transition-all duration-300 ${dark ? "translate-x-6 bg-violet text-white" : "translate-x-0 bg-white text-amber-500"}`}>
+            <span className={`absolute top-1 grid h-8 w-8 place-items-center rounded-full shadow-md transition-all duration-300 ${dark ? "translate-x-4 bg-violet text-white sm:translate-x-6" : "translate-x-0 bg-white text-amber-500"}`}>
               {dark ? <MoonIcon /> : <SunIcon />}
             </span>
             <span className={`ml-[7px] text-slate-400 transition-opacity ${dark ? "opacity-100" : "opacity-0"}`}><SunIcon /></span>

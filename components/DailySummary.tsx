@@ -74,7 +74,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
   }
 
   return (
-    <section className="theme-surface w-full rounded-[1.5rem] border p-5 sm:p-6">
+    <section className="theme-surface min-w-0 w-full overflow-hidden rounded-[1.5rem] border p-4 sm:p-6">
       <div className="text-center">
         <p className="text-xs font-black uppercase tracking-[.2em] text-coral">Daily Board Complete</p>
         <p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-300">{formatChartDate(summary.date)}</p>
@@ -87,9 +87,9 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
         </p>
         <div className="mt-3 space-y-1.5">
           {prepResults.map((result) => (
-            <div key={result.gameId} className="flex items-center justify-between text-sm">
-              <span className="font-bold text-slate-700 dark:text-slate-200">{GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}</span>
-              <span className="font-black text-violet">{result.score}</span>
+            <div key={result.gameId} className="flex min-w-0 items-start justify-between gap-3 text-sm">
+              <span className="min-w-0 break-words font-bold text-slate-700 dark:text-slate-200">{GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}</span>
+              <span className="shrink-0 font-black text-violet">{result.score}</span>
             </div>
           ))}
         </div>
@@ -113,7 +113,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
       </section>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <button onClick={handleShare} className="h-12 w-full rounded-xl bg-violet px-5 font-extrabold text-white shadow-lg shadow-violet/25 active:scale-[.98]">
+        <button onClick={handleShare} className="min-h-12 w-full rounded-xl bg-violet px-4 py-3 text-sm font-extrabold leading-tight text-white shadow-lg shadow-violet/25 active:scale-[.98]">
           {shareStatus === "shared"
             ? "Shared!"
             : shareStatus === "copied"
@@ -122,7 +122,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
                 ? "Share unavailable"
                 : "Share Result"}
         </button>
-        <button onClick={handleCopy} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-5 font-extrabold text-slate-800 shadow-sm active:scale-[.98] dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
+        <button onClick={handleCopy} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold leading-tight text-slate-800 shadow-sm active:scale-[.98] dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
           {copyStatus === "copied" ? "Copied results." : copyStatus === "failed" ? "Copy unavailable" : "Copy Results as Text"}
         </button>
       </div>

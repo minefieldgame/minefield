@@ -10,6 +10,11 @@ export type AdminResolverDiagnostics = {
   route: string;
   resolver: string;
   date: string;
+  dateKey?: string;
+  gameId?: string;
+  seed?: number;
+  temperature?: number;
+  regeneratedThisSession?: boolean;
   cacheKey: string;
   cacheHit: boolean;
   envDetected: boolean;

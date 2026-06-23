@@ -135,7 +135,7 @@ export default function InteractiveGuessMap({
     <div
       role="application"
       aria-label={label}
-      className={`relative aspect-[2/1] min-h-44 w-full overflow-hidden rounded-2xl border border-slate-300 bg-[#dceefa] shadow-inner dark:border-[#454c5a] dark:bg-[#172534] ${
+      className={`relative h-[clamp(150px,25dvh,210px)] min-h-0 w-full max-w-full overflow-hidden rounded-xl border border-slate-300 bg-[#dceefa] shadow-inner landscape:h-[clamp(130px,42dvh,180px)] sm:rounded-2xl dark:border-[#454c5a] dark:bg-[#172534] ${
         disabled ? "" : "cursor-crosshair"
       }`}
     >
@@ -152,7 +152,7 @@ export default function InteractiveGuessMap({
       )}
       {!guess && !disabled && ready && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[500] text-center">
-          <span className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-black text-slate-700 shadow-md dark:bg-[#20242c]/95 dark:text-white">
+          <span className="inline-block max-w-[calc(100%-1rem)] rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-black text-slate-700 shadow-md dark:bg-[#20242c]/95 dark:text-white sm:text-[11px]">
             Tap to place · pinch or scroll to zoom
           </span>
         </div>

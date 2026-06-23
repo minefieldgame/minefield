@@ -102,25 +102,25 @@ export default function ReviewPageClient({
   return (
     <>
       <Header />
-      <main className="mx-auto min-h-[calc(100dvh-68px)] w-full max-w-2xl px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-6">
+      <main className="mx-auto min-h-[calc(100dvh-68px)] w-full min-w-0 max-w-2xl overflow-x-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-5 sm:px-4 sm:pt-6">
         <div className="mb-6">
           <p className="text-xs font-black uppercase tracking-[.2em] text-coral">
             {mode === "admin-preview" ? "Admin preview complete" : "Board complete"}
           </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-white">Daily Results</h1>
+          <h1 className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">Daily Results</h1>
           <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-300">{formatChartDate(summary.date)}</p>
         </div>
 
         <section className="theme-surface rounded-2xl border p-5">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">Daily Prep Score</p>
-          <p className="mt-1 text-4xl font-black text-slate-950 dark:text-white">
+          <p className="mt-1 text-3xl font-black text-slate-950 dark:text-white sm:text-4xl">
             {prepScore}<span className="text-xl text-slate-400">/600</span>
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {prepResults.map((result) => (
-              <div key={result.gameId} className="theme-raised flex items-center justify-between rounded-xl border px-3 py-2.5">
-                <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}</span>
-                <span className="font-black text-violet">{result.score}</span>
+              <div key={result.gameId} className="theme-raised flex min-w-0 items-start justify-between gap-2 rounded-xl border px-3 py-2.5">
+                <span className="min-w-0 break-words text-sm font-extrabold text-slate-800 dark:text-slate-100">{GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}</span>
+                <span className="shrink-0 font-black text-violet">{result.score}</span>
               </div>
             ))}
           </div>
@@ -132,7 +132,7 @@ export default function ReviewPageClient({
             : "border-red-300 bg-red-500/10"
         }`}>
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">Final Minefield</p>
-          <h2 className="mt-1 text-3xl font-black text-slate-950 dark:text-white">
+          <h2 className="mt-1 break-words text-2xl font-black text-slate-950 dark:text-white sm:text-3xl">
             {minefield ? (minefield.hitMine ? "Did not survive" : "Survived") : "Unavailable"}
           </h2>
           {minefield && (
@@ -147,7 +147,7 @@ export default function ReviewPageClient({
         </section>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <button onClick={share} className="h-12 w-full rounded-xl bg-violet font-extrabold text-white shadow-lg shadow-violet/20 active:scale-[.98]">
+          <button onClick={share} className="min-h-12 w-full rounded-xl bg-violet px-4 py-3 text-sm font-extrabold leading-tight text-white shadow-lg shadow-violet/20 active:scale-[.98]">
             {shareStatus === "shared"
               ? "Shared!"
               : shareStatus === "copied"
@@ -156,7 +156,7 @@ export default function ReviewPageClient({
                   ? "Share unavailable"
                   : "Share Result"}
           </button>
-          <button onClick={copy} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-extrabold text-slate-800 shadow-sm active:scale-[.98] dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
+          <button onClick={copy} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold leading-tight text-slate-800 shadow-sm active:scale-[.98] dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">
             {copyStatus === "copied" ? "Copied results." : copyStatus === "failed" ? "Copy unavailable" : "Copy Results as Text"}
           </button>
         </div>
@@ -182,9 +182,9 @@ export default function ReviewPageClient({
 
 function ReviewStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="theme-raised rounded-xl border p-3">
+    <div className="theme-raised min-w-0 rounded-xl border p-3">
       <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-black text-slate-950 dark:text-white">{value}</p>
+      <p className="mt-1 break-words text-base font-black text-slate-950 dark:text-white sm:text-lg">{value}</p>
     </div>
   );
 }

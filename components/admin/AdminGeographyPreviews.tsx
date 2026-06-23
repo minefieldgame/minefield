@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import InteractiveGuessMap from "@/components/InteractiveGuessMap";
+import InteractiveGuessMap, { type MapPoint } from "@/components/InteractiveGuessMap";
 import type { AdminLandmarkDropPreview, AdminMeetMeHalfwayPreview } from "@/types/admin";
+import { calculateLandmarkDropScore, calculateMeetMeHalfwayScore } from "@/games/geography/logic";
 
 export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHalfwayPreview }) {
   const { puzzle } = preview;
+  const [guess, setGuess] = useState<MapPoint | null>(null);
+  const diagnostics = guess ? calculateMeetMeHalfwayScore(guess, puzzle.midpoint) : null;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <h2 className="text-2xl font-black">Meet Me Halfway</h2>
@@ -19,7 +22,8 @@ export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHal
           ["Seed", puzzle.seed]
         ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-sm font-bold">{value}</p></div>)}
       </div>
-      <div className="mt-4"><InteractiveGuessMap guess={null} correct={puzzle.midpoint} disabled /></div>
+      <div className="mt-4"><InteractiveGuessMap guess={guess} onGuess={setGuess} correct={puzzle.midpoint} /></div>
+      {diagnostics && <GeoDiagnostics diagnostics={diagnostics} />}
       <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
   );
@@ -28,6 +32,9 @@ export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHal
 export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDropPreview }) {
   const { puzzle } = preview;
   const [imageStatus, setImageStatus] = useState<"loading" | "loaded" | "failed">("loading");
+  const [guess, setGuess] = useState<MapPoint | null>(null);
+  const target = { latitude: puzzle.landmark.latitude, longitude: puzzle.landmark.longitude };
+  const diagnostics = guess ? calculateLandmarkDropScore(guess, target, puzzle.landmark.country, puzzle.landmark.city) : null;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
       <h2 className="text-2xl font-black">On a Postcard</h2>
@@ -54,8 +61,26 @@ export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDr
           </div>
         )}
       </div>
-      <div className="mt-4"><InteractiveGuessMap guess={null} correct={{ latitude: puzzle.landmark.latitude, longitude: puzzle.landmark.longitude }} disabled /></div>
+      <div className="mt-4"><InteractiveGuessMap guess={guess} onGuess={setGuess} correct={target} /></div>
+      {diagnostics && <GeoDiagnostics diagnostics={diagnostics} />}
       <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
+  );
+}
+
+function GeoDiagnostics({ diagnostics }: { diagnostics: ReturnType<typeof calculateMeetMeHalfwayScore> }) {
+  return (
+    <div className="theme-raised mt-3 grid grid-cols-2 gap-2 rounded-2xl border p-3 sm:grid-cols-4">
+      {[
+        ["Distance", `${Math.round(diagnostics.distanceKm)} km`],
+        ["Base score", diagnostics.baseScore],
+        ["Continent bonus", diagnostics.continentBonus],
+        ["Country bonus", diagnostics.countryBonus],
+        ["Region bonus", diagnostics.regionBonus],
+        ["Metro bonus", diagnostics.metroBonus],
+        ["Guessed country", diagnostics.guessedCountry],
+        ["Final score", `${diagnostics.finalScore} · ${diagnostics.label}`]
+      ].map(([label, value]) => <div key={label}><p className="text-[9px] font-black uppercase text-slate-500">{label}</p><p className="mt-1 text-sm font-black">{value}</p></div>)}
+    </div>
   );
 }

@@ -59,6 +59,8 @@ export type CloserReviewData = {
   actualAnswer: number;
   displayAnswer: string;
   percentError: number;
+  absoluteDifference?: number;
+  scoringProfile?: string;
   sourceNote: string;
   scoreLabel: string;
 };
@@ -70,6 +72,10 @@ export type MeetMeHalfwayReviewData = {
   midpoint: { latitude: number; longitude: number };
   guess: { latitude: number; longitude: number };
   distanceKm: number;
+  scoringDiagnostics?: {
+    baseScore: number; continentBonus: number; countryBonus: number; regionBonus: number;
+    metroBonus: number; finalScore: number; guessedCountry: string; targetCountry: string; label: string; distanceKm: number;
+  };
 };
 
 export type LandmarkDropReviewData = {
@@ -81,6 +87,10 @@ export type LandmarkDropReviewData = {
   guess: { latitude: number; longitude: number };
   distanceKm: number;
   imageUrl: string;
+  scoringDiagnostics?: {
+    baseScore: number; continentBonus: number; countryBonus: number; regionBonus: number;
+    metroBonus: number; finalScore: number; guessedCountry: string; targetCountry: string; label: string; distanceKm: number;
+  };
 };
 
 export type MinefieldReviewData =

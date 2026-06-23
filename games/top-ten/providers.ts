@@ -172,17 +172,15 @@ export async function resolveDailyTopTenPuzzle(
 export const resolveRankedTop5ForDate = resolveDailyTopTenPuzzle;
 
 export function getAvailableTopTenCategories() {
-  return TOPICS.map((category) => ({ category, mode: "AI generated" }));
+  return TOPICS.map((category) => ({ category, mode: "deterministic catalog" }));
 }
 
 export function getTopTenProviderStatus() {
   const status = getAIStatus();
   return {
-    mode: status.liveGenerationEnabled ? "live-ai" : "unavailable",
+    mode: "deterministic-catalog",
     model: status.model,
     apiKeyConfigured: status.apiKeyConfigured,
-    warning: status.apiKeyConfigured
-      ? null
-      : "OPENAI_API_KEY is missing. Add it in AWS Amplify environment variables."
+    warning: null
   };
 }

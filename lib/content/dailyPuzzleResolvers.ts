@@ -1,75 +1,88 @@
 import "server-only";
 
-import { unstable_cache } from "next/cache";
-import { resolveDailyTopTenPuzzle } from "@/games/top-ten/providers";
-import { resolveDailySpellDropPuzzle } from "@/games/spelldrop/providers";
-import { resolveDailyCloserPuzzle } from "@/games/closer/providers";
+import { validateTopTenPuzzle } from "@/games/top-ten/providers";
+import { validateSpellDropPuzzle } from "@/games/spelldrop/providers";
+import { inferCloserScoringProfile, validateCloserPuzzle } from "@/games/closer/providers";
 import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
 import type { RankedTopTenPuzzle } from "@/games/top-ten/types";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { CloserPuzzle } from "@/games/closer/types";
 import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
-
-const CACHE_SECONDS = 60 * 60 * 24 * 370;
-
-const cachedRankedTop5 = unstable_cache(
-  async (date: string) => resolveDailyTopTenPuzzle(date),
-  ["minefield-daily-ranked-top-5-v1"],
-  { revalidate: CACHE_SECONDS, tags: ["minefield-daily-ranked-top-5"] }
-);
-
-const cachedSpellDrop = unstable_cache(
-  async (date: string) => resolveDailySpellDropPuzzle(date),
-  ["minefield-daily-spelldrop-v1"],
-  { revalidate: CACHE_SECONDS, tags: ["minefield-daily-spelldrop"] }
-);
-
-const cachedCloser = unstable_cache(
-  async (date: string) => resolveDailyCloserPuzzle(date),
-  ["minefield-daily-closer-v1"],
-  { revalidate: CACHE_SECONDS, tags: ["minefield-daily-closer"] }
-);
-
-const cachedNeedleDrop = unstable_cache(
-  async (date: string) => resolveNeedleDropDiagnostic(date),
-  ["minefield-daily-needledrop-v1"],
-  { revalidate: CACHE_SECONDS, tags: ["minefield-daily-needledrop"] }
-);
-
-function withObservedCacheHit<T extends { generatedAt: string; generationDurationMs?: number; cacheHit?: boolean }>(
-  value: T
-): T & { cacheHit: boolean } {
-  const age = Date.now() - Date.parse(value.generatedAt);
-  return {
-    ...value,
-    cacheHit: Boolean(value.cacheHit) || age > Math.max(1000, (value.generationDurationMs ?? 0) + 500)
-  };
-}
+import { hashString } from "@/lib/dailySeed";
+import { generateContentHash } from "@/lib/content/repeatPrevention";
+import { deterministicEnvelope } from "@/lib/content/deterministicEnvelope";
+import { BALLPARK_CATALOG, BUZZWORD_CATALOG, IN_ORDER_CATALOG } from "@/data/dailyPuzzleCatalogs";
 
 export async function resolveRankedTop5ForDate(
   date: string,
-  options: Parameters<typeof resolveDailyTopTenPuzzle>[1] = {}
+  options: { force?: boolean; retryOffset?: number } = {}
 ): Promise<RankedTopTenPuzzle> {
-  if (options.force) return resolveDailyTopTenPuzzle(date, options);
-  return withObservedCacheHit(await cachedRankedTop5(date));
+  const seed = hashString(`ranked-top-5:${date}:0`);
+  const entry = IN_ORDER_CATALOG[(seed + (options.retryOffset ?? 0)) % IN_ORDER_CATALOG.length];
+  const answers = entry.items.map(([answer, value], index) => ({
+    rank: index + 1,
+    answer,
+    displayAnswer: answer,
+    aliases: [],
+    value,
+    sourceNote: entry.source
+  }));
+  const base = {
+    gameId: "ranked-top-5" as const,
+    id: `ranked-top-5:${date}`,
+    date,
+    title: entry.title,
+    playerPrompt: entry.playerPrompt,
+    adminPrompt: `${entry.playerPrompt} Metric: ${entry.metric}. Source: ${entry.source}`,
+    category: entry.category,
+    rankingMetric: entry.metric,
+    direction: "highest-to-lowest" as const,
+    answers,
+    sources: [entry.source],
+    confidence: 1,
+    contentHash: "",
+    generatedAt: `${date}T12:00:00.000Z`,
+    generator: "Versioned deterministic daily catalog",
+    cacheHit: true,
+    generationDurationMs: 0,
+    validation: { valid: false, checks: {} as RankedTopTenPuzzle["validation"]["checks"], errors: [] },
+    rawAIResponse: null
+  };
+  const validation = validateTopTenPuzzle(base);
+  return { ...base, validation, contentHash: generateContentHash({ date, entry }) };
 }
 
 export async function resolveSpellDropForDate(
   date: string,
-  force = false
+  _force = false
 ): Promise<GeneratedContentEnvelope<SpellDropPuzzle>> {
-  if (force) return resolveDailySpellDropPuzzle(date, true);
-  return withObservedCacheHit(await cachedSpellDrop(date));
+  const seed = hashString(`spelldrop:${date}:0`);
+  const entry = BUZZWORD_CATALOG[seed % BUZZWORD_CATALOG.length];
+  const puzzle: SpellDropPuzzle = { gameId: "spelldrop", date, seed, ...entry };
+  return deterministicEnvelope({
+    gameId: "spelldrop", date, puzzle, validation: validateSpellDropPuzzle(puzzle),
+    topic: "commonly misspelled English words", answer: puzzle.word,
+    sourceNotes: ["Versioned Minefield lexical catalog"]
+  });
 }
 
 export async function resolveCloserForDate(
   date: string,
-  force = false
+  _force = false
 ): Promise<GeneratedContentEnvelope<CloserPuzzle>> {
-  if (force) return resolveDailyCloserPuzzle(date, true);
-  return withObservedCacheHit(await cachedCloser(date));
+  const seed = hashString(`closer:${date}:0`);
+  const entry = BALLPARK_CATALOG[seed % BALLPARK_CATALOG.length];
+  const scoringProfile = inferCloserScoringProfile(entry);
+  const puzzle: CloserPuzzle = {
+    gameId: "closer", date, seed, ...entry, scoringProfile,
+    toleranceType: scoringProfile === "small-integer" || scoringProfile === "year" || scoringProfile === "percentage" ? "absolute" : "percent"
+  };
+  return deterministicEnvelope({
+    gameId: "closer", date, puzzle, validation: validateCloserPuzzle(puzzle),
+    topic: puzzle.category, answer: String(puzzle.answer), sourceNotes: [puzzle.sourceNote]
+  });
 }
 
 export async function resolveNeedleDropForDate(date: string) {
-  return cachedNeedleDrop(date);
+  return resolveNeedleDropDiagnostic(date);
 }

@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
           validationStatus: validateTopTenPuzzle(topTenResult.value).valid ? "valid" : "invalid",
           dataFreshness: `Generated ${topTenResult.value.generatedAt}`,
           confidence: topTenResult.value.confidence,
-          generationMode: "live-ai",
+          generationMode: "deterministic-catalog",
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           warning: providerStatus.warning,
           errors: topTenResult.value.validation.errors,
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         error: topTenResult.reason instanceof Error ? topTenResult.reason.message : "In Order failed.",
         diagnostics: {
           apiKeyConfigured: providerStatus.apiKeyConfigured,
-          liveAIEnabled: providerStatus.mode === "live-ai",
+          liveAIEnabled: false,
           model: providerStatus.model,
           generationMode: providerStatus.mode,
           failureReason: topTenResult.reason instanceof Error ? topTenResult.reason.message : "Unknown failure.",

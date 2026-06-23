@@ -84,6 +84,10 @@ export default function AdminTopTenPreview({
         <Datum label="Route called" value={diagnostics.resolverDiagnostics.route} />
         <Datum label="Resolver called" value={diagnostics.resolverDiagnostics.resolver} />
         <Datum label="Resolver date" value={diagnostics.resolverDiagnostics.date} />
+        <Datum label="Game ID" value={diagnostics.resolverDiagnostics.gameId ?? "ranked-top-5"} />
+        <Datum label="Daily seed" value={diagnostics.resolverDiagnostics.seed ?? "—"} />
+        <Datum label="Temperature" value={diagnostics.resolverDiagnostics.temperature ?? 0} />
+        <Datum label="Regenerated this session" value={String(diagnostics.resolverDiagnostics.regeneratedThisSession ?? false)} />
         <Datum label="Environment detected" value={String(diagnostics.resolverDiagnostics.envDetected)} />
         <Datum label="Model" value={diagnostics.resolverDiagnostics.model} />
       </div>

@@ -1,4 +1,11 @@
 export type CloserDifficulty = "easy" | "medium" | "hard";
+export type CloserScoringProfile =
+  | "small-integer"
+  | "medium-count"
+  | "large-estimate"
+  | "year"
+  | "percentage";
+export type CloserToleranceType = "absolute" | "percent";
 
 export type CloserPuzzle = {
   gameId: "closer";
@@ -13,6 +20,8 @@ export type CloserPuzzle = {
   acceptableRangeNote: string;
   sourceNote: string;
   difficulty: CloserDifficulty;
+  scoringProfile: CloserScoringProfile;
+  toleranceType: CloserToleranceType;
   allowNegative?: boolean;
   contentHash?: string;
   confidence?: number;
@@ -24,4 +33,5 @@ export type CloserScore = {
   percentError: number;
   distanceFromAnswer: number;
   scoreLabel: string;
+  scoringProfile: CloserScoringProfile;
 };

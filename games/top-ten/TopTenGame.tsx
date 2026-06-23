@@ -220,9 +220,9 @@ export default function TopTenGame({
 
   const ended = state.status !== "playing";
   return (
-    <div className="overscroll-none">
-      <div className="flex items-center justify-between gap-3">
-        <span className="rounded-full bg-violet/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">
+    <div className="min-w-0 overscroll-none">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <span className="max-w-full break-words rounded-full bg-violet/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-violet dark:bg-violet/25 dark:text-[#aaa2ff]">
           {state.puzzle.category}
         </span>
         <span className="shrink-0 text-xs font-black text-slate-600 dark:text-slate-200">One attempt</span>
@@ -239,7 +239,7 @@ export default function TopTenGame({
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={state.order} strategy={verticalListSortingStrategy}>
-          <div className="mt-3 touch-none space-y-1 overscroll-none">
+          <div className="mt-2.5 touch-none space-y-1 overscroll-none">
             {state.order.map((answer, index) => (
               <SortableRankCard
                 key={answer}
@@ -295,7 +295,7 @@ function SortableRankCard({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      className={`flex min-h-16 touch-none select-none items-center gap-3 rounded-2xl border px-4 py-3 shadow-sm outline-none transition-[transform,box-shadow,border-color,background-color] focus-visible:ring-4 focus-visible:ring-violet/25 ${
+      className={`flex min-h-14 min-w-0 touch-none select-none items-center gap-2 rounded-xl border px-2.5 py-2 shadow-sm outline-none transition-[transform,box-shadow,border-color,background-color] focus-visible:ring-4 focus-visible:ring-violet/25 sm:min-h-16 sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3 ${
         locked
           ? "animate-[pulse_.35s_ease-out_1] border-emerald-400 bg-emerald-500/12 text-emerald-800 shadow-emerald-500/15 dark:border-emerald-400/40 dark:text-emerald-200"
           : incorrect
@@ -306,11 +306,11 @@ function SortableRankCard({
       }`}
       aria-label={`${index + 1}. ${label}${locked ? ", locked" : ", draggable"}`}
     >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black/[.05] text-sm font-black dark:bg-white/[.07]">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-black/[.05] text-xs font-black dark:bg-white/[.07] sm:h-9 sm:w-9 sm:rounded-xl sm:text-sm">
         {index + 1}
       </span>
       <span className={`text-lg ${locked ? "text-emerald-600" : "text-slate-400"}`}>{locked ? "✓" : "☰"}</span>
-      <span className="min-w-0 flex-1 text-base font-extrabold leading-tight">{label}</span>
+      <span className="min-w-0 flex-1 break-words text-sm font-extrabold leading-tight sm:text-base">{label}</span>
       {locked && <span className="text-[10px] font-black uppercase tracking-wider">Locked</span>}
     </div>
   );

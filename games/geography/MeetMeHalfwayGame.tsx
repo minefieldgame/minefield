@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import InteractiveGuessMap, { type MapPoint } from "@/components/InteractiveGuessMap";
-import { calculateMeetMeHalfwayScore, geographyScoreLabel, haversineDistanceKm } from "@/games/geography/logic";
+import { calculateMeetMeHalfwayScore, type GeographyScoreResult } from "@/games/geography/logic";
 import { resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
-type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean };
+type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean; diagnostics: GeographyScoreResult };
 export default function MeetMeHalfwayGame({
   onComplete,
   date: selectedDate,
@@ -24,7 +24,7 @@ export default function MeetMeHalfwayGame({
   const [state, setState] = useState<State | null>(null);
 
   const report = useCallback((next: State) => {
-    const label = geographyScoreLabel(next.score);
+    const label = next.diagnostics.label;
     onComplete({
       gameId: "meet-me-halfway", displayName: "Meet Me Halfway", icon: "🌍",
       score: next.score, maxScore: 100, completed: true, successUnits: next.score >= 65 ? 1 : 0,
@@ -32,7 +32,8 @@ export default function MeetMeHalfwayGame({
       shareLine: `🌍 Meet Me Halfway: ${next.score}/100, ${label.toLowerCase()}`,
       reviewData: {
         type: "meet-me-halfway", locationA: puzzle.locationA, locationB: puzzle.locationB,
-        midpoint: puzzle.midpoint, guess: next.guess, distanceKm: next.distanceKm
+        midpoint: puzzle.midpoint, guess: next.guess, distanceKm: next.distanceKm,
+        scoringDiagnostics: next.diagnostics
       }
     });
   }, [onComplete, puzzle]);
@@ -46,30 +47,34 @@ export default function MeetMeHalfwayGame({
         localStorage.removeItem(storageKey);
         return;
       }
-      setState(parsed); setGuess(parsed.guess);
-      if (parsed.completed) report(parsed);
+      const restored = parsed.diagnostics ? parsed : {
+        ...parsed,
+        diagnostics: calculateMeetMeHalfwayScore(parsed.guess, puzzle.midpoint)
+      };
+      setState(restored); setGuess(restored.guess);
+      if (restored.completed) report(restored);
     } catch {}
   }, [date, report, storageKey]);
 
   function submit() {
     if (!guess || state?.completed) return;
-    const distanceKm = haversineDistanceKm(guess, puzzle.midpoint);
-    const next = { dateKey: date, guess, distanceKm, score: calculateMeetMeHalfwayScore(distanceKm), completed: true };
+    const diagnostics = calculateMeetMeHalfwayScore(guess, puzzle.midpoint);
+    const next = { dateKey: date, guess, distanceKm: diagnostics.distanceKm, score: diagnostics.finalScore, completed: true, diagnostics };
     localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next); report(next);
   }
 
   return (
-    <div>
-      <div className="mb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
-        <div className="rounded-xl bg-slate-100 px-2 py-2 dark:bg-[#292e38]">
-          <p className="text-sm font-black text-slate-950 dark:text-white">{puzzle.locationA.name}</p>
-          <p className="text-[10px] font-bold text-slate-500">{puzzle.locationA.country}</p>
+    <div className="min-w-0">
+      <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-1.5 text-center sm:gap-2">
+        <div className="min-w-0 rounded-xl bg-slate-100 px-1.5 py-2 dark:bg-[#292e38] sm:px-2">
+          <p className="break-words text-xs font-black leading-tight text-slate-950 dark:text-white sm:text-sm">{puzzle.locationA.name}</p>
+          <p className="mt-1 break-words text-[9px] font-bold leading-tight text-slate-500 sm:text-[10px]">{puzzle.locationA.country}</p>
         </div>
         <span className="text-lg font-black text-violet">↔</span>
-        <div className="rounded-xl bg-slate-100 px-2 py-2 dark:bg-[#292e38]">
-          <p className="text-sm font-black text-slate-950 dark:text-white">{puzzle.locationB.name}</p>
-          <p className="text-[10px] font-bold text-slate-500">{puzzle.locationB.country}</p>
+        <div className="min-w-0 rounded-xl bg-slate-100 px-1.5 py-2 dark:bg-[#292e38] sm:px-2">
+          <p className="break-words text-xs font-black leading-tight text-slate-950 dark:text-white sm:text-sm">{puzzle.locationB.name}</p>
+          <p className="mt-1 break-words text-[9px] font-bold leading-tight text-slate-500 sm:text-[10px]">{puzzle.locationB.country}</p>
         </div>
       </div>
       <InteractiveGuessMap guess={guess} onGuess={setGuess} disabled={Boolean(state?.completed)}

@@ -143,28 +143,28 @@ export default function MinefieldGame({
 
   if (phase === "intro") {
     return (
-      <div className="theme-surface grid min-h-[390px] place-items-center rounded-3xl border p-6 text-center">
+      <div className="theme-surface grid min-h-0 place-items-center rounded-2xl border p-4 text-center sm:min-h-[390px] sm:rounded-3xl sm:p-6">
         <div className="w-full animate-[pulse_1.1s_ease-in-out_1]">
-          <p className="text-5xl" aria-hidden="true">💣</p>
-          <p className="mt-4 text-xs font-black uppercase tracking-[.22em] text-coral">Final challenge</p>
-          <h3 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">Minefield Difficulty: {puzzle.difficulty}</h3>
+          <p className="text-4xl sm:text-5xl" aria-hidden="true">💣</p>
+          <p className="mt-2 text-[10px] font-black uppercase tracking-[.18em] text-coral sm:mt-4 sm:text-xs sm:tracking-[.22em]">Final challenge</p>
+          <h3 className="mt-2 break-words text-2xl font-black leading-tight text-slate-950 dark:text-white sm:text-3xl">Minefield Difficulty: {puzzle.difficulty}</h3>
           <p className="mx-auto mt-3 max-w-xs text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">
             You scored {puzzle.runScore}/{puzzle.runMaxScore} before Minefield.
           </p>
           <p className="mt-3 text-base font-black text-violet dark:text-[#aaa2ff]">
             That earns {puzzle.difficulty} difficulty.
           </p>
-          <div className="mx-auto mt-5 grid max-w-xs grid-cols-2 gap-2 text-sm font-black">
-            <span className="theme-muted rounded-2xl border border-slate-200 px-3 py-3 text-slate-800 dark:border-white/10 dark:text-white">{puzzle.mineCount} mines</span>
-            <span className="theme-muted rounded-2xl border border-slate-200 px-3 py-3 text-slate-800 dark:border-white/10 dark:text-white">{puzzle.maxPicks} safe picks required</span>
+          <div className="mx-auto mt-3 grid max-w-xs grid-cols-2 gap-2 text-xs font-black sm:mt-5 sm:text-sm">
+            <span className="theme-muted break-words rounded-xl border border-slate-200 px-2 py-2.5 text-slate-800 dark:border-white/10 dark:text-white sm:rounded-2xl sm:px-3 sm:py-3">{puzzle.mineCount} mines</span>
+            <span className="theme-muted break-words rounded-xl border border-slate-200 px-2 py-2.5 text-slate-800 dark:border-white/10 dark:text-white sm:rounded-2xl sm:px-3 sm:py-3">{puzzle.maxPicks} safe picks required</span>
           </div>
-          <p className="mx-auto mt-5 max-w-sm text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">
+          <p className="mx-auto mt-3 max-w-sm break-words text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300 sm:mt-5 sm:text-sm sm:leading-6">
             Find {puzzle.maxPicks} safe tiles to survive. Hit a mine before then and your run ends.
           </p>
           <button
             type="button"
             onClick={() => setPhase("playing")}
-            className="mt-6 h-14 w-full max-w-sm rounded-2xl bg-violet px-6 text-base font-black text-white shadow-xl shadow-violet/25 transition hover:bg-[#574bbf] active:scale-[.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/30 dark:bg-[#7569e5] dark:hover:bg-[#857af0]"
+            className="mt-4 min-h-12 w-full max-w-sm rounded-xl bg-violet px-4 py-3 text-sm font-black text-white shadow-xl shadow-violet/25 transition hover:bg-[#574bbf] active:scale-[.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/30 sm:mt-6 sm:h-14 sm:rounded-2xl sm:px-6 sm:text-base dark:bg-[#7569e5] dark:hover:bg-[#857af0]"
           >
             Start Minefield
           </button>
@@ -203,7 +203,7 @@ export default function MinefieldGame({
           {state.safePicks.length}/{puzzle.maxPicks} safe · {score} pts
         </span>
       </div>
-      <div className="mx-auto mt-3 grid max-w-[390px] grid-cols-5 gap-2">
+      <div className="mx-auto mt-3 grid w-full max-w-[350px] grid-cols-5 gap-1.5 landscape:max-w-[250px] sm:max-w-[390px] sm:gap-2">
         {Array.from({ length: puzzle.gridSize ** 2 }, (_, index) => {
           const safe = state.safePicks.includes(index);
           const mineHit = state.hitMine && state.path.at(-1) === index;
@@ -214,7 +214,7 @@ export default function MinefieldGame({
               aria-label={`Tile ${index + 1}${safe ? ", safe" : ""}${mineHit ? ", mine" : ""}`}
               disabled={phase !== "playing" || state.completed || state.path.includes(index)}
               onClick={() => pick(index)}
-              className={`aspect-square rounded-2xl border text-2xl font-black shadow-md transition duration-200 active:scale-90 ${
+              className={`aspect-square min-w-0 rounded-xl border text-xl font-black shadow-md transition duration-200 active:scale-90 sm:rounded-2xl sm:text-2xl ${
                 mineHit
                   ? "scale-110 border-red-300 bg-red-500 text-white shadow-[0_0_28px_rgba(239,68,68,.9)]"
                   : safe

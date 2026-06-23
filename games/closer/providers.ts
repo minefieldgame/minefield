@@ -3,10 +3,11 @@ import { generateDailyContent, type GeneratedContentEnvelope } from "@/lib/conte
 import { hasCredibleSource } from "@/lib/content/sourceResolver";
 import { buildValidation } from "@/lib/content/validation";
 import type { CloserPuzzle, CloserScore } from "@/games/closer/types";
+import type { CloserScoringProfile } from "@/games/closer/types";
 
 const SCHEMA = {
   type: "object", additionalProperties: false,
-  required: ["id", "category", "prompt", "answer", "unit", "displayAnswer", "sourceNote", "difficulty", "acceptableRangeNote", "confidence"],
+  required: ["id", "category", "prompt", "answer", "unit", "displayAnswer", "sourceNote", "difficulty", "acceptableRangeNote", "scoringProfile", "toleranceType", "confidence"],
   properties: {
     id: { type: "string" },
     category: { type: "string" },
@@ -17,6 +18,8 @@ const SCHEMA = {
     sourceNote: { type: "string" },
     difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
     acceptableRangeNote: { type: "string" },
+    scoringProfile: { type: "string", enum: ["small-integer", "medium-count", "large-estimate", "year", "percentage"] },
+    toleranceType: { type: "string", enum: ["absolute", "percent"] },
     confidence: { type: "number", minimum: 0, maximum: 1 }
   }
 } as const;
@@ -30,7 +33,9 @@ export function validateCloserPuzzle(puzzle: CloserPuzzle) {
     unitClear: puzzle.unit.trim().length > 0,
     displayAnswerPresent: puzzle.displayAnswer.trim().length > 0,
     sourcePresent: hasCredibleSource([puzzle.sourceNote]),
-    generalAudience: puzzle.prompt.length <= 180
+    generalAudience: puzzle.prompt.length <= 180,
+    scoringProfileValid: puzzle.scoringProfile === inferCloserScoringProfile(puzzle),
+    toleranceValid: puzzle.toleranceType === (puzzle.scoringProfile === "small-integer" || puzzle.scoringProfile === "year" || puzzle.scoringProfile === "percentage" ? "absolute" : "percent")
   });
 }
 
@@ -46,7 +51,7 @@ export async function resolveDailyCloserPuzzle(
       const result = await requestStructuredContent<GeneratedCloser>({
         name: "minefield_closer",
         instructions:
-          "Create one fast, factual numeric trivia question for a general audience. It must be easy to understand immediately, playable in under 30 seconds, unambiguous, non-zero, reasonably guessable, and supported by a reliable source. Favor famous heights, speeds, populations, movie grosses, animal facts, planets, major sports records, and familiar cultural milestones. Avoid obscure terminals, company divisions, quarterly metrics, narrow datasets, and hyper-specific methodology. Return only the schema.",
+          "Create one fast, factual numeric trivia question for a general audience. Include scoringProfile and toleranceType. Use small-integer for low factual counts, medium-count for answers 20-999, large-estimate for populations/distances/money/measurements, year for calendar years, and percentage for percentages. Return only the schema.",
         input: `Pacific date ${date}; deterministic seed ${seed}. Vary across mainstream geography, sports, culture, science, history, animals, and technology.`,
         schema: SCHEMA,
         useWebSearch: true
@@ -81,6 +86,19 @@ export function parseNumericGuess(input: string) {
 
 export const normalizeNumericGuess = parseNumericGuess;
 
+export function inferCloserScoringProfile(
+  puzzle: Pick<CloserPuzzle, "prompt" | "answer" | "unit">
+): CloserScoringProfile {
+  const context = `${puzzle.prompt} ${puzzle.unit}`.toLowerCase();
+  if (/\b(year|what year|which year|when did)\b/.test(context) && puzzle.answer >= 1000 && puzzle.answer <= 2100) return "year";
+  if (/%|percent|percentage/.test(context)) return "percentage";
+  if (Number.isInteger(puzzle.answer) && puzzle.answer < 20 &&
+      /\b(how many|number of|planets?|continents?|rings?|players?|members?|sides?|teams?)\b/.test(context)) return "small-integer";
+  if (Math.abs(puzzle.answer) >= 20 && Math.abs(puzzle.answer) < 1000 &&
+      !/\b(million|billion|distance|miles?|kilometers?|metres?|meters?|dollars?|population|box office|views?)\b/.test(context)) return "medium-count";
+  return "large-estimate";
+}
+
 export function getCloserPlaceholder(puzzle: Pick<CloserPuzzle, "prompt" | "unit">) {
   const unit = puzzle.unit.trim();
   const context = `${puzzle.prompt} ${unit}`.toLowerCase();
@@ -95,16 +113,29 @@ export function getCloserPlaceholder(puzzle: Pick<CloserPuzzle, "prompt" | "unit
   return "Enter your guess";
 }
 
-export function calculateCloserScore(guess: number, answer: number): CloserScore {
+export function calculateCloserScore(
+  guess: number,
+  answer: number,
+  scoringProfile: CloserScoringProfile = "large-estimate"
+): CloserScore {
   const distanceFromAnswer = Math.abs(guess - answer);
   const percentError = distanceFromAnswer / Math.abs(answer);
-  const score =
-    percentError <= 0.01 ? 100 : percentError <= 0.05 ? 90 : percentError <= 0.10 ? 80 :
-    percentError <= 0.20 ? 65 : percentError <= 0.35 ? 50 : percentError <= 0.50 ? 35 :
-    percentError <= 0.75 ? 20 : 0;
-  const labels: Record<number, string> = {
-    100: "Right on the money", 90: "Extremely close", 80: "Very close", 65: "Close one",
-    50: "In the ballpark", 35: "A bit off", 20: "Way off", 0: "Not close"
-  };
-  return { score, percentError, distanceFromAnswer, scoreLabel: labels[score] };
+  let score = 0;
+  let scoreLabel = "Not close";
+  if (scoringProfile === "small-integer") {
+    score = distanceFromAnswer === 0 ? 100 : distanceFromAnswer === 1 ? 70 : distanceFromAnswer === 2 ? 40 : 0;
+    scoreLabel = score === 100 ? "Right on the money" : score === 70 ? "Close, but one off" : score === 40 ? "Two off" : "Not close";
+  } else if (scoringProfile === "year") {
+    score = distanceFromAnswer === 0 ? 100 : distanceFromAnswer <= 1 ? 90 : distanceFromAnswer <= 2 ? 75 : distanceFromAnswer <= 5 ? 50 : distanceFromAnswer <= 10 ? 25 : 0;
+  } else if (scoringProfile === "percentage") {
+    score = distanceFromAnswer <= 1 ? 100 : distanceFromAnswer <= 3 ? 90 : distanceFromAnswer <= 5 ? 75 : distanceFromAnswer <= 10 ? 50 : distanceFromAnswer <= 20 ? 25 : 0;
+  } else if (scoringProfile === "medium-count") {
+    score = percentError <= .02 ? 100 : percentError <= .05 ? 90 : percentError <= .10 ? 75 : percentError <= .20 ? 50 : percentError <= .35 ? 25 : 0;
+  } else {
+    score = percentError <= .01 ? 100 : percentError <= .05 ? 90 : percentError <= .10 ? 80 : percentError <= .20 ? 65 : percentError <= .35 ? 50 : percentError <= .50 ? 35 : percentError <= .75 ? 20 : 0;
+  }
+  if (scoringProfile !== "small-integer") {
+    scoreLabel = score === 100 ? "Right on the money" : score >= 90 ? "Extremely close" : score >= 75 ? "Very close" : score >= 50 ? "In the ballpark" : score >= 25 ? "A bit off" : "Not close";
+  }
+  return { score, percentError, distanceFromAnswer, scoreLabel, scoringProfile };
 }

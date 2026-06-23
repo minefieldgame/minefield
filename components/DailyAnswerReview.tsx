@@ -18,12 +18,12 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
       {summary.results.map((result) => {
         const review = result.reviewData;
         return (
-          <article key={result.gameId} className="theme-surface rounded-2xl border p-4 sm:p-5">
+          <article key={result.gameId} className="theme-surface min-w-0 overflow-hidden rounded-2xl border p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-black text-slate-950 dark:text-white">
+              <h2 className="min-w-0 break-words font-black text-slate-950 dark:text-white">
                 {GAME_DISPLAY[result.gameId].icon} {GAME_DISPLAY[result.gameId].name}
               </h2>
-              <span className="font-black text-violet dark:text-[#9187f6]">
+              <span className="shrink-0 font-black text-violet dark:text-[#9187f6]">
                 {result.score}/{result.maxScore}
               </span>
             </div>
@@ -133,6 +133,11 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   {review.scoreLabel} · {(review.percentError * 100).toFixed(1)}% error
                 </p>
+                {review.scoringProfile && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {review.scoringProfile} scoring · {review.absoluteDifference?.toLocaleString()} absolute difference
+                  </p>
+                )}
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Source: {review.sourceNote}</p>
               </div>
             )}
@@ -148,6 +153,11 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                 <p className="mt-2 text-xs font-bold text-slate-500">
                   Your pin was {Math.round(review.distanceKm).toLocaleString()} km from the true midpoint.
                 </p>
+                {review.scoringDiagnostics && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Base {review.scoringDiagnostics.baseScore} · continent +{review.scoringDiagnostics.continentBonus} · country +{review.scoringDiagnostics.countryBonus} · region +{review.scoringDiagnostics.regionBonus}
+                  </p>
+                )}
               </div>
             )}
 
@@ -161,6 +171,11 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                 <p className="mt-2 text-xs font-bold text-slate-500">
                   Your pin was {Math.round(review.distanceKm).toLocaleString()} km away.
                 </p>
+                {review.scoringDiagnostics && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Base {review.scoringDiagnostics.baseScore} · continent +{review.scoringDiagnostics.continentBonus} · country +{review.scoringDiagnostics.countryBonus} · region +{review.scoringDiagnostics.regionBonus} · metro +{review.scoringDiagnostics.metroBonus}
+                  </p>
+                )}
               </div>
             )}
 

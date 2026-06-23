@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import InteractiveGuessMap, { type MapPoint } from "@/components/InteractiveGuessMap";
-import { calculateLandmarkDropScore, geographyScoreLabel, haversineDistanceKm } from "@/games/geography/logic";
+import { calculateLandmarkDropScore, type GeographyScoreResult } from "@/games/geography/logic";
 import { resolveLandmarkDropPuzzle } from "@/games/geography/puzzles";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
-type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean };
+type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean; diagnostics: GeographyScoreResult };
 export default function LandmarkDropGame({
   onComplete,
   date: selectedDate,
@@ -26,7 +26,7 @@ export default function LandmarkDropGame({
   const target = { latitude: puzzle.landmark.latitude, longitude: puzzle.landmark.longitude };
 
   const report = useCallback((next: State) => {
-    const label = geographyScoreLabel(next.score);
+    const label = next.diagnostics.label;
     onComplete({
       gameId: "landmark-drop", displayName: "On a Postcard", icon: "🗼",
       score: next.score, maxScore: 100, completed: true, successUnits: next.score >= 65 ? 1 : 0,
@@ -35,7 +35,8 @@ export default function LandmarkDropGame({
       reviewData: {
         type: "landmark-drop", landmark: puzzle.landmark.name, city: puzzle.landmark.city,
         country: puzzle.landmark.country, correct: target, guess: next.guess,
-        distanceKm: next.distanceKm, imageUrl: puzzle.landmark.imageUrl
+        distanceKm: next.distanceKm, imageUrl: puzzle.landmark.imageUrl,
+        scoringDiagnostics: next.diagnostics
       }
     });
   }, [onComplete, puzzle.landmark, target.latitude, target.longitude]);
@@ -49,23 +50,27 @@ export default function LandmarkDropGame({
         localStorage.removeItem(storageKey);
         return;
       }
-      setState(parsed); setGuess(parsed.guess);
-      if (parsed.completed) report(parsed);
+      const restored = parsed.diagnostics ? parsed : {
+        ...parsed,
+        diagnostics: calculateLandmarkDropScore(parsed.guess, target, puzzle.landmark.country, puzzle.landmark.city)
+      };
+      setState(restored); setGuess(restored.guess);
+      if (restored.completed) report(restored);
     } catch {}
   }, [date, report, storageKey]);
 
   function submit() {
     if (!guess || state?.completed) return;
-    const distanceKm = haversineDistanceKm(guess, target);
-    const next = { dateKey: date, guess, distanceKm, score: calculateLandmarkDropScore(distanceKm), completed: true };
+    const diagnostics = calculateLandmarkDropScore(guess, target, puzzle.landmark.country, puzzle.landmark.city);
+    const next = { dateKey: date, guess, distanceKm: diagnostics.distanceKm, score: diagnostics.finalScore, completed: true, diagnostics };
     localStorage.setItem(storageKey, JSON.stringify(next));
     setState(next); report(next);
   }
 
   return (
-    <div>
-      <div className="mb-3 flex items-center gap-3">
-        <div className="h-24 w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-white/10 dark:bg-[#292e38]">
+    <div className="min-w-0">
+      <div className="mb-3 min-w-0">
+        <div className="relative h-[clamp(84px,16dvh,120px)] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm landscape:h-[clamp(72px,22dvh,100px)] dark:border-white/10 dark:bg-[#292e38]">
           {!imageFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={puzzle.landmark.imageUrl} alt={puzzle.landmark.imageAlt}
@@ -79,9 +84,9 @@ export default function LandmarkDropGame({
             </div>
           )}
         </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[.16em] text-coral">Today’s landmark</p>
-          <h3 className="mt-1 text-xl font-black leading-tight text-slate-950 dark:text-white">{puzzle.landmark.name}</h3>
+        <div className="mt-2 min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-[.14em] text-coral sm:text-[10px]">Today’s landmark</p>
+          <h3 className="mt-0.5 break-words text-lg font-black leading-tight text-slate-950 dark:text-white sm:text-xl">{puzzle.landmark.name}</h3>
         </div>
       </div>
       <InteractiveGuessMap guess={guess} onGuess={setGuess} disabled={Boolean(state?.completed)}
@@ -90,7 +95,7 @@ export default function LandmarkDropGame({
         className="mt-3 h-12 w-full rounded-xl bg-violet font-extrabold text-white shadow-md active:scale-[.98] disabled:opacity-35 dark:bg-[#7569e5]">
         Submit pin
       </button>}
-      {state?.completed && <p className="mt-3 text-center text-sm font-black text-slate-700 dark:text-white">
+      {state?.completed && <p className="mt-2 break-words text-center text-sm font-black text-slate-700 dark:text-white">
         {Math.round(state.distanceKm).toLocaleString()} km away · {state.score} points
       </p>}
     </div>

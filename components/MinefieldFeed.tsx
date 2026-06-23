@@ -190,14 +190,14 @@ export default function MinefieldFeed({
     <div className="h-dvh overflow-hidden">
       <Header />
       <div className="flex h-[calc(100dvh-68px)] flex-col">
-        <div className="z-20 flex h-14 shrink-0 items-center gap-4 border-b border-slate-200/70 bg-white/75 px-4 backdrop-blur-xl dark:border-white/[.07] dark:bg-[#111318]/80">
-          <div className="min-w-0">
+        <div className="z-20 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200/70 bg-white/75 px-3 backdrop-blur-xl dark:border-white/[.07] dark:bg-[#111318]/80 sm:gap-4 sm:px-4">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-black text-slate-950 dark:text-white">{formatChartDate(date)}</p>
             <p className="text-[10px] font-black uppercase tracking-[.15em] text-[#db4e36] dark:text-[#ff826a]">
               {mode === "admin-preview" ? "Admin preview mode" : "Today’s Minefield"}
             </p>
           </div>
-          <div className="ml-auto flex w-36 gap-1.5">
+          <div className="ml-auto flex w-20 shrink-0 gap-1 sm:w-36 sm:gap-1.5">
             {GAMES.map((game, index) => (
               <span
                 key={game.id}
@@ -211,20 +211,21 @@ export default function MinefieldFeed({
               />
             ))}
           </div>
-          <span className="text-sm font-black text-violet dark:text-[#9187f6]">{runPerformance}/600</span>
+          <span className="shrink-0 text-xs font-black text-violet dark:text-[#9187f6] sm:text-sm">{runPerformance}/600</span>
         </div>
 
         <main className="relative flex-1 overflow-hidden">
           {!ready ? (
             <section className="grid h-full place-items-center px-4 text-sm font-bold text-slate-500">Preparing games…</section>
           ) : !started ? (
-            <section className="grid h-full place-items-center px-4">
-              <div className="theme-surface w-full max-w-xl rounded-[2rem] border p-7 text-center sm:p-9">
-                <div className="mx-auto flex h-28 items-center justify-center">
-                  <BrandLogo priority className="h-28 w-auto object-contain drop-shadow-xl" />
+            <section className="h-full overflow-y-auto overscroll-contain px-3 py-3">
+              <div className="mx-auto flex min-h-full max-w-xl items-center">
+              <div className="theme-surface w-full rounded-[1.5rem] border p-4 text-center sm:rounded-[2rem] sm:p-9">
+                <div className="mx-auto flex h-20 items-center justify-center sm:h-28">
+                  <BrandLogo priority className="h-20 w-auto max-w-full object-contain drop-shadow-xl sm:h-28" />
                 </div>
                 <p className="mt-6 text-xs font-black uppercase tracking-[.22em] text-coral">Seven quick games · daily</p>
-                <h1 className="mt-2 text-4xl font-black tracking-[-.05em] text-slate-950 dark:text-white">Minefield</h1>
+                <h1 className="mt-2 text-3xl font-black tracking-[-.05em] text-slate-950 dark:text-white sm:text-4xl">Minefield</h1>
                 <p className="mx-auto mt-3 max-w-sm text-base font-semibold leading-7 text-slate-500 dark:text-slate-300">
                   A daily collection of quick trivia and skill games.
                 </p>
@@ -248,6 +249,7 @@ export default function MinefieldFeed({
                   {mode === "admin-preview" ? "Preview progress is isolated from daily play." : "Progress saves automatically on this device."}
                 </p>
               </div>
+              </div>
             </section>
           ) : (
             <>
@@ -261,12 +263,13 @@ export default function MinefieldFeed({
                     key={game.id}
                     aria-hidden={!active}
                     inert={!active}
-                    className={`absolute inset-0 flex items-center justify-center overflow-hidden px-3 py-3 transition-transform duration-500 ease-[cubic-bezier(.22,.8,.3,1)] ${
+                    className={`absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 py-2 transition-transform duration-500 ease-[cubic-bezier(.22,.8,.3,1)] sm:px-3 sm:py-3 ${
                       active ? "pointer-events-auto" : "pointer-events-none"
                     }`}
                     style={{ transform: `translateY(${(index - activeIndex) * 100}%)` }}
                   >
-                    <div className="relative w-full max-w-xl">
+                    <div className="relative mx-auto flex min-h-full w-full max-w-xl items-center">
+                      <div className="relative w-full min-w-0">
                       <MiniGameCard number={index + 1} title={game.title} subtitle={game.subtitle}>
                         {active && (
                           game.id === "needledrop" ? (
@@ -311,6 +314,7 @@ export default function MinefieldFeed({
                           </p>
                         </div>
                       )}
+                      </div>
                     </div>
                   </section>
                 );

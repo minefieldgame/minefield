@@ -9,13 +9,13 @@ export default function StatsModal({ onClose }: { onClose: () => void }) {
   const maxGuess = Math.max(1, ...Object.values(stats.guessDistribution));
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-5 backdrop-blur-md dark:bg-black/70">
-      <section className="theme-surface w-full max-w-md rounded-[2rem] border p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-x-hidden bg-slate-950/50 p-3 backdrop-blur-md dark:bg-black/70 sm:p-5">
+      <section className="theme-surface max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-md overflow-x-hidden overflow-y-auto rounded-[1.5rem] border p-4 sm:rounded-[2rem] sm:p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-black text-slate-950 dark:text-white">Your stats</h2>
           <button aria-label="Close stats" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-slate-100 text-xl text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/20 active:scale-90 dark:border-[#444b59] dark:bg-[#292e38] dark:text-white dark:hover:bg-[#353b47]">×</button>
         </div>
-        <div className="mt-6 grid grid-cols-4 gap-2 text-center">
+        <div className="mt-5 grid grid-cols-2 gap-2 text-center min-[380px]:grid-cols-4 sm:mt-6">
           {[
             [stats.gamesPlayed, "Played"],
             [`${winRate}%`, "Wins"],
@@ -28,9 +28,9 @@ export default function StatsModal({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
-        <div className="theme-raised mt-5 flex justify-between rounded-2xl border p-4 text-sm text-slate-700 dark:text-slate-200">
-          <span>Average score <b className="ml-1">{average}</b></span>
-          <span>First listens <b className="ml-1">{stats.perfectGuesses}</b></span>
+        <div className="theme-raised mt-5 grid grid-cols-1 gap-2 rounded-2xl border p-4 text-sm text-slate-700 min-[380px]:grid-cols-2 dark:text-slate-200">
+          <span className="break-words">Average score <b className="ml-1">{average}</b></span>
+          <span className="break-words">First listens <b className="ml-1">{stats.perfectGuesses}</b></span>
         </div>
         <h3 className="mb-3 mt-6 text-xs font-black uppercase tracking-[.15em] text-slate-500 dark:text-slate-300">Guess distribution</h3>
         <div className="space-y-2">
