@@ -6,10 +6,11 @@ const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
 const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
-  "needledrop", "ranked-top-5", "spelldrop", "closer",
+  "needledrop", "sing-along", "ranked-top-5", "spelldrop", "closer",
   "meet-me-halfway", "landmark-drop", "minefield"
 ];
 const GAME_DEFAULTS = {
+  "sing-along": { displayName: "Sing Along", icon: "🎤", totalUnits: 1 },
   needledrop: { displayName: "Rewind", icon: "🎵", totalUnits: 7 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 6 },
   "ranked-top-5": { displayName: "In Order", icon: "🏆", totalUnits: 5 },
@@ -171,7 +172,7 @@ export function saveGameProgress(date: string, result: MinefieldGameResult, scop
   return next;
 }
 
-export function calculateDailySummary(board: MinefieldDailyBoard, totalGames = 7): MinefieldSummary {
+export function calculateDailySummary(board: MinefieldDailyBoard, totalGames = 8): MinefieldSummary {
   const results = (Object.values(board.results).filter(Boolean) as MinefieldGameResult[]).sort(
     (left, right) => RESULT_ORDER.indexOf(left.gameId) - RESULT_ORDER.indexOf(right.gameId)
   );
@@ -191,7 +192,7 @@ function previousPacificDate(dateKey: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 7, scope?: string) {
+export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 8, scope?: string) {
   const summary = calculateDailySummary(board, totalGames);
   if (summary.gamesCompleted < totalGames) return summary;
   if (scope) return summary;

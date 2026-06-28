@@ -10,6 +10,11 @@ export const GAME_DISPLAY: Record<MinefieldGameId, {
     icon: "🎵",
     instruction: "Guess the Billboard hit from a song preview."
   },
+  "sing-along": {
+    name: "Sing Along",
+    icon: "🎤",
+    instruction: "The music stops just before the chorus. Type the next lyric."
+  },
   "ranked-top-5": {
     name: "In Order",
     icon: "🏆",

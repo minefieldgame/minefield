@@ -9,6 +9,7 @@ import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 const PREP_IDS: MinefieldGameResult["gameId"][] = [
   "needledrop",
+  "sing-along",
   "ranked-top-5",
   "spelldrop",
   "closer",
@@ -34,7 +35,7 @@ export function buildMinefieldShare(summary: MinefieldSummary) {
     "Minefield Daily",
     formatChartDate(summary.date),
     "",
-    `Prep Score: ${prepScore} / 600`,
+    `Prep Score: ${prepScore} / 700`,
     "",
     ...prepResults.map((result) => `${GAME_DISPLAY[result.gameId].icon} ${GAME_DISPLAY[result.gameId].name}: ${result.score}`),
     "",
@@ -83,7 +84,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
       <section className="theme-raised mt-5 rounded-2xl border p-4">
         <p className="text-xs font-black uppercase tracking-wider text-slate-500">Daily Prep Score</p>
         <p className="mt-1 text-3xl font-black text-slate-950 dark:text-white">
-          {prepScore}<span className="text-lg text-slate-400">/600</span>
+          {prepScore}<span className="text-lg text-slate-400">/700</span>
         </p>
         <div className="mt-3 space-y-1.5">
           {prepResults.map((result) => (

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Props = { src: string; duration: number; ended: boolean; playLabel?: string };
+type Props = { src: string; duration: number; ended: boolean; playLabel?: string; startAt?: number };
 
 function PlayIcon() {
   return (
@@ -21,10 +21,11 @@ function PauseIcon() {
   );
 }
 
-export default function AudioPlayer({ src, duration, ended, playLabel = "Play audio" }: Props) {
+export default function AudioPlayer({ src, duration, ended, playLabel = "Play audio", startAt = 0 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const limitRef = useRef(duration);
+  const startAtRef = useRef(startAt);
   const completedRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -50,16 +51,16 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
     return () => stopPlayback();
     // The player remounts when the attempt changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src]);
+  }, [src, startAt]);
 
   function monitorPlayback() {
     const audio = audioRef.current;
     if (!audio || audio.paused) return;
-    const playbackTime = Math.max(0, audio.currentTime);
+    const playbackTime = Math.max(0, audio.currentTime - startAtRef.current);
     const nextProgress = Math.min(1, playbackTime / limitRef.current);
     setProgress(nextProgress);
     if (playbackTime >= limitRef.current) {
-      audio.currentTime = Math.min(audio.currentTime, limitRef.current);
+      audio.currentTime = Math.min(audio.currentTime, startAtRef.current + limitRef.current);
       stopPlayback(true);
       return;
     }
@@ -76,17 +77,16 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
 
     setPlaybackError(false);
     const mediaDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
-    limitRef.current = ended ? mediaDuration : Math.min(duration, mediaDuration);
+    startAtRef.current = Math.max(0, Math.min(startAt, Math.max(0, mediaDuration - 0.1)));
+    limitRef.current = ended ? Math.max(0.1, mediaDuration - startAtRef.current) : Math.min(duration, Math.max(0.1, mediaDuration - startAtRef.current));
     try {
       audio.pause();
-      if (completedRef.current || audio.currentTime >= limitRef.current - 0.01) {
-        audio.currentTime = 0;
-        completedRef.current = false;
-        setProgress(0);
-      }
+      audio.currentTime = startAtRef.current;
+      completedRef.current = false;
+      setProgress(0);
       await audio.play();
       setPlaying(true);
-      setProgress(Math.min(1, audio.currentTime / limitRef.current));
+      setProgress(Math.min(1, Math.max(0, audio.currentTime - startAtRef.current) / limitRef.current));
       frameRef.current = requestAnimationFrame(monitorPlayback);
     } catch {
       setPlaying(false);
@@ -106,13 +106,14 @@ export default function AudioPlayer({ src, duration, ended, playLabel = "Play au
           const audio = audioRef.current;
           if (!audio) return;
           const mediaDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
-          limitRef.current = ended ? mediaDuration : Math.min(duration, mediaDuration);
+          startAtRef.current = Math.max(0, Math.min(startAt, Math.max(0, mediaDuration - 0.1)));
+          limitRef.current = ended ? Math.max(0.1, mediaDuration - startAtRef.current) : Math.min(duration, Math.max(0.1, mediaDuration - startAtRef.current));
         }}
         onPlaying={() => setReady(true)}
         onTimeUpdate={() => {
           const audio = audioRef.current;
-          if (audio && !audio.paused && audio.currentTime >= limitRef.current) {
-            audio.currentTime = limitRef.current;
+          if (audio && !audio.paused && audio.currentTime - startAtRef.current >= limitRef.current) {
+            audio.currentTime = startAtRef.current + limitRef.current;
             stopPlayback(true);
           }
         }}

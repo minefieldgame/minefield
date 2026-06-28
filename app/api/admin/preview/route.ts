@@ -4,6 +4,7 @@ import {
   resolveCloserForDate,
   resolveNeedleDropForDate,
   resolveRankedTop5ForDate,
+  resolveSingAlongForDate,
   resolveSpellDropForDate
 } from "@/lib/content/dailyPuzzleResolvers";
 import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
@@ -53,8 +54,9 @@ export async function GET(request: NextRequest) {
   };
   };
 
-  const [needledropResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
+  const [needledropResult, singAlongResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
     resolveNeedleDropForDate(date),
+    resolveSingAlongForDate(date),
     resolveRankedTop5ForDate(date, {
       force: topTenRetry > 0 || force,
       retryOffset: topTenRetry
@@ -66,6 +68,25 @@ export async function GET(request: NextRequest) {
   const needledrop = needledropResult.status === "fulfilled"
     ? { status: "ready" as const, ...needledropResult.value }
     : { status: "error" as const, error: needledropResult.reason instanceof Error ? needledropResult.reason.message : "Rewind failed." };
+
+  const singAlong = singAlongResult.status === "fulfilled"
+    ? {
+        status: "ready" as const,
+        puzzle: singAlongResult.value,
+        diagnostics: {
+          sourceProvider: "Versioned deterministic catalog + iTunes Search API",
+          chartDate: singAlongResult.value.chartDate,
+          playbackStart: singAlongResult.value.playbackStart,
+          playbackStop: singAlongResult.value.playbackStop,
+          chorusTimestamp: singAlongResult.value.chorusTimestamp,
+          acceptedLyric: singAlongResult.value.acceptedLyric,
+          alternateAcceptedLyrics: singAlongResult.value.alternateAcceptedLyrics,
+          contentHash: singAlongResult.value.contentHash,
+          generatedAt: singAlongResult.value.generatedAt,
+          cacheKey: getGameCacheKey("sing-along", date)
+        }
+      }
+    : { status: "error" as const, error: singAlongResult.reason instanceof Error ? singAlongResult.reason.message : "Sing Along failed." };
 
   const topTenFailure = topTenResult.status === "rejected"
     ? classifyDynamicError(topTenResult.reason)
@@ -145,6 +166,7 @@ export async function GET(request: NextRequest) {
     pacificDate: getPacificDateKey(),
     cacheKeys: {
       rankedTopTen: getGameCacheKey("ranked-top-5", date),
+      singAlong: getGameCacheKey("sing-along", date),
       spellDrop: getGameCacheKey("spelldrop", date),
       closer: getGameCacheKey("closer", date)
     },
@@ -153,7 +175,8 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     games: {
       needledrop,
-      minefield: { status: "ready", puzzle: resolveMinefieldPuzzle(date, 480, 600) },
+      singAlong,
+      minefield: { status: "ready", puzzle: resolveMinefieldPuzzle(date, 560, 700) },
       topTen,
       spellDrop,
       closer,

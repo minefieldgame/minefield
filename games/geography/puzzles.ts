@@ -1,6 +1,6 @@
 import { LANDMARKS } from "@/data/landmarks";
 import { WORLD_CITIES } from "@/data/worldCities";
-import { calculateGeographicMidpoint } from "@/games/geography/logic";
+import { calculateGeographicMidpoint, calculateProjectedMidpoint } from "@/games/geography/logic";
 import { hashString, seededShuffle } from "@/lib/dailySeed";
 
 export function resolveMeetMeHalfwayPuzzle(date: string) {
@@ -12,8 +12,19 @@ export function resolveMeetMeHalfwayPuzzle(date: string) {
     Math.abs(city.longitude - locationA.longitude) > 40 &&
     Math.abs(city.latitude - locationA.latitude) > 8
   ) ?? selected[1];
-  const midpoint = calculateGeographicMidpoint(locationA, locationB);
-  return { gameId: "meet-me-halfway" as const, date, seed, locationA, locationB, midpoint };
+  const sphericalMidpoint = calculateGeographicMidpoint(locationA, locationB);
+  const projectedMidpoint = calculateProjectedMidpoint(locationA, locationB);
+  return {
+    gameId: "meet-me-halfway" as const,
+    date,
+    seed,
+    locationA,
+    locationB,
+    sphericalMidpoint,
+    projectedMidpoint,
+    midpoint: projectedMidpoint,
+    finalGameplayMidpoint: projectedMidpoint
+  };
 }
 
 export function resolveLandmarkDropPuzzle(date: string) {

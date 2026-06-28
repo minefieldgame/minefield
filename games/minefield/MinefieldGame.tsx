@@ -25,7 +25,7 @@ export default function MinefieldGame({
   date: selectedDate,
   storageScope,
   runScore,
-  runMaxScore = 600
+  runMaxScore = 700
 }: {
   onComplete: (result: MinefieldGameResult) => void;
   date?: string;

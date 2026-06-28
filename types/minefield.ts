@@ -1,5 +1,6 @@
 export type MinefieldGameId =
   | "needledrop"
+  | "sing-along"
   | "minefield"
   | "ranked-top-5"
   | "spelldrop"
@@ -16,6 +17,20 @@ export type NeedleDropReviewData = {
   artworkUrl: string;
   userGuesses: string[];
   won: boolean;
+};
+
+export type SingAlongReviewData = {
+  type: "sing-along";
+  songTitle: string;
+  artist: string;
+  chartDate: string;
+  chartPosition: number;
+  playbackStart: number;
+  playbackStop: number;
+  chorusTimestamp: number;
+  userLyric: string;
+  acceptedLyric: string;
+  correct: boolean;
 };
 
 export type RankedTopTenReviewData = {
@@ -95,6 +110,7 @@ export type LandmarkDropReviewData = {
 
 export type MinefieldReviewData =
   | NeedleDropReviewData
+  | SingAlongReviewData
   | RankedTopTenReviewData
   | SpellDropReviewData
   | MinefieldGridReviewData

@@ -29,7 +29,7 @@ export type MinefieldPuzzle = MinefieldDifficultyProfile & {
   minePositions: number[];
 };
 
-export function getMinefieldDifficulty(runScore: number, runMaxScore = 600): MinefieldDifficultyProfile {
+export function getMinefieldDifficulty(runScore: number, runMaxScore = 700): MinefieldDifficultyProfile {
   const safeMax = Math.max(1, runMaxScore);
   const runPercentage = Math.max(0, Math.min(100, (runScore / safeMax) * 100));
   const settings =
@@ -55,7 +55,7 @@ export function getMinefieldDifficulty(runScore: number, runMaxScore = 600): Min
 export function resolveMinefieldPuzzle(
   date: string,
   runScore = 0,
-  runMaxScore = 600
+  runMaxScore = 700
 ): MinefieldPuzzle {
   const profile = getMinefieldDifficulty(runScore, runMaxScore);
   const seed = hashString(`minefield-final:${date}:${profile.difficulty}`);

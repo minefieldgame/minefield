@@ -45,6 +45,20 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
               </div>
             )}
 
+            {review.type === "sing-along" && (
+              <div className="mt-3">
+                <p className="font-black text-slate-950 dark:text-white">{review.songTitle}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{review.artist}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  #{review.chartPosition} · {formatChartDate(review.chartDate)} · stopped at {review.playbackStop}s
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <ReviewValue label="Your lyric" value={review.userLyric || "No answer"} />
+                  <ReviewValue label="Accepted lyric" value={review.acceptedLyric} />
+                </div>
+              </div>
+            )}
+
             {review.type === "ranked-top-5" && (
               <div className="mt-3">
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{review.prompt}</p>

@@ -33,6 +33,30 @@ export function calculateGeographicMidpoint(a: MapPoint, b: MapPoint): MapPoint 
   };
 }
 
+function mercatorY(latitude: number) {
+  const clamped = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+  const sin = Math.sin(radians(clamped));
+  return 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI);
+}
+
+function inverseMercatorY(y: number) {
+  return degrees(Math.atan(Math.sinh(Math.PI * (1 - 2 * y))));
+}
+
+function shortestWrappedLongitudeMidpoint(left: number, right: number) {
+  let delta = right - left;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return ((left + delta / 2 + 540) % 360) - 180;
+}
+
+export function calculateProjectedMidpoint(a: MapPoint, b: MapPoint): MapPoint {
+  return {
+    latitude: inverseMercatorY((mercatorY(a.latitude) + mercatorY(b.latitude)) / 2),
+    longitude: shortestWrappedLongitudeMidpoint(a.longitude, b.longitude)
+  };
+}
+
 const CONTINENTS: Record<string, string> = {
   "United States": "North America", Canada: "North America", Mexico: "North America", Cuba: "North America", Panama: "North America", "Costa Rica": "North America",
   Colombia: "South America", Peru: "South America", Ecuador: "South America", Venezuela: "South America", Brazil: "South America", Argentina: "South America", Chile: "South America", Uruguay: "South America", Bolivia: "South America",

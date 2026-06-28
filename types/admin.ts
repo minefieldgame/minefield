@@ -5,6 +5,7 @@ import type { CloserPuzzle } from "@/games/closer/types";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
 import type { resolveMeetMeHalfwayPuzzle, resolveLandmarkDropPuzzle } from "@/games/geography/puzzles";
+import type { SingAlongPuzzle } from "@/games/sing-along/types";
 
 export type AdminResolverDiagnostics = {
   route: string;
@@ -104,11 +105,13 @@ export type AdminPreviewResponse = {
   generatedAt: string;
   cacheKeys: {
     rankedTopTen: string;
+    singAlong: string;
     spellDrop: string;
     closer: string;
   };
   games: {
     needledrop: AdminNeedleDropPreview;
+    singAlong: AdminSingAlongPreview;
     topTen: AdminTopTenPreview;
     spellDrop: AdminSpellDropPreview;
     minefield: AdminMinefieldPreview;
@@ -117,6 +120,25 @@ export type AdminPreviewResponse = {
     landmarkDrop: AdminLandmarkDropPreview;
   };
 };
+
+export type AdminSingAlongPreview =
+  | {
+      status: "ready";
+      puzzle: SingAlongPuzzle;
+      diagnostics: {
+        sourceProvider: string;
+        chartDate: string;
+        playbackStart: number;
+        playbackStop: number;
+        chorusTimestamp: number;
+        acceptedLyric: string;
+        alternateAcceptedLyrics: string[];
+        contentHash: string;
+        generatedAt: string;
+        cacheKey: string;
+      };
+    }
+  | { status: "error"; error: string };
 
 export type AdminDynamicError = {
   status: "error";

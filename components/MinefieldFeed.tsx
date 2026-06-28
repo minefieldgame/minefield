@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import LandmarkDropGame from "@/games/geography/LandmarkDropGame";
 import MeetMeHalfwayGame from "@/games/geography/MeetMeHalfwayGame";
 import MinefieldGame from "@/games/minefield/MinefieldGame";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
+import SingAlongGame from "@/games/sing-along/SingAlongGame";
 import SpellDropGame from "@/games/spelldrop/SpellDropGame";
 import TopTenGame from "@/games/top-ten/TopTenGame";
 import { formatChartDate, getGameCacheKey, getPacificDateKey } from "@/lib/date";
@@ -25,6 +26,7 @@ import { GAME_DISPLAY } from "@/lib/gameDisplay";
 
 const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
   "needledrop",
+  "sing-along",
   "ranked-top-5",
   "spelldrop",
   "closer",
@@ -39,6 +41,7 @@ const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
 
 const PRELIMINARY_GAME_IDS: MinefieldGameId[] = [
   "needledrop",
+  "sing-along",
   "ranked-top-5",
   "spelldrop",
   "closer",
@@ -57,6 +60,11 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
     return result.score > 0
       ? { title: "Correct", detail: `${result.score} points`, tone: "green" }
       : { title: "Missed", detail: "Answer saved for final review", tone: "red" };
+  }
+  if (result.gameId === "sing-along") {
+    return result.score > 0
+      ? { title: result.score === 100 ? "Perfect lyric" : "Typo accepted", detail: `${result.score} points`, tone: "green" }
+      : { title: "Missed lyric", detail: "Answer saved for final review", tone: "red" };
   }
   if (result.gameId === "minefield") {
     const hitMine = result.reviewData?.type === "minefield" && result.reviewData.hitMine;
@@ -211,7 +219,7 @@ export default function MinefieldFeed({
               />
             ))}
           </div>
-          <span className="shrink-0 text-xs font-black text-violet dark:text-[#9187f6] sm:text-sm">{runPerformance}/600</span>
+          <span className="shrink-0 text-xs font-black text-violet dark:text-[#9187f6] sm:text-sm">{runPerformance}/700</span>
         </div>
 
         <main className="relative flex-1 overflow-hidden">
@@ -224,14 +232,14 @@ export default function MinefieldFeed({
                 <div className="mx-auto flex h-20 items-center justify-center sm:h-28">
                   <BrandLogo priority className="h-20 w-auto max-w-full object-contain drop-shadow-xl sm:h-28" />
                 </div>
-                <p className="mt-6 text-xs font-black uppercase tracking-[.22em] text-coral">Seven quick games · daily</p>
+                <p className="mt-6 text-xs font-black uppercase tracking-[.22em] text-coral">Eight quick games · daily</p>
                 <h1 className="mt-2 text-3xl font-black tracking-[-.05em] text-slate-950 dark:text-white sm:text-4xl">Minefield</h1>
                 <p className="mx-auto mt-3 max-w-sm text-base font-semibold leading-7 text-slate-500 dark:text-slate-300">
                   A daily collection of quick trivia and skill games.
                 </p>
                 <div className="mx-auto mt-5 max-w-sm text-left">
                   <div className="grid grid-cols-2 gap-2">
-                    {GAMES.slice(0, 6).map((game) => (
+                    {GAMES.slice(0, 7).map((game) => (
                       <div key={game.id} className="theme-muted rounded-xl px-3 py-2 text-xs font-extrabold text-slate-700 dark:text-slate-200">
                         {GAME_DISPLAY[game.id].icon} {game.title}
                       </div>
@@ -274,13 +282,15 @@ export default function MinefieldFeed({
                         {active && (
                           game.id === "needledrop" ? (
                             <NeedleDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />
+                          ) : game.id === "sing-along" ? (
+                            <SingAlongGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "minefield" ? (
                             <MinefieldGame
                               onComplete={handleComplete}
                               date={date}
                               storageScope={storageScope}
                               runScore={runPerformance}
-                              runMaxScore={600}
+                              runMaxScore={700}
                             />
                           ) : game.id === "ranked-top-5" ? (
                             <TopTenGame onComplete={handleComplete} date={date} storageScope={storageScope} />

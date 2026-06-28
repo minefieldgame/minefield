@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import AdminNeedleDropPreview from "@/components/admin/AdminNeedleDropPreview";
+import AdminSingAlongPreview from "@/components/admin/AdminSingAlongPreview";
 import AdminTopTenPreview from "@/components/admin/AdminTopTenPreview";
 import AdminSpellDropPreview from "@/components/admin/AdminSpellDropPreview";
 import AdminMinefieldPreview from "@/components/admin/AdminMinefieldPreview";
@@ -15,6 +16,10 @@ export type AdminGamePreviewProps = {
 
 function NeedleDropModule({ data, onRegenerate }: AdminGamePreviewProps) {
   return <AdminNeedleDropPreview preview={data.games.needledrop} date={data.date} onRegenerate={onRegenerate} />;
+}
+
+function SingAlongModule({ data }: AdminGamePreviewProps) {
+  return <AdminSingAlongPreview preview={data.games.singAlong} />;
 }
 
 function TopTenModule({ data, onRegenerate, onRetryTopTen }: AdminGamePreviewProps) {
@@ -59,9 +64,9 @@ export const adminGameRegistry: Array<{
     AdminPreviewComponent: NeedleDropModule
   },
   {
-    gameId: "minefield",
-    displayName: "Minefield",
-    AdminPreviewComponent: MinefieldModule
+    gameId: "sing-along",
+    displayName: "Sing Along",
+    AdminPreviewComponent: SingAlongModule
   },
   {
     gameId: "ranked-top-5",
@@ -87,5 +92,10 @@ export const adminGameRegistry: Array<{
     gameId: "landmark-drop",
     displayName: "On a Postcard",
     AdminPreviewComponent: LandmarkDropModule
+  },
+  {
+    gameId: "minefield",
+    displayName: "Minefield",
+    AdminPreviewComponent: MinefieldModule
   }
 ];

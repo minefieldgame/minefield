@@ -12,6 +12,9 @@ import { hashString } from "@/lib/dailySeed";
 import { generateContentHash } from "@/lib/content/repeatPrevention";
 import { deterministicEnvelope } from "@/lib/content/deterministicEnvelope";
 import { BALLPARK_CATALOG, BUZZWORD_CATALOG, IN_ORDER_CATALOG } from "@/data/dailyPuzzleCatalogs";
+import { SING_ALONG_CATALOG } from "@/data/singAlongCatalog";
+import { searchTrackPreview } from "@/lib/audioProvider";
+import type { SingAlongPuzzle } from "@/games/sing-along/types";
 
 export async function resolveRankedTop5ForDate(
   date: string,
@@ -85,4 +88,38 @@ export async function resolveCloserForDate(
 
 export async function resolveNeedleDropForDate(date: string) {
   return resolveNeedleDropDiagnostic(date);
+}
+
+export async function resolveSingAlongForDate(date: string): Promise<SingAlongPuzzle> {
+  const seed = hashString(`sing-along:${date}:0`);
+  const entries = SING_ALONG_CATALOG
+    .map((entry, index) => SING_ALONG_CATALOG[(seed + index) % SING_ALONG_CATALOG.length]);
+
+  for (const entry of entries) {
+    const track = await searchTrackPreview(entry.title, entry.artist).catch(() => null);
+    if (!track?.previewUrl) continue;
+    const allAccepted = [entry.acceptedLyric, ...entry.alternateAcceptedLyrics];
+    return {
+      gameId: "sing-along",
+      id: `sing-along:${date}`,
+      date,
+      seed,
+      title: entry.title,
+      artist: entry.artist,
+      chartDate: entry.chartDate,
+      chartYear: entry.chartYear,
+      chartPosition: entry.chartPosition,
+      track,
+      playbackStart: entry.playbackStart,
+      playbackStop: entry.playbackStop,
+      chorusTimestamp: entry.chorusTimestamp,
+      acceptedLyric: entry.acceptedLyric,
+      alternateAcceptedLyrics: [...new Set(allAccepted)],
+      sourceNote: entry.sourceNote,
+      generatedAt: `${date}T12:00:00.000Z`,
+      contentHash: generateContentHash({ date, entry })
+    };
+  }
+
+  throw new Error("No playable Sing Along preview was available.");
 }

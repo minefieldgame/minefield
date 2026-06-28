@@ -1,10 +1,11 @@
 export type Landmark = {
   name: string; city: string; country: string; latitude: number; longitude: number;
-  imageUrl: string; imageAlt: string; sourceNote: string;
+  imageUrl: string; imageAlt: string; sourceNote: string; imageValidation?: string;
 };
 
-const landmarkImage = (name: string) => `/api/landmark-image?name=${encodeURIComponent(name)}`;
-const sourceNote = "Image and location reference: Wikimedia Commons";
+const landmarkImage = (name: string, file: string) =>
+  `/api/landmark-image?name=${encodeURIComponent(name)}&file=${encodeURIComponent(file)}`;
+const sourceNote = "Image and location reference: Wikimedia Commons photograph";
 
 const RAW: Array<[string,string,string,number,number,string]> = [
   ["Eiffel Tower","Paris","France",48.8584,2.2945,"Tour Eiffel Wikimedia Commons.jpg"],
@@ -65,6 +66,7 @@ const RAW: Array<[string,string,string,number,number,string]> = [
 ];
 
 export const LANDMARKS: Landmark[] = RAW.map(([name, city, country, latitude, longitude, file]) => ({
-  name, city, country, latitude, longitude, imageUrl: landmarkImage(name),
-  imageAlt: `${name} in ${city}, ${country}`, sourceNote
+  name, city, country, latitude, longitude, imageUrl: landmarkImage(name, file),
+  imageAlt: `${name} in ${city}, ${country}`, sourceNote,
+  imageValidation: `Pinned Wikimedia Commons file: ${file}. Search fallback rejects illustrations, paintings, maps, logos, SVGs, and AI-art terms.`
 }));
