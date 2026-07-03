@@ -11,13 +11,14 @@ import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
 import { resolveLandmarkDropPuzzle, resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
 import { getAIStatus } from "@/lib/content/aiClient";
-import { hashString } from "@/lib/dailySeed";
+import { buildDailyBoardSeedManifest, getDailyMasterSeed, getGameSeedForDate, hashString, type SeededGameId } from "@/lib/dailySeed";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import {
   classifyDynamicError,
   dynamicResolverDiagnostics,
   type DynamicGameId
 } from "@/lib/content/dynamicErrors";
+import { puzzlePersistenceStatus } from "@/lib/content/persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -78,11 +79,15 @@ export async function GET(request: NextRequest) {
           chartDate: singAlongResult.value.chartDate,
           playbackStart: singAlongResult.value.playbackStart,
           playbackStop: singAlongResult.value.playbackStop,
+          stopTimestamp: singAlongResult.value.stopTimestamp,
           chorusTimestamp: singAlongResult.value.chorusTimestamp,
-          acceptedLyric: singAlongResult.value.acceptedLyric,
-          alternateAcceptedLyrics: singAlongResult.value.alternateAcceptedLyrics,
+          cueDescription: singAlongResult.value.cueDescription,
+          choices: singAlongResult.value.choices,
+          correctChoiceId: singAlongResult.value.correctChoiceId,
+          validationStatus: singAlongResult.value.validation.valid ? "valid" : "invalid",
           contentHash: singAlongResult.value.contentHash,
           generatedAt: singAlongResult.value.generatedAt,
+          gameSeed: singAlongResult.value.gameSeed,
           cacheKey: getGameCacheKey("sing-along", date)
         }
       }
@@ -160,10 +165,42 @@ export async function GET(request: NextRequest) {
       }
     : dynamicError("closer", "/api/closer", closerResult.reason);
 
-  const dailySeed = hashString(`minefield:${date}`);
+  const dailySeed = getGameSeedForDate(date, "minefield");
+  const puzzleHashes: Partial<Record<SeededGameId, string>> = {
+    needledrop: needledrop.status === "ready" ? hashString(`${needledrop.puzzle.title}:${needledrop.puzzle.artist}:${needledrop.puzzle.chartDate}`).toString(16) : undefined,
+    "sing-along": singAlong.status === "ready" ? singAlong.puzzle.contentHash : undefined,
+    "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.contentHash : undefined,
+    spelldrop: spellDrop.status === "ready" ? spellDrop.contentHash : undefined,
+    closer: closer.status === "ready" ? closer.contentHash : undefined,
+    "meet-me-halfway": hashString(JSON.stringify(resolveMeetMeHalfwayPuzzle(date))).toString(16),
+    "landmark-drop": hashString(JSON.stringify(resolveLandmarkDropPuzzle(date))).toString(16),
+    minefield: hashString(JSON.stringify(resolveMinefieldPuzzle(date, 560, 700))).toString(16)
+  };
+  const dailyBoard = buildDailyBoardSeedManifest(date, [
+    "needledrop",
+    "sing-along",
+    "ranked-top-5",
+    "spelldrop",
+    "closer",
+    "meet-me-halfway",
+    "landmark-drop",
+    "minefield"
+  ], puzzleHashes, {
+    needledrop: "Billboard archive + iTunes Search API",
+    "sing-along": "deterministic-catalog+iTunes",
+    "ranked-top-5": "deterministic-catalog",
+    spelldrop: "deterministic-catalog",
+    closer: "deterministic-catalog",
+    "meet-me-halfway": "deterministic-seeded-world-cities",
+    "landmark-drop": "deterministic-seeded-landmarks",
+    minefield: "deterministic-seeded-board"
+  });
   return NextResponse.json({
     date,
     pacificDate: getPacificDateKey(),
+    masterSeed: getDailyMasterSeed(date),
+    dailyBoard,
+    persistenceProvider: puzzlePersistenceStatus,
     cacheKeys: {
       rankedTopTen: getGameCacheKey("ranked-top-5", date),
       singAlong: getGameCacheKey("sing-along", date),

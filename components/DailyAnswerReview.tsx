@@ -53,8 +53,8 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
                   #{review.chartPosition} · {formatChartDate(review.chartDate)} · stopped at {review.playbackStop}s
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <ReviewValue label="Your lyric" value={review.userLyric || "No answer"} />
-                  <ReviewValue label="Accepted lyric" value={review.acceptedLyric} />
+                  <ReviewValue label="Your choice" value={review.selectedChoice || "No choice"} />
+                  <ReviewValue label="Correct choice" value={review.correctChoice} />
                 </div>
               </div>
             )}

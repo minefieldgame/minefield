@@ -1,6 +1,6 @@
 import { searchTrackPreview, searchTrackPreviewDiagnostic } from "@/lib/audioProvider";
 import { getTopTenForDate } from "@/lib/chartProvider";
-import { hashString, seededShuffle } from "@/lib/dailySeed";
+import { getGameSeedForDate, hashString, seededShuffle } from "@/lib/dailySeed";
 import { puzzleNumber } from "@/lib/date";
 import { normalizeArtist, normalizeMusicString } from "@/lib/normalize";
 import type { DailyPuzzle } from "@/types/game";
@@ -36,7 +36,7 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
     { length: Math.max(0, currentYear - 1958) },
     (_, index) => 1958 + index
   );
-  const seed = hashString(`needledrop:${puzzleDate}`);
+  const seed = getGameSeedForDate(puzzleDate, "needledrop");
   const candidateYears = seededShuffle(years, seed).slice(0, 10);
   const attemptedYears: number[] = [];
   const attemptedChartDates: string[] = [];

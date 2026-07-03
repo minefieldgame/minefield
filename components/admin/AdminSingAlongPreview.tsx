@@ -23,9 +23,12 @@ export default function AdminSingAlongPreview({ preview }: { preview: AdminSingA
           ["Chart position", `#${puzzle.chartPosition}`],
           ["Playback start", `${diagnostics.playbackStart}s`],
           ["Playback stop", `${diagnostics.playbackStop}s`],
+          ["Stop timestamp", `${diagnostics.stopTimestamp}s`],
           ["Chorus timestamp", `${diagnostics.chorusTimestamp}s`],
-          ["Accepted lyric", diagnostics.acceptedLyric],
-          ["Alternate spellings", diagnostics.alternateAcceptedLyrics.join(", ")],
+          ["Cue", diagnostics.cueDescription],
+          ["Correct choice", diagnostics.correctChoiceId.toUpperCase()],
+          ["Validation", diagnostics.validationStatus],
+          ["Game seed", diagnostics.gameSeed],
           ["Cache key", diagnostics.cacheKey],
           ["Content hash", diagnostics.contentHash],
           ["Generated", diagnostics.generatedAt],
@@ -34,6 +37,15 @@ export default function AdminSingAlongPreview({ preview }: { preview: AdminSingA
           <div key={label} className="theme-raised min-w-0 rounded-xl border p-3">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p>
             <p className="mt-1 break-words text-sm font-bold">{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {diagnostics.choices.map((choice) => (
+          <div key={choice.id} className={`rounded-xl border p-3 ${choice.isCorrect ? "border-emerald-300 bg-emerald-500/10" : "theme-raised"}`}>
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Choice {choice.id.toUpperCase()}</p>
+            <p className="mt-1 text-sm font-black">{choice.text}</p>
+            {choice.isCorrect && <p className="mt-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">Correct</p>}
           </div>
         ))}
       </div>

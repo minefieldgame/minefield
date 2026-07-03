@@ -1,4 +1,4 @@
-import { hashString } from "@/lib/dailySeed";
+import { GAME_VERSIONS, getGameSeedForDate, type SeededGameId } from "@/lib/dailySeed";
 
 const TIME_ZONE = "America/Los_Angeles";
 export type PacificDate = {
@@ -33,7 +33,7 @@ export function getPacificMonthDay(date = new Date()) {
 }
 
 export function getDailySeed(date = new Date()) {
-  return hashString(`needledrop:${getPacificToday(date).dateKey}`);
+  return getGameSeedForDate(getPacificToday(date).dateKey, "needledrop");
 }
 
 export function getPacificDateParts(date = new Date()) {
@@ -50,7 +50,11 @@ export function getDailyGameDate(date = new Date()) {
 }
 
 export function getGameCacheKey(gameId: string, dateKey: string, scope?: string) {
-  return scope ? `${gameId}:${scope}:${dateKey}` : `${gameId}:${dateKey}`;
+  const version = Object.prototype.hasOwnProperty.call(GAME_VERSIONS, gameId)
+    ? GAME_VERSIONS[gameId as SeededGameId]
+    : "";
+  const base = version ? `${gameId}:${dateKey}:${version}` : `${gameId}:${dateKey}`;
+  return scope ? `${gameId}:${scope}:${dateKey}${version ? `:${version}` : ""}` : base;
 }
 
 export function getBoardCacheKey(dateKey: string, scope?: string) {

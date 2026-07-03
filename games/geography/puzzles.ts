@@ -1,10 +1,11 @@
 import { LANDMARKS } from "@/data/landmarks";
 import { WORLD_CITIES } from "@/data/worldCities";
 import { calculateGeographicMidpoint, calculateProjectedMidpoint } from "@/games/geography/logic";
-import { hashString, seededShuffle } from "@/lib/dailySeed";
+import { getDailyMasterSeed, getGameSeedForDate, seededShuffle } from "@/lib/dailySeed";
 
 export function resolveMeetMeHalfwayPuzzle(date: string) {
-  const seed = hashString(`meet-me-halfway:${date}`);
+  const masterSeed = getDailyMasterSeed(date);
+  const seed = getGameSeedForDate(date, "meet-me-halfway");
   const selected = seededShuffle(WORLD_CITIES, seed);
   const locationA = selected[0];
   const locationB = selected.find((city) =>
@@ -17,6 +18,8 @@ export function resolveMeetMeHalfwayPuzzle(date: string) {
   return {
     gameId: "meet-me-halfway" as const,
     date,
+    masterSeed,
+    gameSeed: seed,
     seed,
     locationA,
     locationB,
@@ -28,7 +31,8 @@ export function resolveMeetMeHalfwayPuzzle(date: string) {
 }
 
 export function resolveLandmarkDropPuzzle(date: string) {
-  const seed = hashString(`landmark-drop:${date}`);
+  const masterSeed = getDailyMasterSeed(date);
+  const seed = getGameSeedForDate(date, "landmark-drop");
   const landmark = LANDMARKS[seed % LANDMARKS.length];
-  return { gameId: "landmark-drop" as const, date, seed, landmark };
+  return { gameId: "landmark-drop" as const, date, masterSeed, gameSeed: seed, seed, landmark };
 }

@@ -28,8 +28,8 @@ export type SingAlongReviewData = {
   playbackStart: number;
   playbackStop: number;
   chorusTimestamp: number;
-  userLyric: string;
-  acceptedLyric: string;
+  selectedChoice: string;
+  correctChoice: string;
   correct: boolean;
 };
 
@@ -143,6 +143,21 @@ export type MinefieldDailyBoard = {
 
 export type MinefieldSummary = {
   date: string;
+  dailyBoard?: {
+    dateKey: string;
+    pacificDate: string;
+    masterSeed: string;
+    boardHash: string;
+    games: Array<{
+      gameId: string;
+      gameVersion: string;
+      gameSeed: number;
+      cacheKey: string;
+      puzzleHash: string;
+      generatedAt: string;
+      source: string;
+    }>;
+  };
   totalScore: number;
   maxScore: number;
   gamesCompleted: number;

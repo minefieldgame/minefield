@@ -7,8 +7,11 @@ export type SingAlongCatalogEntry = {
   playbackStart: number;
   playbackStop: number;
   chorusTimestamp: number;
+  cueDescription: string;
   acceptedLyric: string;
   alternateAcceptedLyrics: string[];
+  correctChoiceId: "a" | "b" | "c" | "d";
+  choices: Array<{ id: "a" | "b" | "c" | "d"; text: string; isCorrect: boolean }>;
   sourceNote: string;
 };
 
@@ -22,8 +25,16 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 8,
     playbackStop: 15,
     chorusTimestamp: 16.5,
+    cueDescription: "Stops immediately before the famous title hook.",
     acceptedLyric: "Sweet Caroline",
     alternateAcceptedLyrics: ["Sweet Caroline"],
+    correctChoiceId: "a",
+    choices: [
+      { id: "a", text: "Sweet Caroline", isCorrect: true },
+      { id: "b", text: "Good times never seemed so good", isCorrect: false },
+      { id: "c", text: "Touching me", isCorrect: false },
+      { id: "d", text: "I will survive", isCorrect: false }
+    ],
     sourceNote: "Billboard Hot 100 chart metadata; chorus cue manually curated."
   },
   {
@@ -35,8 +46,16 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 6,
     playbackStop: 13,
     chorusTimestamp: 14.5,
+    cueDescription: "Stops before the title phrase repeats.",
     acceptedLyric: "Hey Jude",
     alternateAcceptedLyrics: ["Hey Jude"],
+    correctChoiceId: "b",
+    choices: [
+      { id: "a", text: "Take a sad song", isCorrect: false },
+      { id: "b", text: "Hey Jude", isCorrect: true },
+      { id: "c", text: "Let it be", isCorrect: false },
+      { id: "d", text: "Don't make it bad", isCorrect: false }
+    ],
     sourceNote: "Billboard Hot 100 chart metadata; chorus cue manually curated."
   },
   {
@@ -48,8 +67,16 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 7,
     playbackStop: 14,
     chorusTimestamp: 15.5,
+    cueDescription: "Stops before the iconic name in the hook.",
     acceptedLyric: "Billie Jean",
     alternateAcceptedLyrics: ["Billie Jean"],
+    correctChoiceId: "c",
+    choices: [
+      { id: "a", text: "Beat it", isCorrect: false },
+      { id: "b", text: "The kid is not my son", isCorrect: false },
+      { id: "c", text: "Billie Jean", isCorrect: true },
+      { id: "d", text: "Thriller night", isCorrect: false }
+    ],
     sourceNote: "Billboard Hot 100 chart metadata; chorus cue manually curated."
   },
   {
@@ -61,8 +88,16 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 8,
     playbackStop: 15,
     chorusTimestamp: 16.5,
+    cueDescription: "Stops before the title hook.",
     acceptedLyric: "Stayin alive",
     alternateAcceptedLyrics: ["Staying alive", "Stayin' alive"],
+    correctChoiceId: "d",
+    choices: [
+      { id: "a", text: "Night fever", isCorrect: false },
+      { id: "b", text: "More than a woman", isCorrect: false },
+      { id: "c", text: "You should be dancing", isCorrect: false },
+      { id: "d", text: "Stayin' alive", isCorrect: true }
+    ],
     sourceNote: "Billboard Hot 100 chart metadata; chorus cue manually curated."
   },
   {
@@ -74,8 +109,16 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 8,
     playbackStop: 15,
     chorusTimestamp: 16.5,
+    cueDescription: "Stops just before the survival hook.",
     acceptedLyric: "I will survive",
     alternateAcceptedLyrics: ["I'll survive", "I will survive"],
+    correctChoiceId: "a",
+    choices: [
+      { id: "a", text: "I will survive", isCorrect: true },
+      { id: "b", text: "At first I was afraid", isCorrect: false },
+      { id: "c", text: "I should have changed that lock", isCorrect: false },
+      { id: "d", text: "We are family", isCorrect: false }
+    ],
     sourceNote: "Billboard Hot 100 chart metadata; chorus cue manually curated."
   },
   {
@@ -87,8 +130,16 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 7,
     playbackStop: 14,
     chorusTimestamp: 15.5,
+    cueDescription: "Stops before the title phrase lands.",
     acceptedLyric: "Call me maybe",
     alternateAcceptedLyrics: ["Call me maybe"],
+    correctChoiceId: "b",
+    choices: [
+      { id: "a", text: "Here's my number", isCorrect: false },
+      { id: "b", text: "Call me maybe", isCorrect: true },
+      { id: "c", text: "Before you came into my life", isCorrect: false },
+      { id: "d", text: "Shake it off", isCorrect: false }
+    ],
     sourceNote: "Billboard Hot 100 chart metadata; chorus cue manually curated."
   }
 ];

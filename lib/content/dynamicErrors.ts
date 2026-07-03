@@ -1,6 +1,6 @@
 import { getAIStatus } from "@/lib/content/aiClient";
 import { getGameCacheKey } from "@/lib/date";
-import { hashString } from "@/lib/dailySeed";
+import { getGameSeedForDate } from "@/lib/dailySeed";
 import { DAILY_GENERATION_TEMPERATURE } from "@/lib/content/deterministicEnvelope";
 
 export type DynamicGameId = "ranked-top-5" | "spelldrop" | "closer";
@@ -64,7 +64,7 @@ export function dynamicResolverDiagnostics(gameId: DynamicGameId, date: string, 
     date,
     dateKey: date,
     gameId,
-    seed: hashString(`${gameId}:${date}:0`),
+    seed: getGameSeedForDate(date, gameId),
     temperature: DAILY_GENERATION_TEMPERATURE,
     cacheKey: getGameCacheKey(gameId, date),
     regeneratedThisSession: false,

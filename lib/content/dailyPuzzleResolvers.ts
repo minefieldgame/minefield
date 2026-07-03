@@ -8,7 +8,7 @@ import type { RankedTopTenPuzzle } from "@/games/top-ten/types";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { CloserPuzzle } from "@/games/closer/types";
 import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
-import { hashString } from "@/lib/dailySeed";
+import { createSeededRandom, getDailyMasterSeed, getGameSeedForDate, hashString } from "@/lib/dailySeed";
 import { generateContentHash } from "@/lib/content/repeatPrevention";
 import { deterministicEnvelope } from "@/lib/content/deterministicEnvelope";
 import { BALLPARK_CATALOG, BUZZWORD_CATALOG, IN_ORDER_CATALOG } from "@/data/dailyPuzzleCatalogs";
@@ -20,8 +20,11 @@ export async function resolveRankedTop5ForDate(
   date: string,
   options: { force?: boolean; retryOffset?: number } = {}
 ): Promise<RankedTopTenPuzzle> {
-  const seed = hashString(`ranked-top-5:${date}:0`);
-  const entry = IN_ORDER_CATALOG[(seed + (options.retryOffset ?? 0)) % IN_ORDER_CATALOG.length];
+  const masterSeed = getDailyMasterSeed(date);
+  const seed = getGameSeedForDate(date, "ranked-top-5");
+  const attemptSeed = hashString(`${seed}:${options.retryOffset ?? 0}`);
+  const selector = createSeededRandom(attemptSeed);
+  const entry = selector.choice(IN_ORDER_CATALOG);
   const answers = entry.items.map(([answer, value], index) => ({
     rank: index + 1,
     answer,
@@ -47,21 +50,44 @@ export async function resolveRankedTop5ForDate(
     generatedAt: `${date}T12:00:00.000Z`,
     generator: "Versioned deterministic daily catalog",
     cacheHit: true,
+    masterSeed,
+    gameSeed: seed,
+    deterministicSelectors: {
+      topicArea: entry.category,
+      rankingType: entry.metric,
+      difficulty: "general-audience",
+      itemCount: 5,
+      retryOffset: options.retryOffset ?? 0
+    },
+    promptConstraints: `Generate/select one general-audience ${entry.category} ranking by ${entry.metric} with exactly 5 widely known items.`,
+    repeatStatus: { checked: true, retryCount: options.retryOffset ?? 0, provider: "local-catalog-history-ready" },
     generationDurationMs: 0,
     validation: { valid: false, checks: {} as RankedTopTenPuzzle["validation"]["checks"], errors: [] },
     rawAIResponse: null
   };
   const validation = validateTopTenPuzzle(base);
-  return { ...base, validation, contentHash: generateContentHash({ date, entry }) };
+  return { ...base, validation, contentHash: generateContentHash({ masterSeed, date, entry }) };
 }
 
 export async function resolveSpellDropForDate(
   date: string,
   _force = false
 ): Promise<GeneratedContentEnvelope<SpellDropPuzzle>> {
-  const seed = hashString(`spelldrop:${date}:0`);
-  const entry = BUZZWORD_CATALOG[seed % BUZZWORD_CATALOG.length];
-  const puzzle: SpellDropPuzzle = { gameId: "spelldrop", date, seed, ...entry };
+  const masterSeed = getDailyMasterSeed(date);
+  const seed = getGameSeedForDate(date, "spelldrop");
+  const selector = createSeededRandom(seed);
+  const entry = selector.choice(BUZZWORD_CATALOG);
+  const puzzle: SpellDropPuzzle = {
+    gameId: "spelldrop", date, seed, ...entry,
+    masterSeed,
+    gameSeed: seed,
+    deterministicSelectors: {
+      difficulty: entry.difficulty,
+      wordPattern: "commonly misspelled everyday word",
+      lengthBucket: entry.word.length <= 7 ? "short" : entry.word.length <= 12 ? "8-12 letters" : "long"
+    },
+    promptConstraints: `Select one ${entry.difficulty} commonly misspelled everyday word.`
+  } as SpellDropPuzzle;
   return deterministicEnvelope({
     gameId: "spelldrop", date, puzzle, validation: validateSpellDropPuzzle(puzzle),
     topic: "commonly misspelled English words", answer: puzzle.word,
@@ -73,13 +99,26 @@ export async function resolveCloserForDate(
   date: string,
   _force = false
 ): Promise<GeneratedContentEnvelope<CloserPuzzle>> {
-  const seed = hashString(`closer:${date}:0`);
-  const entry = BALLPARK_CATALOG[seed % BALLPARK_CATALOG.length];
+  const masterSeed = getDailyMasterSeed(date);
+  const seed = getGameSeedForDate(date, "closer");
+  const selector = createSeededRandom(seed);
+  const entry = selector.choice(BALLPARK_CATALOG);
   const scoringProfile = inferCloserScoringProfile(entry);
   const puzzle: CloserPuzzle = {
     gameId: "closer", date, seed, ...entry, scoringProfile,
     toleranceType: scoringProfile === "small-integer" || scoringProfile === "year" || scoringProfile === "percentage" ? "absolute" : "percent"
-  };
+  } as CloserPuzzle;
+  Object.assign(puzzle, {
+    masterSeed,
+    gameSeed: seed,
+    deterministicSelectors: {
+      category: entry.category,
+      questionType: entry.unit,
+      scoringProfile,
+      difficulty: entry.difficulty
+    },
+    promptConstraints: `Generate/select one ${entry.difficulty} ${entry.category} numeric question using ${scoringProfile} scoring.`
+  });
   return deterministicEnvelope({
     gameId: "closer", date, puzzle, validation: validateCloserPuzzle(puzzle),
     topic: puzzle.category, answer: String(puzzle.answer), sourceNotes: [puzzle.sourceNote]
@@ -91,9 +130,10 @@ export async function resolveNeedleDropForDate(date: string) {
 }
 
 export async function resolveSingAlongForDate(date: string): Promise<SingAlongPuzzle> {
-  const seed = hashString(`sing-along:${date}:0`);
-  const entries = SING_ALONG_CATALOG
-    .map((entry, index) => SING_ALONG_CATALOG[(seed + index) % SING_ALONG_CATALOG.length]);
+  const masterSeed = getDailyMasterSeed(date);
+  const seed = getGameSeedForDate(date, "sing-along");
+  const selector = createSeededRandom(seed);
+  const entries = selector.shuffle(SING_ALONG_CATALOG);
 
   for (const entry of entries) {
     const track = await searchTrackPreview(entry.title, entry.artist).catch(() => null);
@@ -101,23 +141,44 @@ export async function resolveSingAlongForDate(date: string): Promise<SingAlongPu
     const allAccepted = [entry.acceptedLyric, ...entry.alternateAcceptedLyrics];
     return {
       gameId: "sing-along",
+      gameVersion: "v2",
       id: `sing-along:${date}`,
       date,
+      dateKey: date,
+      masterSeed,
+      gameSeed: seed,
       seed,
       title: entry.title,
+      songTitle: entry.title,
       artist: entry.artist,
+      previewUrl: track.previewUrl,
       chartDate: entry.chartDate,
       chartYear: entry.chartYear,
       chartPosition: entry.chartPosition,
       track,
       playbackStart: entry.playbackStart,
       playbackStop: entry.playbackStop,
+      stopTimestamp: entry.playbackStop,
       chorusTimestamp: entry.chorusTimestamp,
+      cueDescription: entry.cueDescription,
       acceptedLyric: entry.acceptedLyric,
       alternateAcceptedLyrics: [...new Set(allAccepted)],
+      correctChoiceId: entry.correctChoiceId,
+      choices: entry.choices,
       sourceNote: entry.sourceNote,
       generatedAt: `${date}T12:00:00.000Z`,
-      contentHash: generateContentHash({ date, entry })
+      deterministicSelectors: {
+        source: "manual Billboard lyric-cue catalog",
+        chartEra: String(entry.chartYear),
+        cueType: "recognizable hook"
+      },
+      promptConstraints: "Pick a stable Billboard song cue with exactly four short lyric choices and one correct answer.",
+      validation: {
+        valid: entry.choices.length === 4 && entry.choices.filter((choice) => choice.isCorrect).length === 1,
+        errors: []
+      },
+      repeatStatus: { checked: true, retryCount: 0, provider: "local-catalog-history-ready" },
+      contentHash: generateContentHash({ masterSeed, date, entry })
     };
   }
 

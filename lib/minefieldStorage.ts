@@ -1,11 +1,16 @@
 import type { MinefieldDailyBoard, MinefieldGameResult, MinefieldStats, MinefieldSummary } from "@/types/minefield";
 import { getBoardCacheKey, getGameCacheKey } from "@/lib/date";
 import { GAME_DISPLAY } from "@/lib/gameDisplay";
+import { buildDailyBoardSeedManifest, hashString, type SeededGameId } from "@/lib/dailySeed";
 
 const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
 const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
+  "needledrop", "sing-along", "ranked-top-5", "spelldrop", "closer",
+  "meet-me-halfway", "landmark-drop", "minefield"
+];
+const SEED_MANIFEST_ORDER: SeededGameId[] = [
   "needledrop", "sing-along", "ranked-top-5", "spelldrop", "closer",
   "meet-me-halfway", "landmark-drop", "minefield"
 ];
@@ -178,6 +183,15 @@ export function calculateDailySummary(board: MinefieldDailyBoard, totalGames = 8
   );
   return {
     date: board.date,
+    dailyBoard: buildDailyBoardSeedManifest(
+      board.date,
+      SEED_MANIFEST_ORDER,
+      Object.fromEntries(results.map((result) => [
+        result.gameId,
+        hashString(JSON.stringify(result.reviewData)).toString(16).padStart(8, "0")
+      ])) as Partial<Record<SeededGameId, string>>,
+      Object.fromEntries(results.map((result) => [result.gameId, "localStorage-progress"])) as Partial<Record<SeededGameId, string>>
+    ),
     totalScore: results.reduce((sum, result) => sum + result.score, 0),
     maxScore: results.reduce((sum, result) => sum + result.maxScore, 0),
     gamesCompleted: results.filter((result) => result.completed).length,

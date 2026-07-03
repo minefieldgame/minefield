@@ -100,6 +100,27 @@ export type AdminTopTenPreview =
 export type AdminPreviewResponse = {
   date: string;
   pacificDate: string;
+  masterSeed: string;
+  persistenceProvider: {
+    provider: string;
+    durableAcrossDeployments: boolean;
+    note: string;
+  };
+  dailyBoard: {
+    dateKey: string;
+    pacificDate: string;
+    masterSeed: string;
+    boardHash: string;
+    games: Array<{
+      gameId: string;
+      gameVersion: string;
+      gameSeed: number;
+      cacheKey: string;
+      puzzleHash: string;
+      generatedAt: string;
+      source: string;
+    }>;
+  };
   dailySeed: number;
   seedHash: string;
   generatedAt: string;
@@ -131,11 +152,15 @@ export type AdminSingAlongPreview =
         playbackStart: number;
         playbackStop: number;
         chorusTimestamp: number;
-        acceptedLyric: string;
-        alternateAcceptedLyrics: string[];
+        stopTimestamp: number;
+        cueDescription: string;
+        choices: Array<{ id: string; text: string; isCorrect: boolean }>;
+        correctChoiceId: string;
+        validationStatus: string;
         contentHash: string;
         generatedAt: string;
         cacheKey: string;
+        gameSeed: number;
       };
     }
   | { status: "error"; error: string };

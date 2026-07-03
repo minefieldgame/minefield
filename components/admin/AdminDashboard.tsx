@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { adminGameRegistry } from "@/components/admin/adminGameRegistry";
 import { ADMIN_SESSION_KEY } from "@/lib/adminAuth";
-import { hashString } from "@/lib/dailySeed";
+import { createSeededRandom, hashString } from "@/lib/dailySeed";
 import { getPacificDateKey, getPacificToday } from "@/lib/date";
 import type { AdminPreviewResponse } from "@/types/admin";
 
@@ -16,7 +16,8 @@ function shiftDate(dateKey: string, days: number) {
 function randomDate() {
   const start = Date.parse("1960-01-01T12:00:00Z");
   const end = Date.parse(`${getPacificDateKey()}T12:00:00Z`);
-  const value = start + Math.floor(Math.random() * (end - start + 1));
+  const random = createSeededRandom(`admin-random-day:${Date.now()}`);
+  const value = start + random.int(0, end - start);
   return new Date(value).toISOString().slice(0, 10);
 }
 
@@ -51,7 +52,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   return (
     <main className="grid min-h-screen place-items-center px-4 py-12">
       <section className="theme-surface w-full max-w-sm rounded-[2rem] border p-7">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#202128] text-2xl text-white dark:bg-violet">◆</div>
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#202128] text-2xl text-white dark:bg-violet">â—†</div>
         <p className="mt-6 text-center text-xs font-black uppercase tracking-[.2em] text-[#db4e36] dark:text-[#ff826a]">Restricted access</p>
         <h1 className="mt-2 text-center text-3xl font-black tracking-tight text-slate-950 dark:text-white">Minefield Admin</h1>
         <p className="mx-auto mt-2 max-w-xs text-center text-sm leading-6 text-slate-500 dark:text-slate-300">Enter the owner password to open puzzle diagnostics.</p>
@@ -67,7 +68,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
           />
           {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-600 dark:text-red-300">{error}</p>}
           <button disabled={busy || !password} className="mt-4 h-14 w-full rounded-2xl bg-violet font-extrabold text-white shadow-lg shadow-violet/20 disabled:opacity-40 dark:bg-[#7569e5]">
-            {busy ? "Checking…" : "Unlock admin"}
+            {busy ? "Checkingâ€¦" : "Unlock admin"}
           </button>
         </form>
       </section>
@@ -156,7 +157,7 @@ export default function AdminDashboard({ environment }: { environment: string })
   }
 
   if (checking) {
-    return <main className="grid min-h-screen place-items-center text-sm font-bold text-slate-500 dark:text-slate-300">Checking admin session…</main>;
+    return <main className="grid min-h-screen place-items-center text-sm font-bold text-slate-500 dark:text-slate-300">Checking admin sessionâ€¦</main>;
   }
   if (!authenticated) return <AdminLogin onSuccess={() => setAuthenticated(true)} />;
 
@@ -171,10 +172,10 @@ export default function AdminDashboard({ environment }: { environment: string })
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
           <div>
             <h1 className="text-xl font-black text-slate-950 dark:text-white">Minefield Admin</h1>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{environment} · Pacific {pacific.dateKey}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{environment} Â· Pacific {pacific.dateKey}</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={toggleTheme} aria-label="Toggle admin theme" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-300 bg-white dark:border-[#454c5a] dark:bg-[#292e38]">{dark ? "☀" : "☾"}</button>
+            <button onClick={toggleTheme} aria-label="Toggle admin theme" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-300 bg-white dark:border-[#454c5a] dark:bg-[#292e38]">{dark ? "â˜€" : "â˜¾"}</button>
             <button onClick={logout} className="rounded-xl border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-700 dark:border-[#454c5a] dark:bg-[#292e38] dark:text-white">Logout</button>
           </div>
         </div>
@@ -187,7 +188,7 @@ export default function AdminDashboard({ environment }: { environment: string })
               <label htmlFor="test-date" className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">Active test date</label>
               <input id="test-date" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-950 dark:border-[#454c5a] dark:bg-[#252a34] dark:text-white" />
             </div>
-            <button onClick={() => generate()} disabled={loading} className="h-12 rounded-xl bg-violet px-6 font-extrabold text-white disabled:opacity-50 dark:bg-[#7569e5]">{loading ? "Generating…" : "Generate"}</button>
+            <button onClick={() => generate()} disabled={loading} className="h-12 rounded-xl bg-violet px-6 font-extrabold text-white disabled:opacity-50 dark:bg-[#7569e5]">{loading ? "Generatingâ€¦" : "Generate"}</button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             <button onClick={() => setSelectedDate(shiftDate(selectedDate, -1))} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Previous Day</button>
@@ -221,6 +222,9 @@ export default function AdminDashboard({ environment }: { environment: string })
                 {[
                   ["Selected date", preview.date],
                   ["Pacific date", preview.pacificDate],
+                  ["Master seed", preview.masterSeed],
+                  ["Board hash", preview.dailyBoard.boardHash],
+                  ["Persistence", `${preview.persistenceProvider.provider} (${preview.persistenceProvider.durableAcrossDeployments ? "durable" : "deterministic fallback"})`],
                   ["Daily seed", preview.dailySeed],
                   ["Seed hash", preview.seedHash],
                   ["Generated", new Date(preview.generatedAt).toLocaleString()]
@@ -231,7 +235,34 @@ export default function AdminDashboard({ environment }: { environment: string })
                   </div>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Minefield seed input: <code>minefield:{preview.date}</code> · hash check: {hashString(`minefield:${preview.date}`)}</p>
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Master seed input: <code>minefield:{preview.date}:v1</code> · legacy hash check: {hashString(`minefield:${preview.date}`)}</p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{preview.persistenceProvider.note}</p>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[720px] text-left text-xs">
+                  <thead className="text-[10px] uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Game</th>
+                      <th className="py-2 pr-3">Version</th>
+                      <th className="py-2 pr-3">Seed</th>
+                      <th className="py-2 pr-3">Cache key</th>
+                      <th className="py-2 pr-3">Puzzle hash</th>
+                      <th className="py-2 pr-3">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.dailyBoard.games.map((game) => (
+                      <tr key={game.gameId} className="border-t border-slate-200 dark:border-white/10">
+                        <td className="py-2 pr-3 font-black">{game.gameId}</td>
+                        <td className="py-2 pr-3 font-bold">{game.gameVersion}</td>
+                        <td className="py-2 pr-3 font-mono">{game.gameSeed}</td>
+                        <td className="py-2 pr-3 font-mono">{game.cacheKey}</td>
+                        <td className="py-2 pr-3 font-mono">{game.puzzleHash}</td>
+                        <td className="py-2 pr-3">{game.source}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             {adminGameRegistry.map(({ gameId, AdminPreviewComponent }) => (
@@ -264,3 +295,5 @@ export default function AdminDashboard({ environment }: { environment: string })
     </>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import { hashString, seededShuffle } from "@/lib/dailySeed";
+import { getDailyMasterSeed, getGameSeedForDate, hashString, seededShuffle } from "@/lib/dailySeed";
 
 export type MinefieldDifficulty =
   | "Gifted"
@@ -24,6 +24,8 @@ export type MinefieldDifficultyProfile = {
 export type MinefieldPuzzle = MinefieldDifficultyProfile & {
   gameId: "minefield";
   date: string;
+  masterSeed: string;
+  gameSeed: number;
   seed: number;
   gridSize: 5;
   minePositions: number[];
@@ -58,7 +60,9 @@ export function resolveMinefieldPuzzle(
   runMaxScore = 700
 ): MinefieldPuzzle {
   const profile = getMinefieldDifficulty(runScore, runMaxScore);
-  const seed = hashString(`minefield-final:${date}:${profile.difficulty}`);
+  const masterSeed = getDailyMasterSeed(date);
+  const gameSeed = getGameSeedForDate(date, "minefield");
+  const seed = hashString(`${gameSeed}:${profile.difficulty}`);
   const minePositions = seededShuffle(
     Array.from({ length: 25 }, (_, index) => index),
     seed
@@ -66,6 +70,8 @@ export function resolveMinefieldPuzzle(
   return {
     gameId: "minefield",
     date,
+    masterSeed,
+    gameSeed,
     seed,
     gridSize: 5,
     minePositions,
