@@ -246,6 +246,7 @@ export default function AdminDashboard({ environment }: { environment: string })
                       <th className="py-2 pr-3">Seed</th>
                       <th className="py-2 pr-3">Cache key</th>
                       <th className="py-2 pr-3">Puzzle hash</th>
+                      <th className="py-2 pr-3">Duplicate check</th>
                       <th className="py-2 pr-3">Source</th>
                     </tr>
                   </thead>
@@ -257,6 +258,10 @@ export default function AdminDashboard({ environment }: { environment: string })
                         <td className="py-2 pr-3 font-mono">{game.gameSeed}</td>
                         <td className="py-2 pr-3 font-mono">{game.cacheKey}</td>
                         <td className="py-2 pr-3 font-mono">{game.puzzleHash}</td>
+                        <td className={`py-2 pr-3 font-black ${game.duplicateCheck?.passed === false ? "text-red-600 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+                          {game.duplicateCheck?.passed === false ? "Warning" : "Passed"}
+                          {game.duplicateCheck?.retryCount ? ` · ${game.duplicateCheck.retryCount} retries` : ""}
+                        </td>
                         <td className="py-2 pr-3">{game.source}</td>
                       </tr>
                     ))}

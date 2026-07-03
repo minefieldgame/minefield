@@ -101,7 +101,8 @@ export function buildDailyBoardSeedManifest(
   dateKey: string,
   gameIds: readonly SeededGameId[],
   puzzleHashes: Partial<Record<SeededGameId, string>> = {},
-  sources: Partial<Record<SeededGameId, string>> = {}
+  sources: Partial<Record<SeededGameId, string>> = {},
+  duplicateChecks: Partial<Record<SeededGameId, { passed: boolean; duplicateDetected: boolean; retryCount?: number; warning?: string }>> = {}
 ) {
   const masterSeed = getDailyMasterSeed(dateKey);
   const games = gameIds.map((gameId) => {
@@ -115,7 +116,8 @@ export function buildDailyBoardSeedManifest(
       cacheKey: `${gameId}:${dateKey}:${gameVersion}`,
       puzzleHash,
       generatedAt: `${dateKey}T12:00:00.000Z`,
-      source: sources[gameId] ?? "deterministic"
+      source: sources[gameId] ?? "deterministic",
+      duplicateCheck: duplicateChecks[gameId] ?? { passed: true, duplicateDetected: false, retryCount: 0 }
     };
   });
   const boardHash = hashHex(JSON.stringify({ dateKey, masterSeed, games: games.map(({ gameId, gameSeed, puzzleHash }) => ({ gameId, gameSeed, puzzleHash })) }));

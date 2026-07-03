@@ -25,9 +25,16 @@ export default function AdminSingAlongPreview({ preview }: { preview: AdminSingA
           ["Playback stop", `${diagnostics.playbackStop}s`],
           ["Stop timestamp", `${diagnostics.stopTimestamp}s`],
           ["Chorus timestamp", `${diagnostics.chorusTimestamp}s`],
+          ["Lyric excerpt", diagnostics.lyricExcerpt],
+          ["Lyric starts", `${diagnostics.lyricStartTimeSeconds}s`],
+          ["Clip window", `${diagnostics.clipStartTimeSeconds}s → ${diagnostics.clipEndTimeSeconds}s`],
           ["Cue", diagnostics.cueDescription],
           ["Correct choice", diagnostics.correctChoiceId.toUpperCase()],
           ["Validation", diagnostics.validationStatus],
+          ["Duplicate check", diagnostics.duplicateCheck.passed ? "Passed" : "Duplicate warning"],
+          ["Regenerations", diagnostics.duplicateCheck.regenerationCount],
+          ["Unique key", diagnostics.uniqueContentKey],
+          ["Music key", diagnostics.musicUsedContentKey],
           ["Game seed", diagnostics.gameSeed],
           ["Cache key", diagnostics.cacheKey],
           ["Content hash", diagnostics.contentHash],
@@ -40,6 +47,11 @@ export default function AdminSingAlongPreview({ preview }: { preview: AdminSingA
           </div>
         ))}
       </div>
+      {diagnostics.duplicateCheck.warning && (
+        <div className="mt-3 rounded-xl border border-amber-300 bg-amber-400/10 p-3 text-sm font-bold text-amber-800 dark:text-amber-200">
+          {diagnostics.duplicateCheck.warning}
+        </div>
+      )}
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {diagnostics.choices.map((choice) => (
           <div key={choice.id} className={`rounded-xl border p-3 ${choice.isCorrect ? "border-emerald-300 bg-emerald-500/10" : "theme-raised"}`}>

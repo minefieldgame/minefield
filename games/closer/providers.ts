@@ -51,8 +51,8 @@ export async function resolveDailyCloserPuzzle(
       const result = await requestStructuredContent<GeneratedCloser>({
         name: "minefield_closer",
         instructions:
-          "Create one fast, factual numeric trivia question for a general audience. Include scoringProfile and toleranceType. Use small-integer for low factual counts, medium-count for answers 20-999, large-estimate for populations/distances/money/measurements, year for calendar years, and percentage for percentages. Return only the schema.",
-        input: `Pacific date ${date}; deterministic seed ${seed}. Vary across mainstream geography, sports, culture, science, history, animals, and technology.`,
+          "Create one fast, factual numeric trivia question for a general audience. Do not repeat or substantially overlap with USED_CONTENT_KEYS. A repeat includes the same factual answer identity, same prompt, same compared items, same category+answer, or same trivia item even if wording changes. Avoid common default examples and generic trivia-bank questions. Include scoringProfile and toleranceType. Use small-integer for low factual counts, medium-count for answers 20-999, large-estimate for populations/distances/money/measurements, year for calendar years, and percentage for percentages. Return only the schema.",
+        input: `Pacific date ${date}; deterministic seed ${seed}. Vary across mainstream geography, sports, culture, science, history, animals, and technology. USED_CONTENT_KEYS are supplied by the app when persistence is enabled; generate content that avoids all prior prompt/answer/category identities.`,
         schema: SCHEMA,
         useWebSearch: true
       });

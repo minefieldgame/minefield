@@ -38,6 +38,18 @@ export type DailyPuzzle = {
   title: string;
   artist: string;
   track: TrackPreview;
+  uniqueContentKey?: string;
+  musicUsedContentKey?: string;
+  duplicateCheck?: {
+    duplicateDetected: boolean;
+    passed: boolean;
+    regenerationCount: number;
+    retryCount: number;
+    exhaustedCandidatePool: boolean;
+    checkedAgainstCount: number;
+    recentlyUsedKeys: string[];
+    warning?: string;
+  };
 };
 
 export type GameStatus = "playing" | "won" | "lost";

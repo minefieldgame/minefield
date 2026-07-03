@@ -22,6 +22,10 @@ export type SingAlongPuzzle = {
   stopTimestamp: number;
   chorusTimestamp: number;
   cueDescription: string;
+  lyricExcerpt: string;
+  lyricStartTimeSeconds: number;
+  clipStartTimeSeconds: number;
+  clipEndTimeSeconds: number;
   acceptedLyric: string;
   alternateAcceptedLyrics: string[];
   correctChoiceId: "a" | "b" | "c" | "d";
@@ -30,7 +34,26 @@ export type SingAlongPuzzle = {
   deterministicSelectors: Record<string, string>;
   promptConstraints: string;
   validation: { valid: boolean; errors: string[] };
-  repeatStatus: { checked: boolean; retryCount: number; provider: string };
+  repeatStatus: {
+    checked: boolean;
+    passed?: boolean;
+    duplicateDetected?: boolean;
+    retryCount: number;
+    provider: string;
+    warning?: string;
+  };
+  uniqueContentKey: string;
+  musicUsedContentKey: string;
+  duplicateCheck: {
+    duplicateDetected: boolean;
+    passed: boolean;
+    regenerationCount: number;
+    retryCount: number;
+    exhaustedCandidatePool: boolean;
+    checkedAgainstCount: number;
+    recentlyUsedKeys: string[];
+    warning?: string;
+  };
   generatedAt: string;
   contentHash: string;
 };

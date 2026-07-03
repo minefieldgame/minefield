@@ -4,6 +4,7 @@ import { getGameSeedForDate, hashString, seededShuffle } from "@/lib/dailySeed";
 import { puzzleNumber } from "@/lib/date";
 import { normalizeArtist, normalizeMusicString } from "@/lib/normalize";
 import type { DailyPuzzle } from "@/types/game";
+import { createMusicUsedContentKey } from "@/lib/content/usedContentRegistry";
 
 type PreviewAttempt = {
   year: number;
@@ -84,7 +85,19 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
         chartPosition: song.position,
         title: song.title,
         artist: song.artist,
-        track
+        track,
+        uniqueContentKey: createMusicUsedContentKey(song.artist, song.title),
+        musicUsedContentKey: createMusicUsedContentKey(song.artist, song.title),
+        duplicateCheck: {
+          duplicateDetected: false,
+          passed: true,
+          regenerationCount: 0,
+          retryCount: previewAvailability.length - 1,
+          exhaustedCandidatePool: false,
+          checkedAgainstCount: previewAvailability.length - 1,
+          recentlyUsedKeys: [],
+          warning: previewAvailability.length > 1 ? "Alternate chart songs were tried before this playable non-error candidate." : undefined
+        }
       };
       const fallbackReasons: string[] = [];
       if (chart.sourceDate !== requestedChartDate) fallbackReasons.push("nearest chart date used");
@@ -141,6 +154,9 @@ export async function resolveNeedleDropDiagnostic(puzzleDate: string) {
       rawITunesTitle: puzzle.track.trackName,
       normalizedCorrectTitle: normalizeMusicString(puzzle.title),
       normalizedCorrectArtist: normalizeArtist(puzzle.artist),
+      uniqueContentKey: puzzle.uniqueContentKey,
+      musicUsedContentKey: puzzle.musicUsedContentKey,
+      duplicateCheck: puzzle.duplicateCheck,
       ...resolution.diagnostics
     },
     rawProviderResponse: {

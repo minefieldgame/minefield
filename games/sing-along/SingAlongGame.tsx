@@ -116,7 +116,7 @@ export default function SingAlongGame({
   return (
     <div className="min-w-0 text-center">
       <p className="mx-auto max-w-sm text-xs font-semibold leading-5 text-slate-500 dark:text-slate-300">
-        The song stops. Pick the lyric that comes next.
+        Listen to the clip, then pick the lyric you heard.
       </p>
       <AudioPlayer
         key={puzzle.id}

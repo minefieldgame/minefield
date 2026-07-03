@@ -156,6 +156,12 @@ export type MinefieldSummary = {
       puzzleHash: string;
       generatedAt: string;
       source: string;
+      duplicateCheck?: {
+        passed: boolean;
+        duplicateDetected: boolean;
+        retryCount?: number;
+        warning?: string;
+      };
     }>;
   };
   totalScore: number;

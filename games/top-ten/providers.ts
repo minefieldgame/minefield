@@ -107,10 +107,10 @@ export async function resolveDailyTopTenPuzzle(
       const result = await requestStructuredContent<GeneratedRankedTopTen>({
         name: "minefield_ranked_top_5",
         instructions:
-          "Create one objective, easy-to-medium general-audience ranking game with exactly 5 familiar items. The player will reorder supplied items, so never ask them to name answers. Use a stable metric and clear direction. Avoid obscure, technical, political, grim, daily-changing, or methodology-heavy topics. playerPrompt must be natural, under 25 words, and start with 'Rank these 5'. Put sourcing and caveats only in adminPrompt and sourceNote. Verify ranks and values with reputable web sources.",
+          "Create one objective, easy-to-medium general-audience ranking game with exactly 5 familiar items. Do not repeat or substantially overlap with USED_CONTENT_KEYS. A repeat includes the same answer set, ranking category, ranking metric, or factual ranking even if reworded. Avoid common default examples and generic trivia-bank topics when possible. The player will reorder supplied items, so never ask them to name answers. Use a stable metric and clear direction. Avoid obscure, technical, political, grim, daily-changing, or methodology-heavy topics. playerPrompt must be natural, under 25 words, and start with 'Rank these 5'. Put sourcing and caveats only in adminPrompt and sourceNote. Verify ranks and values with reputable web sources. Return a unique content identifier through the title/category/answer set.",
         input:
           `Pacific date ${date}; deterministic seed ${seed}; preferred category ${topic}; variant ${retryOffset}. ` +
-          "Return ranks 1 through 5 in correct order, concise display names, values, aliases, per-item source notes, and source URLs.",
+          "USED_CONTENT_KEYS are supplied by the app when persistence is enabled; generate content that avoids same answer, same category, same prompt, or same ordered set. Return ranks 1 through 5 in correct order, concise display names, values, aliases, per-item source notes, and source URLs.",
         schema: SCHEMA,
         useWebSearch: true
       });

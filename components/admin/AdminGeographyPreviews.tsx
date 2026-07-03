@@ -21,10 +21,13 @@ export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHal
           ["Spherical midpoint", `${puzzle.sphericalMidpoint.latitude.toFixed(4)}, ${puzzle.sphericalMidpoint.longitude.toFixed(4)}`],
           ["Projected midpoint", `${puzzle.projectedMidpoint.latitude.toFixed(4)}, ${puzzle.projectedMidpoint.longitude.toFixed(4)}`],
           ["Final gameplay midpoint", `${(puzzle.finalGameplayMidpoint ?? puzzle.midpoint).latitude.toFixed(4)}, ${(puzzle.finalGameplayMidpoint ?? puzzle.midpoint).longitude.toFixed(4)}`],
+          ["Content key", puzzle.uniqueContentKey],
+          ["Duplicate check", puzzle.duplicateCheck.passed ? "Passed" : "Warning"],
           ["Seed", puzzle.seed]
         ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-sm font-bold">{value}</p></div>)}
       </div>
       <div className="mt-4"><InteractiveGuessMap guess={guess} onGuess={setGuess} correct={puzzle.finalGameplayMidpoint ?? puzzle.midpoint} /></div>
+      {puzzle.duplicateCheck.warning && <p className="mt-3 rounded-xl border border-amber-300 bg-amber-400/10 p-3 text-sm font-bold text-amber-800 dark:text-amber-200">{puzzle.duplicateCheck.warning}</p>}
       {diagnostics && <GeoDiagnostics diagnostics={diagnostics} />}
       <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
@@ -47,10 +50,13 @@ export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDr
           ["Image URL", puzzle.landmark.imageUrl],
           ["Source", puzzle.landmark.sourceNote],
           ["Validation", puzzle.landmark.imageValidation ?? "photograph candidate"],
+          ["Content key", puzzle.uniqueContentKey],
+          ["Duplicate check", puzzle.duplicateCheck.passed ? "Passed" : "Warning"],
           ["Image status", imageStatus],
           ["Seed", puzzle.seed]
         ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 break-all text-sm font-bold">{value}</p></div>)}
       </div>
+      {puzzle.duplicateCheck.warning && <p className="mt-3 rounded-xl border border-amber-300 bg-amber-400/10 p-3 text-sm font-bold text-amber-800 dark:text-amber-200">{puzzle.duplicateCheck.warning}</p>}
       <div className="theme-raised mt-4 overflow-hidden rounded-2xl border">
         {imageStatus !== "failed" ? (
           // eslint-disable-next-line @next/next/no-img-element

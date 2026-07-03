@@ -82,9 +82,16 @@ export async function GET(request: NextRequest) {
           stopTimestamp: singAlongResult.value.stopTimestamp,
           chorusTimestamp: singAlongResult.value.chorusTimestamp,
           cueDescription: singAlongResult.value.cueDescription,
+          lyricExcerpt: singAlongResult.value.lyricExcerpt,
+          lyricStartTimeSeconds: singAlongResult.value.lyricStartTimeSeconds,
+          clipStartTimeSeconds: singAlongResult.value.clipStartTimeSeconds,
+          clipEndTimeSeconds: singAlongResult.value.clipEndTimeSeconds,
           choices: singAlongResult.value.choices,
           correctChoiceId: singAlongResult.value.correctChoiceId,
           validationStatus: singAlongResult.value.validation.valid ? "valid" : "invalid",
+          uniqueContentKey: singAlongResult.value.uniqueContentKey,
+          musicUsedContentKey: singAlongResult.value.musicUsedContentKey,
+          duplicateCheck: singAlongResult.value.duplicateCheck,
           contentHash: singAlongResult.value.contentHash,
           generatedAt: singAlongResult.value.generatedAt,
           gameSeed: singAlongResult.value.gameSeed,
@@ -174,7 +181,17 @@ export async function GET(request: NextRequest) {
     closer: closer.status === "ready" ? closer.contentHash : undefined,
     "meet-me-halfway": hashString(JSON.stringify(resolveMeetMeHalfwayPuzzle(date))).toString(16),
     "landmark-drop": hashString(JSON.stringify(resolveLandmarkDropPuzzle(date))).toString(16),
-    minefield: hashString(JSON.stringify(resolveMinefieldPuzzle(date, 560, 700))).toString(16)
+    minefield: resolveMinefieldPuzzle(date, 560, 700).uniqueContentKey
+  };
+  const duplicateChecks: Partial<Record<SeededGameId, { passed: boolean; duplicateDetected: boolean; retryCount?: number; warning?: string }>> = {
+    needledrop: needledrop.status === "ready" ? needledrop.puzzle.duplicateCheck : undefined,
+    "sing-along": singAlong.status === "ready" ? singAlong.puzzle.duplicateCheck : undefined,
+    "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.duplicateCheck : undefined,
+    spelldrop: spellDrop.status === "ready" ? spellDrop.puzzle.duplicateCheck : undefined,
+    closer: closer.status === "ready" ? closer.puzzle.duplicateCheck : undefined,
+    "meet-me-halfway": resolveMeetMeHalfwayPuzzle(date).duplicateCheck,
+    "landmark-drop": resolveLandmarkDropPuzzle(date).duplicateCheck,
+    minefield: resolveMinefieldPuzzle(date, 560, 700).duplicateCheck
   };
   const dailyBoard = buildDailyBoardSeedManifest(date, [
     "needledrop",
@@ -194,7 +211,7 @@ export async function GET(request: NextRequest) {
     "meet-me-halfway": "deterministic-seeded-world-cities",
     "landmark-drop": "deterministic-seeded-landmarks",
     minefield: "deterministic-seeded-board"
-  });
+  }, duplicateChecks);
   return NextResponse.json({
     date,
     pacificDate: getPacificDateKey(),

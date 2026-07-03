@@ -1,4 +1,4 @@
-import { requestStructuredContent } from "@/lib/content/aiClient";
+﻿import { requestStructuredContent } from "@/lib/content/aiClient";
 import { generateDailyContent, type GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
 import { buildValidation, isSafeGeneralAudienceText } from "@/lib/content/validation";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
@@ -42,8 +42,8 @@ export async function resolveDailySpellDropPuzzle(
       const result = await requestStructuredContent<GeneratedSpellDrop>({
         name: "minefield_spelldrop",
         instructions:
-          "Choose one real, common, recognizable, commonly misspelled English word for a general audience. Target the reaction: 'I know this word—wait, how do you spell it?' Favor familiar everyday vocabulary, not obscure academic words. It must not be a proper noun, offensive, ambiguous, or a homophone trap. Include a concise definition, actual common misspellings, and a simple pronunciation hint. Return only the schema.",
-        input: `Pacific date ${date}; deterministic seed ${seed}. Generate fresh easy-to-medium content suitable for a quick daily game.`,
+          "Choose one real, common, recognizable, commonly misspelled English word for a general audience. Do not repeat any word or near-identical spelling target in USED_CONTENT_KEYS. A repeat includes the same answer word even if the definition or misspellings change. Avoid common default examples when possible. Target the reaction: 'I know this word—wait, how do you spell it?' Favor familiar everyday vocabulary, not obscure academic words. It must not be a proper noun, offensive, ambiguous, or a homophone trap. Include a concise definition, actual common misspellings, and a simple pronunciation hint. Return only the schema.",
+        input: `Pacific date ${date}; deterministic seed ${seed}. Generate fresh easy-to-medium content suitable for a quick daily game. USED_CONTENT_KEYS are supplied by the app when persistence is enabled; generate content that avoids all prior words.`,
         schema: SCHEMA
       });
       const { confidence, ...content } = result.parsed;
@@ -61,3 +61,5 @@ export async function resolveDailySpellDropPuzzle(
 }
 
 export const resolveSpellDropForDate = resolveDailySpellDropPuzzle;
+
+

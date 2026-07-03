@@ -1,4 +1,5 @@
 import { getDailyMasterSeed, getGameSeedForDate, hashString, seededShuffle } from "@/lib/dailySeed";
+import { createUniqueContentKey } from "@/lib/content/usedContentRegistry";
 
 export type MinefieldDifficulty =
   | "Gifted"
@@ -29,6 +30,13 @@ export type MinefieldPuzzle = MinefieldDifficultyProfile & {
   seed: number;
   gridSize: 5;
   minePositions: number[];
+  uniqueContentKey: string;
+  duplicateCheck: {
+    passed: boolean;
+    duplicateDetected: boolean;
+    retryCount: number;
+    warning?: string;
+  };
 };
 
 export function getMinefieldDifficulty(runScore: number, runMaxScore = 700): MinefieldDifficultyProfile {
@@ -67,6 +75,11 @@ export function resolveMinefieldPuzzle(
     Array.from({ length: 25 }, (_, index) => index),
     seed
   ).slice(0, profile.mineCount).sort((a, b) => a - b);
+  const uniqueContentKey = createUniqueContentKey("minefield", "board", [
+    profile.difficulty,
+    profile.mineCount,
+    minePositions.join("-")
+  ]);
   return {
     gameId: "minefield",
     date,
@@ -75,6 +88,8 @@ export function resolveMinefieldPuzzle(
     seed,
     gridSize: 5,
     minePositions,
+    uniqueContentKey,
+    duplicateCheck: { passed: true, duplicateDetected: false, retryCount: 0 },
     ...profile
   };
 }

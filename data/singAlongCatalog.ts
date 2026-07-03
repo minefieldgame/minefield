@@ -8,6 +8,10 @@ export type SingAlongCatalogEntry = {
   playbackStop: number;
   chorusTimestamp: number;
   cueDescription: string;
+  lyricExcerpt: string;
+  lyricStartTimeSeconds: number;
+  clipStartTimeSeconds: number;
+  clipEndTimeSeconds: number;
   acceptedLyric: string;
   alternateAcceptedLyrics: string[];
   correctChoiceId: "a" | "b" | "c" | "d";
@@ -25,6 +29,10 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 8,
     playbackStop: 15,
     chorusTimestamp: 16.5,
+    lyricExcerpt: "Sweet Caroline",
+    lyricStartTimeSeconds: 16.5,
+    clipStartTimeSeconds: 13.5,
+    clipEndTimeSeconds: 24,
     cueDescription: "Stops immediately before the famous title hook.",
     acceptedLyric: "Sweet Caroline",
     alternateAcceptedLyrics: ["Sweet Caroline"],
@@ -46,6 +54,10 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 6,
     playbackStop: 13,
     chorusTimestamp: 14.5,
+    lyricExcerpt: "Hey Jude",
+    lyricStartTimeSeconds: 14.5,
+    clipStartTimeSeconds: 11.5,
+    clipEndTimeSeconds: 22,
     cueDescription: "Stops before the title phrase repeats.",
     acceptedLyric: "Hey Jude",
     alternateAcceptedLyrics: ["Hey Jude"],
@@ -67,6 +79,10 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 7,
     playbackStop: 14,
     chorusTimestamp: 15.5,
+    lyricExcerpt: "Billie Jean",
+    lyricStartTimeSeconds: 15.5,
+    clipStartTimeSeconds: 12.5,
+    clipEndTimeSeconds: 23,
     cueDescription: "Stops before the iconic name in the hook.",
     acceptedLyric: "Billie Jean",
     alternateAcceptedLyrics: ["Billie Jean"],
@@ -88,6 +104,10 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 8,
     playbackStop: 15,
     chorusTimestamp: 16.5,
+    lyricExcerpt: "Stayin' alive",
+    lyricStartTimeSeconds: 16.5,
+    clipStartTimeSeconds: 13.5,
+    clipEndTimeSeconds: 24,
     cueDescription: "Stops before the title hook.",
     acceptedLyric: "Stayin alive",
     alternateAcceptedLyrics: ["Staying alive", "Stayin' alive"],
@@ -109,6 +129,10 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 8,
     playbackStop: 15,
     chorusTimestamp: 16.5,
+    lyricExcerpt: "I will survive",
+    lyricStartTimeSeconds: 16.5,
+    clipStartTimeSeconds: 13.5,
+    clipEndTimeSeconds: 24,
     cueDescription: "Stops just before the survival hook.",
     acceptedLyric: "I will survive",
     alternateAcceptedLyrics: ["I'll survive", "I will survive"],
@@ -130,6 +154,10 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
     playbackStart: 7,
     playbackStop: 14,
     chorusTimestamp: 15.5,
+    lyricExcerpt: "Call me maybe",
+    lyricStartTimeSeconds: 15.5,
+    clipStartTimeSeconds: 12.5,
+    clipEndTimeSeconds: 23,
     cueDescription: "Stops before the title phrase lands.",
     acceptedLyric: "Call me maybe",
     alternateAcceptedLyrics: ["Call me maybe"],

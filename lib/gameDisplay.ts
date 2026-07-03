@@ -13,7 +13,7 @@ export const GAME_DISPLAY: Record<MinefieldGameId, {
   "sing-along": {
     name: "Sing Along",
     icon: "🎤",
-    instruction: "The song stops. Pick the lyric that comes next."
+    instruction: "Pick the famous lyric you hear in the clip."
   },
   "ranked-top-5": {
     name: "In Order",

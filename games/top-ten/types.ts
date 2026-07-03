@@ -46,6 +46,25 @@ export type RankedTopTenPuzzle = {
   generationDurationMs?: number;
   validation: RankedTopTenValidation;
   rawAIResponse?: unknown;
+  uniqueContentKey?: string;
+  duplicateCheck?: {
+    duplicateDetected: boolean;
+    passed: boolean;
+    regenerationCount: number;
+    retryCount: number;
+    exhaustedCandidatePool: boolean;
+    checkedAgainstCount: number;
+    recentlyUsedKeys: string[];
+    warning?: string;
+  };
+  repeatStatus?: {
+    checked: boolean;
+    passed?: boolean;
+    duplicateDetected?: boolean;
+    retryCount: number;
+    provider: string;
+    warning?: string;
+  };
 };
 
 export type RankedTopTenState = {

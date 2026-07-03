@@ -26,6 +26,25 @@ export type CloserPuzzle = {
   contentHash?: string;
   confidence?: number;
   generatedAt?: string;
+  uniqueContentKey?: string;
+  duplicateCheck?: {
+    duplicateDetected: boolean;
+    passed: boolean;
+    regenerationCount: number;
+    retryCount: number;
+    exhaustedCandidatePool: boolean;
+    checkedAgainstCount: number;
+    recentlyUsedKeys: string[];
+    warning?: string;
+  };
+  repeatStatus?: {
+    checked: boolean;
+    passed?: boolean;
+    duplicateDetected?: boolean;
+    retryCount: number;
+    provider: string;
+    warning?: string;
+  };
 };
 
 export type CloserScore = {

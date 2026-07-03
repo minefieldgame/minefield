@@ -119,6 +119,12 @@ export type AdminPreviewResponse = {
       puzzleHash: string;
       generatedAt: string;
       source: string;
+      duplicateCheck?: {
+        passed: boolean;
+        duplicateDetected: boolean;
+        retryCount?: number;
+        warning?: string;
+      };
     }>;
   };
   dailySeed: number;
@@ -154,9 +160,25 @@ export type AdminSingAlongPreview =
         chorusTimestamp: number;
         stopTimestamp: number;
         cueDescription: string;
+        lyricExcerpt: string;
+        lyricStartTimeSeconds: number;
+        clipStartTimeSeconds: number;
+        clipEndTimeSeconds: number;
         choices: Array<{ id: string; text: string; isCorrect: boolean }>;
         correctChoiceId: string;
         validationStatus: string;
+        uniqueContentKey: string;
+        musicUsedContentKey: string;
+        duplicateCheck: {
+          duplicateDetected: boolean;
+          passed: boolean;
+          regenerationCount: number;
+          retryCount: number;
+          exhaustedCandidatePool: boolean;
+          checkedAgainstCount: number;
+          recentlyUsedKeys: string[];
+          warning?: string;
+        };
         contentHash: string;
         generatedAt: string;
         cacheKey: string;
