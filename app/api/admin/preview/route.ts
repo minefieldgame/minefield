@@ -19,6 +19,7 @@ import {
   type DynamicGameId
 } from "@/lib/content/dynamicErrors";
 import { puzzlePersistenceStatus } from "@/lib/content/persistence";
+import { getInventoryOverview } from "@/lib/content/inventoryHealth";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
         status: "ready" as const,
         puzzle: singAlongResult.value,
         diagnostics: {
-          sourceProvider: "Versioned deterministic catalog + iTunes Search API",
+          sourceProvider: "Reviewed lyric-timing inventory + staged iTunes preview validation",
           chartDate: singAlongResult.value.chartDate,
           playbackStart: singAlongResult.value.playbackStart,
           playbackStop: singAlongResult.value.playbackStop,
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
           validationStatus: validateTopTenPuzzle(topTenResult.value).valid ? "valid" : "invalid",
           dataFreshness: `Generated ${topTenResult.value.generatedAt}`,
           confidence: topTenResult.value.confidence,
-          generationMode: "deterministic-catalog",
+          generationMode: "structured-candidate-inventory",
           apiKeyConfigured: providerStatus.apiKeyConfigured,
           warning: providerStatus.warning,
           errors: topTenResult.value.validation.errors,
@@ -205,6 +206,72 @@ export async function GET(request: NextRequest) {
     "landmark-drop": landmarkDrop.status === "ready" ? landmarkDrop.puzzle.duplicateCheck : undefined,
     minefield: resolveMinefieldPuzzle(date, 560, 700).duplicateCheck
   };
+  const inventoryOverview = await getInventoryOverview().catch(() => []);
+  const overviewByGame = new Map(inventoryOverview.map((item) => [item.gameId, item]));
+  const routeReady = {
+    needledrop: needledrop.status === "ready",
+    "sing-along": singAlong.status === "ready",
+    "ranked-top-5": topTen.status === "ready",
+    spelldrop: spellDrop.status === "ready",
+    closer: closer.status === "ready",
+    "meet-me-halfway": meetMeHalfway.status === "ready",
+    "landmark-drop": landmarkDrop.status === "ready",
+    minefield: true
+  } satisfies Record<SeededGameId, boolean>;
+  const summaryStatuses = Object.fromEntries(Object.entries(routeReady).map(([gameId, ready]) => {
+    if (!ready) return [gameId, "Failed"];
+    const overview = gameId === "minefield" ? undefined : overviewByGame.get(gameId as Exclude<SeededGameId, "minefield">);
+    if (overview?.healthStatus === "Low inventory" || overview?.healthStatus === "Critically low") return [gameId, "Low inventory warning"];
+    return [gameId, "Generated"];
+  })) as Partial<Record<SeededGameId, "Ready" | "Cached" | "Generated" | "Failed" | "Low inventory warning">>;
+  const universeByGame: Partial<Record<SeededGameId, Record<string, unknown>>> = {
+    needledrop: needledrop.status === "ready" ? {
+      totalCandidates: needledrop.diagnostics.sourceUniverseSize,
+      selectedCandidateId: needledrop.diagnostics.finalSelectedSong,
+      excludedPreviouslyUsed: needledrop.diagnostics.duplicateRejectionCount,
+      excludedSoftCooldown: needledrop.diagnostics.cooldownRejectionCount,
+      excludedInvalid: needledrop.diagnostics.metadataRejectionCount + needledrop.diagnostics.previewAvailabilityRejectionCount,
+      apiCalls: needledrop.diagnostics.providerApiCalls,
+      dynamoDbReadCount: needledrop.puzzle.duplicateCheck?.checkedAgainstCount ?? 0,
+      generationDurationMs: 0
+    } : undefined,
+    "sing-along": singAlong.status === "ready" ? singAlong.puzzle.contentUniverse : undefined,
+    "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.contentUniverse as unknown as Record<string, unknown> : undefined,
+    spelldrop: spellDrop.status === "ready" ? spellDrop.contentUniverse : undefined,
+    closer: closer.status === "ready" ? closer.contentUniverse : undefined,
+    "meet-me-halfway": meetMeHalfway.status === "ready" ? meetMeHalfway.puzzle.contentUniverse as unknown as Record<string, unknown> : undefined,
+    "landmark-drop": landmarkDrop.status === "ready" ? landmarkDrop.puzzle.contentUniverse as unknown as Record<string, unknown> : undefined
+  };
+  const failureByGame: Partial<Record<SeededGameId, string>> = {
+    needledrop: needledrop.status === "error" ? needledrop.error : undefined,
+    "sing-along": singAlong.status === "error" ? singAlong.error : undefined,
+    "ranked-top-5": topTen.status === "error" ? topTen.error : undefined,
+    spelldrop: spellDrop.status === "error" ? spellDrop.error : undefined,
+    closer: closer.status === "error" ? closer.error : undefined,
+    "meet-me-halfway": meetMeHalfway.status === "error" ? meetMeHalfway.error : undefined,
+    "landmark-drop": landmarkDrop.status === "error" ? landmarkDrop.error : undefined
+  };
+  const contentHealth = inventoryOverview.map((overview) => {
+    const diagnostics = universeByGame[overview.gameId] ?? {};
+    const failed = !routeReady[overview.gameId];
+    const failure = failureByGame[overview.gameId] ?? "";
+    const failureStatus = /exhaust/i.test(failure) ? "Exhausted" : /provider|preview|chart|iTunes/i.test(failure) ? "Provider unavailable" : /DynamoDB|table|transaction|credential/i.test(failure) ? "Infrastructure failure" : "Validation failure";
+    return {
+      ...overview,
+      totalCandidateInventory: Number(diagnostics.totalCandidates ?? overview.totalCandidateInventory),
+      invalidCandidates: Number(diagnostics.excludedInvalid ?? overview.invalidCandidates),
+      candidatesOnCooldown: Number(diagnostics.excludedSoftCooldown ?? 0),
+      candidatesGeneratedCurrentRequest: Number(diagnostics.candidatesGeneratedCurrentRequest ?? 0),
+      candidatesRejectedCurrentRequest: Number(diagnostics.excludedInvalid ?? 0) + Number(diagnostics.excludedPreviouslyUsed ?? 0),
+      selectedCandidate: String(diagnostics.selectedCandidateId ?? ""),
+      generationDurationMs: Number(diagnostics.generationDurationMs ?? 0),
+      apiCalls: Number(diagnostics.apiCalls ?? 0),
+      dynamoDbReads: Number(diagnostics.dynamoDbReadCount ?? overview.dynamoDbReads),
+      dynamoDbWrites: Number(diagnostics.dynamoDbWrites ?? 0),
+      finalStatus: failed ? failureStatus : overview.healthStatus,
+      actionableFailureReason: failed ? failure : ""
+    };
+  });
   const dailyBoard = buildDailyBoardSeedManifest(date, [
     "needledrop",
     "sing-along",
@@ -216,14 +283,14 @@ export async function GET(request: NextRequest) {
     "minefield"
   ], puzzleHashes, {
     needledrop: "Billboard archive + iTunes Search API",
-    "sing-along": "deterministic-catalog+iTunes",
-    "ranked-top-5": "deterministic-catalog",
-    spelldrop: "deterministic-catalog",
-    closer: "deterministic-catalog",
+    "sing-along": "reviewed timing inventory + staged iTunes discovery",
+    "ranked-top-5": "structured-data candidate inventory",
+    spelldrop: "WordNet/SUBTLEX/CMUdict candidate inventory",
+    closer: "verified structured numeric inventory",
     "meet-me-halfway": "enumerated-world-city-pairs + DynamoDB duplicate filtering",
     "landmark-drop": "verified-landmark-photograph catalog + DynamoDB duplicate filtering",
     minefield: "deterministic-seeded-board"
-  }, duplicateChecks);
+  }, duplicateChecks, summaryStatuses);
   return NextResponse.json({
     date,
     pacificDate: getPacificDateKey(),
@@ -239,6 +306,7 @@ export async function GET(request: NextRequest) {
     dailySeed,
     seedHash: dailySeed.toString(16).padStart(8, "0"),
     generatedAt: new Date().toISOString(),
+    contentHealth,
     games: {
       needledrop,
       singAlong,

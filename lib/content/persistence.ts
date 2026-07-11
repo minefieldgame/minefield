@@ -3,13 +3,15 @@ import "server-only";
 import {
   AttributeValue,
   BatchGetItemCommand,
+  BatchWriteItemCommand,
   ConditionalCheckFailedException,
   CreateTableCommand,
   DescribeTableCommand,
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
-  TransactWriteItemsCommand
+  TransactWriteItemsCommand,
+  type WriteRequest
 } from "@aws-sdk/client-dynamodb";
 import type { UsedContentRecord } from "@/lib/content/usedContentRegistry";
 
@@ -27,6 +29,23 @@ export const puzzlePersistenceStatus = {
   usedContentTable: USED_CONTENT_TABLE,
   region: REGION,
   note: "DynamoDB is authoritative. If a DynamoDB read/write fails, daily generation fails safely instead of using repeating fallback content."
+};
+
+export type PersistedCandidate<T = unknown> = {
+  gameId: string;
+  candidateId: string;
+  normalizedContentKeys: string[];
+  payload: T;
+  validationStatus: "validated" | "pending-review" | "invalid";
+  validationVersion: string;
+  sourceMetadata: Record<string, unknown>;
+  createdAt: string;
+  lastValidatedAt: string;
+  usedAt?: string;
+  invalidReason?: string;
+  qualityScore: number;
+  difficulty: string;
+  category: string;
 };
 
 export type AtomicPublishDiagnostics = {
@@ -61,6 +80,18 @@ function parseJson<T>(value?: AttributeValue): T | null {
 
 function dateGameKey(gameId: string, dateKey: string) {
   return `${dateKey}#${gameId}`;
+}
+
+function inventoryManifestKey(gameId: string) {
+  return `inventory#${gameId}#manifest`;
+}
+
+function inventoryCandidateKey(gameId: string, candidateId: string) {
+  return `inventory#${gameId}#candidate#${candidateId}`;
+}
+
+function inventoryUsageKey(gameId: string) {
+  return `inventory#${gameId}#usage`;
 }
 
 export function getDateGameKey(gameId: string, dateKey: string) {
@@ -112,6 +143,91 @@ export async function getPersistedPuzzle<T>(gameId: string, dateKey: string): Pr
     ConsistentRead: true
   }));
   return parseJson<T>(response.Item?.puzzle);
+}
+
+export async function getPersistedCandidateInventory<T>(gameId: string): Promise<Array<PersistedCandidate<T>>> {
+  await ensureTable(DAILY_CONTENT_TABLE, "dateGameKey");
+  const manifestResponse = await client.send(new GetItemCommand({
+    TableName: DAILY_CONTENT_TABLE,
+    Key: { dateGameKey: s(inventoryManifestKey(gameId)) },
+    ConsistentRead: true
+  }));
+  const candidateIds = parseJson<string[]>(manifestResponse.Item?.candidateIds) ?? [];
+  const candidates: Array<PersistedCandidate<T>> = [];
+  for (let index = 0; index < candidateIds.length; index += 100) {
+    let requestKeys: Record<string, AttributeValue>[] = candidateIds.slice(index, index + 100).map((candidateId) => ({
+      dateGameKey: s(inventoryCandidateKey(gameId, candidateId))
+    }));
+    for (let attempt = 0; requestKeys.length && attempt < 5; attempt += 1) {
+      const response = await client.send(new BatchGetItemCommand({
+        RequestItems: { [DAILY_CONTENT_TABLE]: { Keys: requestKeys, ConsistentRead: true } }
+      }));
+      for (const item of response.Responses?.[DAILY_CONTENT_TABLE] ?? []) {
+        const candidate = parseJson<PersistedCandidate<T>>(item.candidate);
+        if (candidate) candidates.push(candidate);
+      }
+      requestKeys = response.UnprocessedKeys?.[DAILY_CONTENT_TABLE]?.Keys ?? [];
+      if (requestKeys.length) await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+    }
+    if (requestKeys.length) throw new Error(`Candidate inventory read left ${requestKeys.length} records unprocessed.`);
+  }
+  return candidates;
+}
+
+export async function savePersistedCandidates<T>(gameId: string, records: Array<PersistedCandidate<T>>) {
+  if (!records.length) return { written: 0, total: (await getPersistedCandidateInventory<T>(gameId)).length };
+  await ensureTable(DAILY_CONTENT_TABLE, "dateGameKey");
+  const existing = await getPersistedCandidateInventory<T>(gameId);
+  const merged = new Map(existing.map((record) => [record.candidateId, record]));
+  for (const record of records) merged.set(record.candidateId, record);
+  const items = [...merged.values()];
+  for (let index = 0; index < records.length; index += 25) {
+    let requests: WriteRequest[] = records.slice(index, index + 25).map((record) => ({ PutRequest: { Item: {
+      dateGameKey: s(inventoryCandidateKey(gameId, record.candidateId)),
+      gameId: s(gameId),
+      candidateId: s(record.candidateId),
+      validationStatus: s(record.validationStatus),
+      candidate: s(json(record)),
+      updatedAt: s(new Date().toISOString())
+    } } }));
+    for (let attempt = 0; requests.length && attempt < 5; attempt += 1) {
+      const response = await client.send(new BatchWriteItemCommand({ RequestItems: { [DAILY_CONTENT_TABLE]: requests } }));
+      requests = response.UnprocessedItems?.[DAILY_CONTENT_TABLE] ?? [];
+      if (requests.length) await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+    if (requests.length) throw new Error(`Candidate inventory write left ${requests.length} records unprocessed.`);
+  }
+  await client.send(new PutItemCommand({
+    TableName: DAILY_CONTENT_TABLE,
+    Item: {
+      dateGameKey: s(inventoryManifestKey(gameId)),
+      gameId: s(gameId),
+      candidateIds: s(json(items.map((record) => record.candidateId).sort())),
+      validatedCount: { N: String(items.filter((record) => record.validationStatus === "validated").length) },
+      pendingReviewCount: { N: String(items.filter((record) => record.validationStatus === "pending-review").length) },
+      updatedAt: s(new Date().toISOString())
+    }
+  }));
+  return { written: records.length, total: items.length };
+}
+
+export async function getInventoryUsageCounts(gameIds: string[]) {
+  const counts = new Map<string, number>();
+  if (!gameIds.length) return counts;
+  await ensureTable(DAILY_CONTENT_TABLE, "dateGameKey");
+  const response = await client.send(new BatchGetItemCommand({
+    RequestItems: {
+      [DAILY_CONTENT_TABLE]: {
+        Keys: [...new Set(gameIds)].map((gameId) => ({ dateGameKey: s(inventoryUsageKey(gameId)) })),
+        ConsistentRead: true
+      }
+    }
+  }));
+  for (const item of response.Responses?.[DAILY_CONTENT_TABLE] ?? []) {
+    const gameId = item.gameId?.S;
+    if (gameId) counts.set(gameId, Number(item.usedCount?.N ?? 0));
+  }
+  return counts;
 }
 
 export async function savePersistedPuzzle<T>(
@@ -185,6 +301,39 @@ export async function checkUsedContentKeys(keys: string[]) {
   }
 
   return existing;
+}
+
+export async function getUsedContentKeyDates(keys: string[]) {
+  const uniqueKeys = [...new Set(keys.filter(Boolean))];
+  const dates = new Map<string, string>();
+  if (!uniqueKeys.length) return dates;
+  await ensureTable(USED_CONTENT_TABLE, "uniqueContentKey");
+
+  for (let index = 0; index < uniqueKeys.length; index += 100) {
+    let requestKeys: Record<string, AttributeValue>[] = uniqueKeys
+      .slice(index, index + 100)
+      .map((key) => ({ uniqueContentKey: s(key) }));
+    for (let attempt = 0; requestKeys.length && attempt < 5; attempt += 1) {
+      const response = await client.send(new BatchGetItemCommand({
+        RequestItems: {
+          [USED_CONTENT_TABLE]: {
+            Keys: requestKeys,
+            ProjectionExpression: "uniqueContentKey, #usedDate",
+            ExpressionAttributeNames: { "#usedDate": "date" },
+            ConsistentRead: true
+          }
+        }
+      }));
+      for (const item of response.Responses?.[USED_CONTENT_TABLE] ?? []) {
+        const key = item.uniqueContentKey?.S;
+        if (key) dates.set(key, item.date?.S ?? "1970-01-01");
+      }
+      requestKeys = response.UnprocessedKeys?.[USED_CONTENT_TABLE]?.Keys ?? [];
+      if (requestKeys.length) await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+    }
+    if (requestKeys.length) throw new Error(`DynamoDB cooldown check left ${requestKeys.length} keys unprocessed.`);
+  }
+  return dates;
 }
 
 export async function saveUsedContentRecord(record: UsedContentRecord) {
@@ -271,8 +420,8 @@ export async function publishDailyPuzzleWithUsedContent<T>({
 
   const now = new Date().toISOString();
   const uniqueRecords = [...new Map(usedContentRecords.map((record) => [record.uniqueContentKey, record])).values()];
-  if (uniqueRecords.length > 99) {
-    throw new Error(`Atomic publish for ${gameId} has ${uniqueRecords.length} used-content records; DynamoDB transactions allow at most 99 plus the daily puzzle.`);
+  if (uniqueRecords.length > 98) {
+    throw new Error(`Atomic publish for ${gameId} has ${uniqueRecords.length} used-content records; DynamoDB transactions allow at most 98 plus the daily puzzle and inventory counter.`);
   }
 
   try {
@@ -292,6 +441,14 @@ export async function publishDailyPuzzleWithUsedContent<T>({
               boardSchemaVersion: s("v3")
             },
             ConditionExpression: "attribute_not_exists(dateGameKey)"
+          }
+        },
+        {
+          Update: {
+            TableName: DAILY_CONTENT_TABLE,
+            Key: { dateGameKey: s(inventoryUsageKey(gameId)) },
+            UpdateExpression: "SET gameId = :gameId, updatedAt = :updatedAt ADD usedCount :one",
+            ExpressionAttributeValues: { ":gameId": s(gameId), ":updatedAt": s(now), ":one": { N: "1" } }
           }
         },
         ...uniqueRecords.map((record) => ({

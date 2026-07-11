@@ -21,6 +21,31 @@ async function searchITunes(params: URLSearchParams) {
   return (await response.json()) as { results?: ITunesResult[] };
 }
 
+export async function discoverITunesTracks(queries: string[], perQuery = 50) {
+  const settled = await Promise.allSettled(queries.map((term) => searchITunes(new URLSearchParams({
+    term,
+    media: "music",
+    entity: "song",
+    limit: String(Math.min(200, Math.max(1, perQuery))),
+    country: "US",
+    explicit: "No"
+  }))));
+  const seen = new Set<string>();
+  const tracks = settled.flatMap((result) => result.status === "fulfilled" ? result.value.results ?? [] : [])
+    .filter((result) => result.trackName && result.artistName && result.previewUrl)
+    .filter((result) => {
+      const key = `${cleanSongTitle(result.trackName!)}::${cleanArtistName(result.artistName!)}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  return {
+    tracks,
+    apiCalls: queries.length,
+    errors: settled.flatMap((result) => result.status === "rejected" ? [result.reason instanceof Error ? result.reason.message : "iTunes discovery failed"] : [])
+  };
+}
+
 async function lookupITunes(params: URLSearchParams) {
   const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
     next: { revalidate: 86400 }

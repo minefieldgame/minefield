@@ -172,13 +172,13 @@ export async function resolveDailyTopTenPuzzle(
 export const resolveRankedTop5ForDate = resolveDailyTopTenPuzzle;
 
 export function getAvailableTopTenCategories() {
-  return TOPICS.map((category) => ({ category, mode: "deterministic catalog" }));
+  return TOPICS.map((category) => ({ category, mode: "structured candidate inventory" }));
 }
 
 export function getTopTenProviderStatus() {
   const status = getAIStatus();
   return {
-    mode: "deterministic-catalog",
+    mode: "structured-candidate-inventory",
     model: status.model,
     apiKeyConfigured: status.apiKeyConfigured,
     warning: null

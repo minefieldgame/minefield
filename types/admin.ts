@@ -119,6 +119,7 @@ export type AdminPreviewResponse = {
       puzzleHash: string;
       generatedAt: string;
       source: string;
+      status: "Ready" | "Cached" | "Generated" | "Failed" | "Low inventory warning";
       duplicateCheck?: {
         passed: boolean;
         duplicateDetected: boolean;
@@ -130,6 +131,32 @@ export type AdminPreviewResponse = {
   dailySeed: number;
   seedHash: string;
   generatedAt: string;
+  contentHealth: Array<{
+    gameId: string;
+    label: string;
+    generationArchitecture: string;
+    totalCandidateInventory: number;
+    validatedInventory: number;
+    unusedInventory: number;
+    invalidCandidates: number;
+    pendingReview: number;
+    target: number;
+    replenishBelow: number;
+    cooldownDays: number;
+    healthStatus: string;
+    sourceStrategy: string;
+    exactDuplicatesUsed: number;
+    candidatesOnCooldown: number;
+    candidatesGeneratedCurrentRequest: number;
+    candidatesRejectedCurrentRequest: number;
+    selectedCandidate: string;
+    generationDurationMs: number;
+    apiCalls: number;
+    dynamoDbReads: number;
+    dynamoDbWrites: number;
+    finalStatus: string;
+    actionableFailureReason: string;
+  }>;
   cacheKeys: {
     rankedTopTen: string;
     singAlong: string;

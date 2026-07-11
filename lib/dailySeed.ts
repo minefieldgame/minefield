@@ -102,13 +102,15 @@ export function buildDailyBoardSeedManifest(
   gameIds: readonly SeededGameId[],
   puzzleHashes: Partial<Record<SeededGameId, string>> = {},
   sources: Partial<Record<SeededGameId, string>> = {},
-  duplicateChecks: Partial<Record<SeededGameId, { passed: boolean; duplicateDetected: boolean; retryCount?: number; warning?: string }>> = {}
+  duplicateChecks: Partial<Record<SeededGameId, { passed: boolean; duplicateDetected: boolean; retryCount?: number; warning?: string }>> = {},
+  statuses: Partial<Record<SeededGameId, "Ready" | "Cached" | "Generated" | "Failed" | "Low inventory warning">> = {}
 ) {
   const masterSeed = getDailyMasterSeed(dateKey);
   const games = gameIds.map((gameId) => {
     const gameSeed = getGameSeed(masterSeed, gameId);
     const gameVersion = GAME_VERSIONS[gameId];
-    const puzzleHash = puzzleHashes[gameId] ?? hashString(`${masterSeed}:${gameId}:pending`).toString(16).padStart(8, "0");
+    const status = statuses[gameId] ?? (puzzleHashes[gameId] ? "Ready" : "Failed");
+    const puzzleHash = status === "Failed" ? "" : puzzleHashes[gameId] ?? "";
     return {
       gameId,
       gameVersion,
@@ -117,7 +119,8 @@ export function buildDailyBoardSeedManifest(
       puzzleHash,
       generatedAt: `${dateKey}T12:00:00.000Z`,
       source: sources[gameId] ?? "deterministic",
-      duplicateCheck: duplicateChecks[gameId] ?? { passed: true, duplicateDetected: false, retryCount: 0 }
+      status,
+      duplicateCheck: duplicateChecks[gameId] ?? { passed: status !== "Failed", duplicateDetected: false, retryCount: 0, warning: status === "Failed" ? "Route failed to produce a playable puzzle." : undefined }
     };
   });
   const boardHash = hashHex(JSON.stringify({ dateKey, masterSeed, games: games.map(({ gameId, gameSeed, puzzleHash }) => ({ gameId, gameSeed, puzzleHash })) }));

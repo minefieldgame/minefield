@@ -26,6 +26,7 @@ export type GeneratedContentEnvelope<T> = {
   warnings: string[];
   cacheHit: boolean;
   generationDurationMs: number;
+  contentUniverse?: Record<string, unknown>;
 };
 
 export async function generateDailyContent<T>({

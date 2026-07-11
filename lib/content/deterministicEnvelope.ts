@@ -12,7 +12,9 @@ export function deterministicEnvelope<T>({
   validation,
   topic,
   answer,
-  sourceNotes
+  sourceNotes,
+  generator = "Prepared validated candidate inventory",
+  contentUniverse
 }: {
   gameId: string;
   date: string;
@@ -21,13 +23,15 @@ export function deterministicEnvelope<T>({
   topic: string;
   answer: string;
   sourceNotes: string[];
+  generator?: string;
+  contentUniverse?: Record<string, unknown>;
 }): GeneratedContentEnvelope<T> {
   const seed = hashString(`${gameId}:${date}:0`);
   return {
     puzzle,
     date,
     seed,
-    generator: "Versioned deterministic daily catalog",
+    generator,
     rawAIResponse: null,
     validation,
     confidence: 1,
@@ -37,6 +41,7 @@ export function deterministicEnvelope<T>({
     generatedAt: `${date}T12:00:00.000Z`,
     warnings: [],
     cacheHit: true,
-    generationDurationMs: 0
+    generationDurationMs: 0,
+    contentUniverse
   };
 }

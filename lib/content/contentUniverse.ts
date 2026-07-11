@@ -1,10 +1,10 @@
 import "server-only";
 
-import { checkUsedContentKeys } from "@/lib/content/persistence";
+import { checkUsedContentKeys, getUsedContentKeyDates } from "@/lib/content/persistence";
 import { createSeededRandom } from "@/lib/dailySeed";
 
 export type ExhaustionLevel = "healthy" | "low" | "critical" | "exhausted";
-export type HealthStatus = "Healthy" | "Limited" | "Critical" | "Exhausted" | "Provider Failure";
+export type HealthStatus = "Healthy" | "Low inventory" | "Critically low" | "Exhausted" | "Provider unavailable" | "Validation failure" | "Infrastructure failure";
 
 export type ContentUniverseDiagnostics = {
   contentSource: string;
@@ -21,6 +21,11 @@ export type ContentUniverseDiagnostics = {
   dynamoDbReadCount: number;
   sequentialRetries: number;
   retryCount: number;
+  cooldownDays: number;
+  candidateBatches: number[];
+  apiCalls: number;
+  dynamoDbWrites: number;
+  candidatesGeneratedCurrentRequest: number;
   exhaustionLevel: ExhaustionLevel;
   healthStatus: HealthStatus;
   warnings: string[];
@@ -40,8 +45,8 @@ export interface ContentUniverse<T> {
 function health(remaining: number, total: number): { exhaustionLevel: ExhaustionLevel; healthStatus: HealthStatus } {
   if (remaining <= 0) return { exhaustionLevel: "exhausted", healthStatus: "Exhausted" };
   const ratio = total ? remaining / total : 0;
-  if (ratio < 0.03) return { exhaustionLevel: "critical", healthStatus: "Critical" };
-  if (ratio < 0.12) return { exhaustionLevel: "low", healthStatus: "Limited" };
+  if (ratio < 0.03) return { exhaustionLevel: "critical", healthStatus: "Critically low" };
+  if (ratio < 0.12) return { exhaustionLevel: "low", healthStatus: "Low inventory" };
   return { exhaustionLevel: "healthy", healthStatus: "Healthy" };
 }
 
@@ -49,12 +54,18 @@ export async function selectFromContentUniverse<T>({
   universe,
   gameSeed,
   contentSource,
-  softCooldownLabel = "soft cooldown"
+  softCooldownLabel = "soft cooldown",
+  dateKey,
+  cooldownDays = 30,
+  batchSizes = [200, 500, 2000]
 }: {
   universe: ContentUniverse<T>;
   gameSeed: string;
   contentSource: string;
   softCooldownLabel?: string;
+  dateKey?: string;
+  cooldownDays?: number;
+  batchSizes?: number[];
 }) {
   const startedAt = Date.now();
   const allCandidates = await universe.getAllCandidates();
@@ -67,49 +78,77 @@ export async function selectFromContentUniverse<T>({
     else excludedInvalid += 1;
   }
 
+  const orderedCandidates = createSeededRandom(`${gameSeed}:candidate-batches`).shuffle(validCandidates);
+  const stages = [...new Set([...batchSizes, validCandidates.length])]
+    .map((size) => Math.min(validCandidates.length, Math.max(1, size)))
+    .filter((size, index, values) => index === 0 || size > values[index - 1]);
   const hardKeysByCandidate = new Map<T, string[]>();
-  const hardKeys = validCandidates.flatMap((candidate) => {
-    const keys = [...new Set(universe.getHardKeys(candidate).filter(Boolean))];
-    hardKeysByCandidate.set(candidate, keys);
-    return keys;
-  });
-  const usedHardKeys = new Set(await checkUsedContentKeys(hardKeys));
-  const hardFiltered = validCandidates.filter((candidate) =>
-    !(hardKeysByCandidate.get(candidate) ?? []).some((key) => usedHardKeys.has(key))
-  );
-
   const softKeysByCandidate = new Map<T, string[]>();
-  const softKeys = hardFiltered.flatMap((candidate) => {
-    const keys = [...new Set((universe.getSoftKeys?.(candidate) ?? []).filter(Boolean))];
-    softKeysByCandidate.set(candidate, keys);
-    return keys;
-  });
-  const usedSoftKeys = softKeys.length ? new Set(await checkUsedContentKeys(softKeys)) : new Set<string>();
-  const softFiltered = hardFiltered.filter((candidate) =>
-    !(softKeysByCandidate.get(candidate) ?? []).some((key) => usedSoftKeys.has(key))
-  );
+  let selected: T | null = null;
+  let selectedPool: T[] = [];
+  let hardFiltered: T[] = [];
+  let softFiltered: T[] = [];
+  let usedHardKeys = new Set<string>();
+  let usedSoftKeys = new Set<string>();
+  let hardKeys: string[] = [];
+  let softKeys: string[] = [];
+  let selectionStage = 0;
+  let relaxed = false;
 
-  const strictPool = softFiltered;
-  const relaxedPool = hardFiltered;
-  const selectedPool = strictPool.length ? strictPool : relaxedPool;
-  const selected = universe.selectCandidate(selectedPool, gameSeed);
-  const relaxed = !strictPool.length && relaxedPool.length > 0;
-  const state = health(selectedPool.length, Math.max(1, validCandidates.length));
+  for (let stage = 0; stage < stages.length; stage += 1) {
+    selectionStage = stage;
+    const candidates = orderedCandidates.slice(0, stages[stage]);
+    hardKeys = candidates.flatMap((candidate) => {
+      const keys = [...new Set(universe.getHardKeys(candidate).filter(Boolean))];
+      hardKeysByCandidate.set(candidate, keys);
+      return keys;
+    });
+    usedHardKeys = new Set(await checkUsedContentKeys(hardKeys));
+    hardFiltered = candidates.filter((candidate) =>
+      !(hardKeysByCandidate.get(candidate) ?? []).some((key) => usedHardKeys.has(key))
+    );
+    if (!hardFiltered.length) continue;
+
+    softKeys = hardFiltered.flatMap((candidate) => {
+      const keys = [...new Set((universe.getSoftKeys?.(candidate) ?? []).filter(Boolean))];
+      softKeysByCandidate.set(candidate, keys);
+      return keys;
+    });
+    const usedDates = softKeys.length ? await getUsedContentKeyDates(softKeys) : new Map<string, string>();
+    const cutoff = dateKey ? Date.parse(`${dateKey}T12:00:00Z`) - cooldownDays * 86_400_000 : Number.POSITIVE_INFINITY;
+    usedSoftKeys = new Set([...usedDates].filter(([, usedDate]) => Date.parse(`${usedDate}T12:00:00Z`) >= cutoff).map(([key]) => key));
+    softFiltered = hardFiltered.filter((candidate) =>
+      !(softKeysByCandidate.get(candidate) ?? []).some((key) => usedSoftKeys.has(key))
+    );
+    selectedPool = softFiltered.length ? softFiltered : hardFiltered;
+    relaxed = !softFiltered.length && hardFiltered.length > 0;
+    selected = universe.selectCandidate(selectedPool, `${gameSeed}:stage-${stage}`);
+    if (selected) break;
+  }
+  const consideredCount = stages[selectionStage] ?? 0;
+  const excludedPreviouslyUsed = Math.max(0, consideredCount - hardFiltered.length);
+  const estimatedRemaining = Math.max(selectedPool.length, validCandidates.length - excludedPreviouslyUsed);
+  const state = health(estimatedRemaining, Math.max(1, validCandidates.length));
   const diagnostics: ContentUniverseDiagnostics & { generationDurationMs: number } = {
     contentSource,
     totalCandidates: allCandidates.length,
     validatedCandidateCount: validCandidates.length,
-    excludedPreviouslyUsed: validCandidates.length - hardFiltered.length,
+    excludedPreviouslyUsed,
     excludedInvalid,
     excludedSoftCooldown: hardFiltered.length - softFiltered.length,
-    remainingCandidates: selectedPool.length,
+    remainingCandidates: estimatedRemaining,
     selectedCandidateId: selected ? universe.getCandidateId(selected) : undefined,
-    selectionStage: relaxed ? 1 : 0,
+    selectionStage,
     relaxationRulesUsed: relaxed ? [softCooldownLabel] : [],
-    duplicateCheckQueries: (hardKeys.length ? 1 : 0) + (softKeys.length ? 1 : 0),
+    duplicateCheckQueries: (hardKeys.length ? Math.ceil(hardKeys.length / 100) : 0) + (softKeys.length ? Math.ceil(softKeys.length / 100) : 0),
     dynamoDbReadCount: hardKeys.length + softKeys.length,
     sequentialRetries: 0,
     retryCount: 0,
+    cooldownDays,
+    candidateBatches: stages.slice(0, selectionStage + 1),
+    apiCalls: 0,
+    dynamoDbWrites: 0,
+    candidatesGeneratedCurrentRequest: 0,
     ...state,
     warnings: [
       ...(relaxed ? [`Relaxed ${softCooldownLabel}; exact duplicate blocks remained active.`] : []),

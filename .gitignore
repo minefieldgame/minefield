@@ -7,3 +7,4 @@ out
 .env*
 !.env.example
 npm-debug.log*
+*.tsbuildinfo

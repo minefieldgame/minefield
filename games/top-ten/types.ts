@@ -46,6 +46,7 @@ export type RankedTopTenPuzzle = {
   generationDurationMs?: number;
   validation: RankedTopTenValidation;
   rawAIResponse?: unknown;
+  contentUniverse?: Record<string, unknown>;
   uniqueContentKey?: string;
   duplicateCheck?: {
     duplicateDetected: boolean;

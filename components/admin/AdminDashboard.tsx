@@ -86,6 +86,8 @@ export default function AdminDashboard({ environment }: { environment: string })
   const [error, setError] = useState("");
   const [dark, setDark] = useState(false);
   const [topTenRetry, setTopTenRetry] = useState(0);
+  const [replenishing, setReplenishing] = useState(false);
+  const [replenishResult, setReplenishResult] = useState("");
 
   const generate = useCallback(async (
     date = selectedDate,
@@ -149,6 +151,22 @@ export default function AdminDashboard({ environment }: { environment: string })
     setPreview(null);
   }
 
+  async function replenishInventories() {
+    setReplenishing(true);
+    setReplenishResult("");
+    try {
+      const response = await fetch("/api/admin/content-inventory", { method: "POST", cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Inventory replenishment failed.");
+      setReplenishResult(payload.results.map((item: { gameId: string; status: string; generated: number; validated: number }) => `${item.gameId}: ${item.status} (${item.generated} generated, ${item.validated} validated)`).join(" · "));
+      await generate(selectedDate);
+    } catch (reason) {
+      setReplenishResult(reason instanceof Error ? reason.message : "Inventory replenishment failed.");
+    } finally {
+      setReplenishing(false);
+    }
+  }
+
   function toggleTheme() {
     const next = !dark;
     setDark(next);
@@ -199,6 +217,10 @@ export default function AdminDashboard({ environment }: { environment: string })
             <button onClick={() => { const date = randomDate(); generate(date); }} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Random Day</button>
             <button onClick={() => generate(selectedDate, { forceAll: true })} className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-bold dark:bg-[#292e38]">Regenerate All</button>
           </div>
+          <button onClick={replenishInventories} disabled={replenishing} className="mt-3 h-12 w-full rounded-xl bg-indigo-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">
+            {replenishing ? "Replenishing Content Inventories…" : "Replenish Content Inventories"}
+          </button>
+          {replenishResult && <p className="mt-2 rounded-xl bg-slate-100 p-3 text-xs font-bold dark:bg-[#292e38]">{replenishResult}</p>}
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <a href={previewPath} className="flex h-12 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-extrabold text-white">
               Play this date
@@ -216,6 +238,34 @@ export default function AdminDashboard({ environment }: { environment: string })
 
         {preview && (
           <>
+            <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
+              <h2 className="text-lg font-black text-slate-950 dark:text-white">Content health</h2>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {preview.contentHealth.map((item) => (
+                  <article key={item.gameId} className="theme-raised rounded-2xl border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-black">{item.label}</h3>
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${item.finalStatus === "Healthy" ? "bg-emerald-100 text-emerald-700" : item.finalStatus === "Exhausted" || item.finalStatus.includes("failure") ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{item.finalStatus}</span>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{item.generationArchitecture}</p>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Total</p><p className="font-black">{item.totalCandidateInventory}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Validated</p><p className="font-black">{item.validatedInventory}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Unused</p><p className="font-black">{item.unusedInventory}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Invalid</p><p className="font-black">{item.invalidCandidates}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Pending</p><p className="font-black">{item.pendingReview}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Threshold</p><p className="font-black">{item.replenishBelow}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Used exact</p><p className="font-black">{item.exactDuplicatesUsed}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Cooldown</p><p className="font-black">{item.candidatesOnCooldown}</p></div>
+                      <div><p className="text-[9px] font-black uppercase text-slate-500">Rejected now</p><p className="font-black">{item.candidatesRejectedCurrentRequest}</p></div>
+                    </div>
+                    <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400">Cooldown: {item.cooldownDays} days · Target: {item.target} · API calls: {item.apiCalls} · DynamoDB R/W: {item.dynamoDbReads}/{item.dynamoDbWrites} · {item.generationDurationMs} ms</p>
+                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Selected: {item.selectedCandidate || "—"} · Source: {item.sourceStrategy}</p>
+                    {item.actionableFailureReason && <p className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-700 dark:bg-red-400/10 dark:text-red-300">{item.actionableFailureReason}</p>}
+                  </article>
+                ))}
+              </div>
+            </section>
             <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
               <h2 className="text-lg font-black text-slate-950 dark:text-white">Daily seed debugging</h2>
               <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -246,6 +296,7 @@ export default function AdminDashboard({ environment }: { environment: string })
                       <th className="py-2 pr-3">Seed</th>
                       <th className="py-2 pr-3">Cache key</th>
                       <th className="py-2 pr-3">Puzzle hash</th>
+                      <th className="py-2 pr-3">Status</th>
                       <th className="py-2 pr-3">Duplicate check</th>
                       <th className="py-2 pr-3">Source</th>
                     </tr>
@@ -258,8 +309,9 @@ export default function AdminDashboard({ environment }: { environment: string })
                         <td className="py-2 pr-3 font-mono">{game.gameSeed}</td>
                         <td className="py-2 pr-3 font-mono">{game.cacheKey}</td>
                         <td className="py-2 pr-3 font-mono">{game.puzzleHash}</td>
+                        <td className={`py-2 pr-3 font-black ${game.status === "Failed" ? "text-red-600 dark:text-red-300" : game.status === "Low inventory warning" ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}`}>{game.status}</td>
                         <td className={`py-2 pr-3 font-black ${game.duplicateCheck?.passed === false ? "text-red-600 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>
-                          {game.duplicateCheck?.passed === false ? "Warning" : "Passed"}
+                          {game.status === "Failed" ? "Failed" : game.duplicateCheck?.passed === false ? "Warning" : "Passed"}
                           {game.duplicateCheck?.retryCount ? ` · ${game.duplicateCheck.retryCount} retries` : ""}
                         </td>
                         <td className="py-2 pr-3">{game.source}</td>

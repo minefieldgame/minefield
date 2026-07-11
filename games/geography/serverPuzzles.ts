@@ -1,12 +1,14 @@
 import "server-only";
 
-import { LANDMARKS, type Landmark } from "@/data/landmarks";
+import type { Landmark } from "@/data/landmarks";
 import { WORLD_CITIES } from "@/data/worldCities";
 import { calculateGeographicMidpoint, calculateProjectedMidpoint, haversineDistanceKm } from "@/games/geography/logic";
 import { selectFromContentUniverse, seededUniverseSelector, type ContentUniverseDiagnostics } from "@/lib/content/contentUniverse";
 import { createUsedContentRecord, createUniqueContentKey, contentHashFromKey } from "@/lib/content/usedContentRegistry";
 import { getDailyMasterSeed, getGameSeedForDate } from "@/lib/dailySeed";
-import { getPersistedPuzzle, publishDailyPuzzleWithUsedContent } from "@/lib/content/persistence";
+import { getInventoryUsageCounts, getPersistedPuzzle, publishDailyPuzzleWithUsedContent } from "@/lib/content/persistence";
+import { CONTENT_INVENTORY_POLICY } from "@/lib/content/inventoryPolicy";
+import { getAllLandmarkCandidates, replenishLandmarkCandidates } from "@/lib/content/landmarkInventory";
 
 type City = typeof WORLD_CITIES[number];
 type CityPair = { id: string; locationA: City; locationB: City };
@@ -143,7 +145,10 @@ export async function resolveMeetMeHalfwayForDate(date: string): Promise<MeetMeH
     universe,
     gameSeed: seed,
     contentSource: "enumerated-world-city-pairs",
-    softCooldownLabel: "recent city cooldown"
+    softCooldownLabel: "recent city cooldown",
+    dateKey: date,
+    cooldownDays: CONTENT_INVENTORY_POLICY["meet-me-halfway"].cooldownDays,
+    batchSizes: [160, 400, 1000]
   });
   if (!selected) throw new Error("Meet Me Halfway has no eligible city pairs after duplicate filtering.");
   const puzzle = buildMeetMeHalfwayPuzzle(date, selected, diagnostics);
@@ -161,7 +166,16 @@ export async function resolveMeetMeHalfwayForDate(date: string): Promise<MeetMeH
         answer: `${puzzle.midpoint.latitude},${puzzle.midpoint.longitude}`,
         uniqueContentKey: puzzle.uniqueContentKey,
         sourceMetadata: { source: "enumerated-world-city-pairs", contentUniverse: diagnostics }
-      })
+      }),
+      ...[selected.locationA, selected.locationB].map((city) => createUsedContentRecord({
+        gameId: "meet-me-halfway",
+        date,
+        contentType: "semantic-city-cooldown",
+        prompt: city.name,
+        answer: city.country,
+        uniqueContentKey: createUniqueContentKey("meet-me-halfway", "city-soft", [cityId(city)]),
+        sourceMetadata: { source: "enumerated-world-city-pairs", cooldownDays: CONTENT_INVENTORY_POLICY["meet-me-halfway"].cooldownDays }
+      }))
     ]
   });
   return published.puzzle;
@@ -171,8 +185,14 @@ export async function resolveLandmarkDropForDate(date: string): Promise<Landmark
   const persisted = await getPersistedPuzzle<LandmarkDropPuzzle>("landmark-drop", date);
   if (persisted) return { ...persisted, cacheHit: true } as LandmarkDropPuzzle;
   const seed = String(getGameSeedForDate(date, "landmark-drop"));
+  let landmarkCandidates = await getAllLandmarkCandidates();
+  const usage = await getInventoryUsageCounts(["landmark-drop"]);
+  if (landmarkCandidates.length - (usage.get("landmark-drop") ?? 0) < CONTENT_INVENTORY_POLICY["landmark-drop"].replenishBelow) {
+    const replenished = await replenishLandmarkCandidates(`${date}:${seed}`, CONTENT_INVENTORY_POLICY["landmark-drop"].batchSize).catch(() => null);
+    if (replenished?.validated) landmarkCandidates = await getAllLandmarkCandidates();
+  }
   const universe = {
-    getAllCandidates: () => LANDMARKS,
+    getAllCandidates: () => landmarkCandidates,
     getCandidateId: landmarkId,
     getHardKeys: (landmark: Landmark) => [createUniqueContentKey("landmark-drop", "landmark", [landmarkId(landmark)])],
     getSoftKeys: (landmark: Landmark) => [
@@ -189,7 +209,10 @@ export async function resolveLandmarkDropForDate(date: string): Promise<Landmark
     universe,
     gameSeed: seed,
     contentSource: "verified-landmark-photograph-catalog",
-    softCooldownLabel: "recent country/category cooldown"
+    softCooldownLabel: "recent country/category cooldown",
+    dateKey: date,
+    cooldownDays: CONTENT_INVENTORY_POLICY["landmark-drop"].cooldownDays,
+    batchSizes: [150, 350, 500]
   });
   if (!selected) throw new Error("On a Postcard has no eligible verified landmark photographs after duplicate filtering.");
   const puzzle = buildLandmarkDropPuzzle(date, selected, diagnostics);
@@ -207,6 +230,18 @@ export async function resolveLandmarkDropForDate(date: string): Promise<Landmark
         answer: `${selected.name}, ${selected.city}, ${selected.country}`,
         uniqueContentKey: puzzle.uniqueContentKey,
         sourceMetadata: { source: "verified-landmark-photograph-catalog", imageUrl: selected.imageUrl, contentUniverse: diagnostics }
+      }),
+      createUsedContentRecord({
+        gameId: "landmark-drop", date, contentType: "semantic-country-cooldown",
+        prompt: selected.country, answer: selected.country,
+        uniqueContentKey: createUniqueContentKey("landmark-drop", "country-soft", [selected.country]),
+        sourceMetadata: { source: "verified-landmark-photograph-catalog", cooldownDays: CONTENT_INVENTORY_POLICY["landmark-drop"].cooldownDays }
+      }),
+      createUsedContentRecord({
+        gameId: "landmark-drop", date, contentType: "semantic-category-cooldown",
+        prompt: selected.category, answer: selected.category,
+        uniqueContentKey: createUniqueContentKey("landmark-drop", "category-soft", [selected.category]),
+        sourceMetadata: { source: "verified-landmark-photograph-catalog", cooldownDays: CONTENT_INVENTORY_POLICY["landmark-drop"].cooldownDays }
       })
     ]
   });

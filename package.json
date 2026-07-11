@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test --import tsx tests/*.test.ts"
+    "test": "node --test --import tsx tests/*.test.ts",
+    "content:prepare": "node scripts/prepare-content-inventories.mjs",
+    "content:validate": "node --import tsx scripts/validate-content-inventories.ts",
+    "content:simulate": "node --import tsx scripts/simulate-content-inventories.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1085.0",
@@ -21,13 +24,17 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@stdlib/datasets-cmudict": "^0.2.3",
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
+    "subtlex-word-frequencies": "^2.0.0",
     "tsx": "^4.23.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wordnet": "^2.0.0",
+    "world-countries": "^5.1.0"
   }
 }

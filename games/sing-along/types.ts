@@ -60,6 +60,7 @@ export type SingAlongPuzzle = {
   };
   generatedAt: string;
   contentHash: string;
+  contentUniverse?: Record<string, unknown>;
 };
 
 export type SingAlongState = {

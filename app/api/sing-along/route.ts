@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       message: error instanceof Error ? error.message : "Today’s Sing Along puzzle could not be loaded.",
       route: "/api/sing-along",
       envDetected: Boolean(process.env.OPENAI_API_KEY),
-      model: "deterministic-catalog+iTunes",
+      model: "reviewed-timing-inventory+iTunes",
       cacheHit: false
     }, { status: 502 });
   }
