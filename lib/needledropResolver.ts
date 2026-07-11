@@ -4,7 +4,8 @@ import { getGameSeedForDate, hashString, seededShuffle } from "@/lib/dailySeed";
 import { puzzleNumber } from "@/lib/date";
 import { normalizeArtist, normalizeMusicString } from "@/lib/normalize";
 import type { DailyPuzzle } from "@/types/game";
-import { createMusicUsedContentKey } from "@/lib/content/usedContentRegistry";
+import { createMusicUsedContentKey, createUniqueContentKey } from "@/lib/content/usedContentRegistry";
+import { checkUsedContentKeys } from "@/lib/content/persistence";
 
 type PreviewAttempt = {
   year: number;
@@ -74,6 +75,14 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
         available: Boolean(track)
       });
       if (!track) continue;
+      const musicUsedContentKey = createMusicUsedContentKey(song.artist, song.title);
+      const uniqueContentKey = createUniqueContentKey("rewind-song", "song", [song.artist, song.title]);
+      const secondaryKeys = [musicUsedContentKey];
+      const existingKeys = await checkUsedContentKeys([uniqueContentKey, ...secondaryKeys]);
+      if (existingKeys.length) {
+        errors.push(`Duplicate music candidate rejected: ${existingKeys.join(", ")}`);
+        continue;
+      }
 
       const puzzle: DailyPuzzle = {
         id: puzzleDate,
@@ -86,8 +95,9 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
         title: song.title,
         artist: song.artist,
         track,
-        uniqueContentKey: createMusicUsedContentKey(song.artist, song.title),
-        musicUsedContentKey: createMusicUsedContentKey(song.artist, song.title),
+        uniqueContentKey,
+        secondaryKeys,
+        musicUsedContentKey,
         duplicateCheck: {
           duplicateDetected: false,
           passed: true,

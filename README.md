@@ -123,3 +123,29 @@ The default MVP password remains `Yuki2026`. For deployment, set `MINEFIELD_ADMI
 - Server memory caches are instance-local on serverless hosts.
 - Public providers and external images can be temporarily unavailable.
 - Apple preview audio remains hosted by Apple and is not downloaded or redistributed.
+
+## Required DynamoDB reliability storage
+
+Daily server-generated content now uses DynamoDB for same-day stability and long-term duplicate prevention.
+
+Required server-side environment variables:
+
+```text
+AWS_REGION=us-east-1
+MINEFIELD_DAILY_CONTENT_TABLE=MinefieldDailyContent
+MINEFIELD_USED_CONTENT_TABLE=MinefieldUsedContent
+OPENAI_API_KEY=your_api_key_here
+```
+
+The Amplify server role needs permission to call `DescribeTable`, `CreateTable`, `GetItem`, and `PutItem` for:
+
+- `MinefieldDailyContent`
+- `MinefieldUsedContent`
+
+`MinefieldDailyContent` is keyed by `dateGameKey`, for example `2026-06-24#sing-along`.
+`MinefieldUsedContent` is keyed by `uniqueContentKey` and also stores normalized prompt, normalized answer,
+secondary duplicate keys, source metadata, and creation date.
+
+If DynamoDB is unavailable, the app fails safely for server-generated games instead of silently using repeating fallback
+questions. Admin diagnostics show the daily seed, game seed, content keys, duplicate-check status, retry counts, and
+DynamoDB persistence provider details.

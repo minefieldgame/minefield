@@ -18,27 +18,112 @@ import type { SingAlongPuzzle } from "@/games/sing-along/types";
 import {
   contentHashFromKey,
   createMusicUsedContentKey,
+  createUsedContentRecord,
   createUniqueContentKey,
   selectNonRepeatingDailyCandidate
 } from "@/lib/content/usedContentRegistry";
+import {
+  checkUsedContentKeys,
+  getPersistedPuzzle,
+  savePersistedPuzzle,
+  saveUsedContentRecords
+} from "@/lib/content/persistence";
+
+type DuplicateMeta = {
+  uniqueContentKey: string;
+  secondaryKeys: string[];
+  prompt: string;
+  answer: string;
+  contentType: string;
+  source: string;
+};
+
+function duplicateCheck({
+  uniqueContentKey,
+  existingKeys,
+  retryCount
+}: {
+  uniqueContentKey: string;
+  existingKeys: string[];
+  retryCount: number;
+}) {
+  return {
+    uniqueContentKey,
+    duplicateDetected: existingKeys.length > 0,
+    passed: existingKeys.length === 0,
+    regenerationCount: retryCount,
+    retryCount,
+    exhaustedCandidatePool: false,
+    checkedAgainstCount: existingKeys.length,
+    recentlyUsedKeys: existingKeys,
+    dynamoDbWriteSucceeded: existingKeys.length === 0,
+    warning: existingKeys.length ? `Rejected duplicate keys: ${existingKeys.join(", ")}` : undefined
+  };
+}
+
+async function persistAcceptedPuzzle<TPuzzle>({
+  gameId,
+  date,
+  puzzle,
+  meta,
+  contentHash
+}: {
+  gameId: string;
+  date: string;
+  puzzle: TPuzzle;
+  meta: DuplicateMeta;
+  contentHash: string;
+}) {
+  const keys = [meta.uniqueContentKey, ...meta.secondaryKeys];
+  const records = keys.map((key) => createUsedContentRecord({
+    gameId,
+    date,
+    contentType: meta.contentType,
+    prompt: meta.prompt,
+    answer: meta.answer,
+    uniqueContentKey: key,
+    sourceMetadata: {
+      prompt: meta.prompt,
+      answer: meta.answer,
+      primaryContentKey: meta.uniqueContentKey,
+      secondaryKeys: meta.secondaryKeys,
+      source: meta.source
+    }
+  }));
+  await saveUsedContentRecords(records);
+  await savePersistedPuzzle(gameId, date, puzzle, contentHash);
+  return puzzle;
+}
 
 export async function resolveRankedTop5ForDate(
   date: string,
   options: { force?: boolean; retryOffset?: number } = {}
 ): Promise<RankedTopTenPuzzle> {
+  if (!options.force) {
+    const persisted = await getPersistedPuzzle<RankedTopTenPuzzle>("ranked-top-5", date);
+    if (persisted) return { ...persisted, cacheHit: true };
+  }
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "ranked-top-5");
-  const selected = selectNonRepeatingDailyCandidate({
-    gameId: "ranked-top-5",
-    dateKey: date,
-    candidates: IN_ORDER_CATALOG,
-    contentKey: (candidate) => createUniqueContentKey("ranked-top-5", "ranking", [
-      candidate.category,
-      candidate.metric,
-      candidate.items.map(([answer]) => answer).join("|")
-    ])
-  });
-  const entry = selected.selected;
+  const candidates = createSeededRandom(`${seed}:${options.retryOffset ?? 0}`).shuffle(IN_ORDER_CATALOG).slice(0, 20);
+  const duplicateFailures: string[] = [];
+
+  for (let attempt = 0; attempt < candidates.length; attempt += 1) {
+  const entry = candidates[attempt];
+  const uniqueContentKey = createUniqueContentKey("ranked-top-5", "ranking", [
+    entry.category,
+    entry.metric,
+    entry.items.map(([answer]) => answer).join("|")
+  ]);
+  const secondaryKeys = [
+    createUniqueContentKey("ranked-top-5", "category", [entry.category, entry.metric]),
+    createUniqueContentKey("ranked-top-5", "answer-set", [entry.items.map(([answer]) => answer).join("|")])
+  ];
+  const existingKeys = await checkUsedContentKeys([uniqueContentKey, ...secondaryKeys]);
+  if (existingKeys.length) {
+    duplicateFailures.push(`${uniqueContentKey} -> ${existingKeys.join(",")}`);
+    continue;
+  }
   const answers = entry.items.map(([answer, value], index) => ({
     rank: index + 1,
     answer,
@@ -60,7 +145,7 @@ export async function resolveRankedTop5ForDate(
     answers,
     sources: [entry.source],
     confidence: 1,
-    contentHash: selected.check.uniqueContentKey,
+    contentHash: uniqueContentKey,
     generatedAt: `${date}T12:00:00.000Z`,
     generator: "Versioned deterministic daily catalog",
     cacheHit: true,
@@ -74,37 +159,61 @@ export async function resolveRankedTop5ForDate(
       retryOffset: options.retryOffset ?? 0
     },
     promptConstraints: `Generate/select one general-audience ${entry.category} ranking by ${entry.metric} with exactly 5 widely known items.`,
-    uniqueContentKey: selected.check.uniqueContentKey,
-    duplicateCheck: selected.check,
+    uniqueContentKey,
+    secondaryKeys,
+    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: attempt }),
     repeatStatus: {
       checked: true,
-      passed: selected.check.passed,
-      duplicateDetected: selected.check.duplicateDetected,
-      retryCount: selected.check.retryCount + (options.retryOffset ?? 0),
-      provider: "deterministic-used-content-registry",
-      warning: selected.check.warning
+      passed: true,
+      duplicateDetected: false,
+      retryCount: attempt + (options.retryOffset ?? 0),
+      provider: "dynamodb-used-content-registry"
     },
     generationDurationMs: 0,
     validation: { valid: false, checks: {} as RankedTopTenPuzzle["validation"]["checks"], errors: [] },
     rawAIResponse: null
   };
   const validation = validateTopTenPuzzle(base);
-  return { ...base, validation, contentHash: contentHashFromKey(selected.check.uniqueContentKey) };
+  const puzzle = { ...base, validation, contentHash: contentHashFromKey(uniqueContentKey) };
+  return persistAcceptedPuzzle({
+    gameId: "ranked-top-5",
+    date,
+    puzzle,
+    contentHash: puzzle.contentHash,
+    meta: {
+      uniqueContentKey,
+      secondaryKeys,
+      prompt: entry.playerPrompt,
+      answer: entry.items.map(([answer]) => answer).join("|"),
+      contentType: "ranking",
+      source: "deterministic-catalog"
+    }
+  });
+  }
+  throw new Error(`In Order could not generate non-repeating content after ${candidates.length} attempts: ${duplicateFailures.join(" | ")}`);
 }
 
 export async function resolveSpellDropForDate(
   date: string,
-  _force = false
+  force = false
 ): Promise<GeneratedContentEnvelope<SpellDropPuzzle>> {
+  if (!force) {
+    const persisted = await getPersistedPuzzle<GeneratedContentEnvelope<SpellDropPuzzle>>("spelldrop", date);
+    if (persisted) return { ...persisted, cacheHit: true };
+  }
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "spelldrop");
-  const selected = selectNonRepeatingDailyCandidate({
-    gameId: "spelldrop",
-    dateKey: date,
-    candidates: BUZZWORD_CATALOG,
-    contentKey: (candidate) => createUniqueContentKey("spelldrop", "word", [candidate.word])
-  });
-  const entry = selected.selected;
+  const candidates = createSeededRandom(seed).shuffle(BUZZWORD_CATALOG).slice(0, 20);
+  const duplicateFailures: string[] = [];
+  for (let attempt = 0; attempt < candidates.length; attempt += 1) {
+  const entry = candidates[attempt];
+  const uniqueContentKey = createUniqueContentKey("spelldrop", "word", [entry.word]);
+  const secondaryKeys = [createUniqueContentKey("spelldrop", "answer", [entry.word])];
+  const existingKeys = await checkUsedContentKeys([uniqueContentKey, ...secondaryKeys]);
+  if (existingKeys.length) {
+    duplicateFailures.push(`${uniqueContentKey} -> ${existingKeys.join(",")}`);
+    continue;
+  }
   const puzzle: SpellDropPuzzle = {
     gameId: "spelldrop", date, seed, ...entry,
     masterSeed,
@@ -115,37 +224,65 @@ export async function resolveSpellDropForDate(
       lengthBucket: entry.word.length <= 7 ? "short" : entry.word.length <= 12 ? "8-12 letters" : "long"
     },
     promptConstraints: `Select one ${entry.difficulty} commonly misspelled everyday word.`,
-    uniqueContentKey: selected.check.uniqueContentKey,
-    duplicateCheck: selected.check,
+    uniqueContentKey,
+    secondaryKeys,
+    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: attempt }),
     repeatStatus: {
       checked: true,
-      passed: selected.check.passed,
-      duplicateDetected: selected.check.duplicateDetected,
-      retryCount: selected.check.retryCount,
-      provider: "deterministic-used-content-registry",
-      warning: selected.check.warning
+      passed: true,
+      duplicateDetected: false,
+      retryCount: attempt,
+      provider: "dynamodb-used-content-registry"
     }
   } as SpellDropPuzzle;
-  return deterministicEnvelope({
+  const envelope = deterministicEnvelope({
     gameId: "spelldrop", date, puzzle, validation: validateSpellDropPuzzle(puzzle),
     topic: "commonly misspelled English words", answer: puzzle.word,
     sourceNotes: ["Versioned Minefield lexical catalog"]
   });
+  const accepted = await persistAcceptedPuzzle({
+    gameId: "spelldrop",
+    date,
+    puzzle: envelope,
+    contentHash: envelope.contentHash,
+    meta: {
+      uniqueContentKey,
+      secondaryKeys,
+      prompt: puzzle.definition,
+      answer: puzzle.word,
+      contentType: "spelling-word",
+      source: "deterministic-catalog"
+    }
+  });
+  return accepted;
+  }
+  throw new Error(`Buzzword could not generate non-repeating content after ${candidates.length} attempts: ${duplicateFailures.join(" | ")}`);
 }
 
 export async function resolveCloserForDate(
   date: string,
-  _force = false
+  force = false
 ): Promise<GeneratedContentEnvelope<CloserPuzzle>> {
+  if (!force) {
+    const persisted = await getPersistedPuzzle<GeneratedContentEnvelope<CloserPuzzle>>("closer", date);
+    if (persisted) return { ...persisted, cacheHit: true };
+  }
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "closer");
-  const selected = selectNonRepeatingDailyCandidate({
-    gameId: "closer",
-    dateKey: date,
-    candidates: BALLPARK_CATALOG,
-    contentKey: (candidate) => createUniqueContentKey("closer", "question-answer", [candidate.prompt, candidate.answer, candidate.unit])
-  });
-  const entry = selected.selected;
+  const candidates = createSeededRandom(seed).shuffle(BALLPARK_CATALOG).slice(0, 20);
+  const duplicateFailures: string[] = [];
+  for (let attempt = 0; attempt < candidates.length; attempt += 1) {
+  const entry = candidates[attempt];
+  const uniqueContentKey = createUniqueContentKey("closer", "question-answer", [entry.prompt, entry.answer, entry.unit]);
+  const secondaryKeys = [
+    createUniqueContentKey("closer", "answer", [entry.answer, entry.unit]),
+    createUniqueContentKey("closer", "fact", [entry.category, entry.answer, entry.unit])
+  ];
+  const existingKeys = await checkUsedContentKeys([uniqueContentKey, ...secondaryKeys]);
+  if (existingKeys.length) {
+    duplicateFailures.push(`${uniqueContentKey} -> ${existingKeys.join(",")}`);
+    continue;
+  }
   const scoringProfile = inferCloserScoringProfile(entry);
   const puzzle: CloserPuzzle = {
     gameId: "closer", date, seed, ...entry, scoringProfile,
@@ -162,50 +299,91 @@ export async function resolveCloserForDate(
     },
     promptConstraints: `Generate/select one ${entry.difficulty} ${entry.category} numeric question using ${scoringProfile} scoring.`
     ,
-    uniqueContentKey: selected.check.uniqueContentKey,
-    duplicateCheck: selected.check,
+    uniqueContentKey,
+    secondaryKeys,
+    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: attempt }),
     repeatStatus: {
       checked: true,
-      passed: selected.check.passed,
-      duplicateDetected: selected.check.duplicateDetected,
-      retryCount: selected.check.retryCount,
-      provider: "deterministic-used-content-registry",
-      warning: selected.check.warning
+      passed: true,
+      duplicateDetected: false,
+      retryCount: attempt,
+      provider: "dynamodb-used-content-registry"
     }
   });
-  return deterministicEnvelope({
+  const envelope = deterministicEnvelope({
     gameId: "closer", date, puzzle, validation: validateCloserPuzzle(puzzle),
     topic: puzzle.category, answer: String(puzzle.answer), sourceNotes: [puzzle.sourceNote]
   });
+  return persistAcceptedPuzzle({
+    gameId: "closer",
+    date,
+    puzzle: envelope,
+    contentHash: envelope.contentHash,
+    meta: {
+      uniqueContentKey,
+      secondaryKeys,
+      prompt: puzzle.prompt,
+      answer: `${puzzle.answer} ${puzzle.unit}`,
+      contentType: "numeric-trivia",
+      source: "deterministic-catalog"
+    }
+  });
+  }
+  throw new Error(`In the Ballpark could not generate non-repeating content after ${candidates.length} attempts: ${duplicateFailures.join(" | ")}`);
 }
 
 export async function resolveNeedleDropForDate(date: string) {
-  return resolveNeedleDropDiagnostic(date);
+  const persisted = await getPersistedPuzzle<Awaited<ReturnType<typeof resolveNeedleDropDiagnostic>>>("needledrop", date);
+  if (persisted) return persisted;
+  const result = await resolveNeedleDropDiagnostic(date);
+  const puzzle = result.puzzle;
+  if (!puzzle.uniqueContentKey) throw new Error("Rewind did not produce a content key.");
+  return persistAcceptedPuzzle({
+    gameId: "needledrop",
+    date,
+    puzzle: result,
+    contentHash: contentHashFromKey(puzzle.uniqueContentKey),
+    meta: {
+      uniqueContentKey: puzzle.uniqueContentKey,
+      secondaryKeys: puzzle.secondaryKeys ?? (puzzle.musicUsedContentKey ? [puzzle.musicUsedContentKey] : []),
+      prompt: `${puzzle.title} — ${puzzle.artist}`,
+      answer: `${puzzle.title} — ${puzzle.artist}`,
+      contentType: "song",
+      source: "Billboard archive + iTunes Search API"
+    }
+  });
 }
 
 export async function resolveSingAlongForDate(date: string): Promise<SingAlongPuzzle> {
+  const persisted = await getPersistedPuzzle<SingAlongPuzzle>("sing-along", date);
+  if (persisted) return persisted;
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "sing-along");
-  const selected = selectNonRepeatingDailyCandidate({
-    gameId: "sing-along",
-    dateKey: date,
-    candidates: SING_ALONG_CATALOG,
-    contentKey: (candidate) => createUniqueContentKey("sing-along", "song-lyric", [
-      candidate.artist,
-      candidate.title,
-      candidate.lyricExcerpt
-    ])
-  });
-  const entries = [
-    selected.selected,
-    ...createSeededRandom(seed).shuffle(SING_ALONG_CATALOG.filter((entry) => entry !== selected.selected))
-  ];
+  const entries = createSeededRandom(seed).shuffle(SING_ALONG_CATALOG).slice(0, 20);
+  const duplicateFailures: string[] = [];
 
-  for (const entry of entries) {
+  for (let attempt = 0; attempt < entries.length; attempt += 1) {
+    const entry = entries[attempt];
+    const uniqueContentKey = createUniqueContentKey("sing-along", "song-lyric", [
+      entry.artist,
+      entry.title,
+      entry.answerLyricExcerpt
+    ]);
+    const musicUsedContentKey = createMusicUsedContentKey(entry.artist, entry.title);
+    const secondaryKeys = [
+      createUniqueContentKey("singalong-song", "song", [entry.artist, entry.title]),
+      createUniqueContentKey("singalong-lyric", "lyric", [entry.artist, entry.title, entry.answerLyricExcerpt]),
+      musicUsedContentKey
+    ];
+    const existingKeys = await checkUsedContentKeys([uniqueContentKey, ...secondaryKeys]);
+    if (existingKeys.length) {
+      duplicateFailures.push(`${uniqueContentKey} -> ${existingKeys.join(",")}`);
+      continue;
+    }
     const track = await searchTrackPreview(entry.title, entry.artist).catch(() => null);
     if (!track?.previewUrl) continue;
     const allAccepted = [entry.acceptedLyric, ...entry.alternateAcceptedLyrics];
-    return {
+    const puzzle: SingAlongPuzzle = {
       gameId: "sing-along",
       gameVersion: "v2",
       id: `sing-along:${date}`,
@@ -227,9 +405,12 @@ export async function resolveSingAlongForDate(date: string): Promise<SingAlongPu
       stopTimestamp: entry.clipEndTimeSeconds,
       chorusTimestamp: entry.chorusTimestamp,
       cueDescription: entry.cueDescription,
-      acceptedLyric: entry.acceptedLyric,
-      lyricExcerpt: entry.lyricExcerpt,
-      lyricStartTimeSeconds: entry.lyricStartTimeSeconds,
+      setupLyricExcerpt: entry.setupLyricExcerpt,
+      answerLyricExcerpt: entry.answerLyricExcerpt,
+      acceptedLyric: entry.answerLyricExcerpt,
+      lyricExcerpt: entry.answerLyricExcerpt,
+      lyricStartTimeSeconds: entry.answerLyricStartTimeSeconds,
+      answerLyricStartTimeSeconds: entry.answerLyricStartTimeSeconds,
       clipStartTimeSeconds: entry.clipStartTimeSeconds,
       clipEndTimeSeconds: entry.clipEndTimeSeconds,
       alternateAcceptedLyrics: [...new Set(allAccepted)],
@@ -247,25 +428,43 @@ export async function resolveSingAlongForDate(date: string): Promise<SingAlongPu
         valid:
           entry.choices.length === 4 &&
           entry.choices.filter((choice) => choice.isCorrect).length === 1 &&
-          entry.clipStartTimeSeconds < entry.lyricStartTimeSeconds &&
-          entry.clipEndTimeSeconds > entry.lyricStartTimeSeconds &&
+          entry.clipEndTimeSeconds < entry.answerLyricStartTimeSeconds &&
+          entry.answerLyricStartTimeSeconds - entry.clipEndTimeSeconds >= 0.25 &&
+          entry.answerLyricStartTimeSeconds - entry.clipEndTimeSeconds <= 1 &&
+          entry.clipEndTimeSeconds - entry.clipStartTimeSeconds >= 8 &&
+          entry.clipEndTimeSeconds - entry.clipStartTimeSeconds <= 15 &&
           entry.clipStartTimeSeconds > 0,
         errors: []
       },
-      uniqueContentKey: selected.check.uniqueContentKey,
-      musicUsedContentKey: createMusicUsedContentKey(entry.artist, entry.title),
-      duplicateCheck: selected.check,
+      uniqueContentKey,
+      secondaryKeys,
+      musicUsedContentKey,
+      duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: attempt }),
       repeatStatus: {
         checked: true,
-        passed: selected.check.passed,
-        duplicateDetected: selected.check.duplicateDetected,
-        retryCount: selected.check.retryCount,
-        provider: "deterministic-used-content-registry",
-        warning: selected.check.warning
+        passed: true,
+        duplicateDetected: false,
+        retryCount: attempt,
+        provider: "dynamodb-used-content-registry"
       },
-      contentHash: contentHashFromKey(selected.check.uniqueContentKey)
+      contentHash: contentHashFromKey(uniqueContentKey)
     };
+    if (!puzzle.validation.valid) continue;
+    return persistAcceptedPuzzle({
+      gameId: "sing-along",
+      date,
+      puzzle,
+      contentHash: puzzle.contentHash,
+      meta: {
+        uniqueContentKey,
+        secondaryKeys,
+        prompt: entry.setupLyricExcerpt,
+        answer: entry.answerLyricExcerpt,
+        contentType: "song-lyric",
+        source: "verified-timing-catalog"
+      }
+    });
   }
 
-  throw new Error("No playable Sing Along preview was available.");
+  throw new Error(`No playable non-repeating Sing Along preview was available after ${entries.length} attempts: ${duplicateFailures.join(" | ")}`);
 }

@@ -160,8 +160,9 @@ export type AdminSingAlongPreview =
         chorusTimestamp: number;
         stopTimestamp: number;
         cueDescription: string;
-        lyricExcerpt: string;
-        lyricStartTimeSeconds: number;
+        setupLyricExcerpt: string;
+        answerLyricExcerpt: string;
+        answerLyricStartTimeSeconds: number;
         clipStartTimeSeconds: number;
         clipEndTimeSeconds: number;
         choices: Array<{ id: string; text: string; isCorrect: boolean }>;

@@ -22,6 +22,9 @@ export type SingAlongPuzzle = {
   stopTimestamp: number;
   chorusTimestamp: number;
   cueDescription: string;
+  setupLyricExcerpt: string;
+  answerLyricExcerpt: string;
+  answerLyricStartTimeSeconds: number;
   lyricExcerpt: string;
   lyricStartTimeSeconds: number;
   clipStartTimeSeconds: number;
@@ -43,6 +46,7 @@ export type SingAlongPuzzle = {
     warning?: string;
   };
   uniqueContentKey: string;
+  secondaryKeys: string[];
   musicUsedContentKey: string;
   duplicateCheck: {
     duplicateDetected: boolean;

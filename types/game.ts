@@ -39,6 +39,7 @@ export type DailyPuzzle = {
   artist: string;
   track: TrackPreview;
   uniqueContentKey?: string;
+  secondaryKeys?: string[];
   musicUsedContentKey?: string;
   duplicateCheck?: {
     duplicateDetected: boolean;
