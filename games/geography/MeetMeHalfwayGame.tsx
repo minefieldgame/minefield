@@ -1,13 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import ErrorState from "@/components/ErrorState";
 import InteractiveGuessMap, { type MapPoint } from "@/components/InteractiveGuessMap";
+import LoadingState from "@/components/LoadingState";
 import { calculateMeetMeHalfwayScore, type GeographyScoreResult } from "@/games/geography/logic";
-import { resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean; diagnostics: GeographyScoreResult };
+type MeetMeHalfwayPuzzle = {
+  locationA: { name: string; country: string; latitude: number; longitude: number };
+  locationB: { name: string; country: string; latitude: number; longitude: number };
+  midpoint: MapPoint;
+};
+
 export default function MeetMeHalfwayGame({
   onComplete,
   date: selectedDate,
@@ -19,11 +26,14 @@ export default function MeetMeHalfwayGame({
 }) {
   const date = selectedDate ?? getPacificDateKey();
   const storageKey = getGameCacheKey("meet-me-halfway", date, storageScope);
-  const puzzle = useMemo(() => resolveMeetMeHalfwayPuzzle(date), [date]);
+  const [puzzle, setPuzzle] = useState<MeetMeHalfwayPuzzle | null>(null);
+  const [loadingPuzzle, setLoadingPuzzle] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [guess, setGuess] = useState<MapPoint | null>(null);
   const [state, setState] = useState<State | null>(null);
 
   const report = useCallback((next: State) => {
+    if (!puzzle) return;
     const label = next.diagnostics.label;
     onComplete({
       gameId: "meet-me-halfway", displayName: "Meet Me Halfway", icon: "🌍",
@@ -38,7 +48,27 @@ export default function MeetMeHalfwayGame({
     });
   }, [onComplete, puzzle]);
 
+  const loadPuzzle = useCallback(async () => {
+    setLoadingPuzzle(true);
+    setLoadError("");
+    try {
+      const response = await fetch(`/api/meet-me-halfway?date=${date}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? "Today’s Meet Me Halfway puzzle could not be loaded.");
+      setPuzzle(payload as MeetMeHalfwayPuzzle);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Today’s Meet Me Halfway puzzle could not be loaded.");
+    } finally {
+      setLoadingPuzzle(false);
+    }
+  }, [date]);
+
   useEffect(() => {
+    loadPuzzle();
+  }, [loadPuzzle]);
+
+  useEffect(() => {
+    if (!puzzle) return;
     try {
       const stored = localStorage.getItem(storageKey);
       if (!stored) return;
@@ -51,18 +81,23 @@ export default function MeetMeHalfwayGame({
         ...parsed,
         diagnostics: calculateMeetMeHalfwayScore(parsed.guess, puzzle.midpoint)
       };
-      setState(restored); setGuess(restored.guess);
+      setState(restored);
+      setGuess(restored.guess);
       if (restored.completed) report(restored);
     } catch {}
-  }, [date, report, storageKey]);
+  }, [date, puzzle, report, storageKey]);
 
   function submit() {
-    if (!guess || state?.completed) return;
+    if (!guess || state?.completed || !puzzle) return;
     const diagnostics = calculateMeetMeHalfwayScore(guess, puzzle.midpoint);
     const next = { dateKey: date, guess, distanceKm: diagnostics.distanceKm, score: diagnostics.finalScore, completed: true, diagnostics };
     localStorage.setItem(storageKey, JSON.stringify(next));
-    setState(next); report(next);
+    setState(next);
+    report(next);
   }
+
+  if (loadingPuzzle) return <LoadingState />;
+  if (loadError || !puzzle) return <ErrorState message={loadError || "Today’s Meet Me Halfway puzzle could not be loaded."} retry={loadPuzzle} />;
 
   return (
     <div className="min-w-0">

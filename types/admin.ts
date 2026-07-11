@@ -4,7 +4,7 @@ import type { MinefieldPuzzle } from "@/games/minefield/logic";
 import type { CloserPuzzle } from "@/games/closer/types";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
-import type { resolveMeetMeHalfwayPuzzle, resolveLandmarkDropPuzzle } from "@/games/geography/puzzles";
+import type { resolveMeetMeHalfwayForDate, resolveLandmarkDropForDate } from "@/games/geography/serverPuzzles";
 import type { SingAlongPuzzle } from "@/games/sing-along/types";
 
 export type AdminResolverDiagnostics = {
@@ -218,13 +218,17 @@ export type AdminCloserPreview =
   | ({ status: "ready"; diagnostics: AdminResolverDiagnostics } & GeneratedContentEnvelope<CloserPuzzle>)
   | AdminDynamicError;
 
-export type AdminMeetMeHalfwayPreview = {
-  status: "ready";
-  puzzle: ReturnType<typeof resolveMeetMeHalfwayPuzzle>;
-};
+export type AdminMeetMeHalfwayPreview =
+  | {
+      status: "ready";
+      puzzle: Awaited<ReturnType<typeof resolveMeetMeHalfwayForDate>>;
+    }
+  | { status: "error"; error: string };
 
-export type AdminLandmarkDropPreview = {
-  status: "ready";
-  puzzle: ReturnType<typeof resolveLandmarkDropPuzzle>;
-  imageStatus: string;
-};
+export type AdminLandmarkDropPreview =
+  | {
+      status: "ready";
+      puzzle: Awaited<ReturnType<typeof resolveLandmarkDropForDate>>;
+      imageStatus: string;
+    }
+  | { status: "error"; error: string };

@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { SING_ALONG_CATALOG } from "../data/singAlongCatalog";
+import { calculateProjectedMidpoint } from "../games/geography/logic";
+import { createMusicUsedContentKey, createUniqueContentKey, normalizeUsedContentText } from "../lib/content/usedContentRegistry";
+import { getPacificDateKey } from "../lib/date";
+
+test("Pacific date does not roll over at UTC midnight before Pacific midnight", () => {
+  assert.equal(getPacificDateKey(new Date("2026-06-22T06:59:00Z")), "2026-06-21");
+  assert.equal(getPacificDateKey(new Date("2026-06-22T07:01:00Z")), "2026-06-22");
+});
+
+test("Pacific date handles daylight-saving boundaries", () => {
+  assert.equal(getPacificDateKey(new Date("2026-03-08T07:59:00Z")), "2026-03-07");
+  assert.equal(getPacificDateKey(new Date("2026-03-08T08:01:00Z")), "2026-03-08");
+  assert.equal(getPacificDateKey(new Date("2026-11-01T06:59:00Z")), "2026-10-31");
+  assert.equal(getPacificDateKey(new Date("2026-11-01T07:01:00Z")), "2026-11-01");
+});
+
+test("projected midpoint uses the visually shortest wrapped longitude path", () => {
+  const midpoint = calculateProjectedMidpoint(
+    { latitude: 35.6895, longitude: 139.6917 },
+    { latitude: 37.7749, longitude: -122.4194 }
+  );
+  assert.ok(midpoint.longitude > 170 || midpoint.longitude < -170, `Expected antimeridian midpoint, got ${midpoint.longitude}`);
+});
+
+test("Sing Along catalog only contains verified next-lyric clips that stop before the answer lyric", () => {
+  assert.ok(SING_ALONG_CATALOG.length > 0);
+  for (const entry of SING_ALONG_CATALOG) {
+    assert.equal(entry.choices.length, 4, `${entry.artist} - ${entry.title} must have four choices`);
+    assert.equal(entry.choices.filter((choice) => choice.isCorrect).length, 1, `${entry.artist} - ${entry.title} must have one correct choice`);
+    assert.ok(entry.clipStartTimeSeconds > 0, `${entry.artist} - ${entry.title} must not start from an unrelated intro`);
+    assert.ok(entry.clipEndTimeSeconds < entry.answerLyricStartTimeSeconds, `${entry.artist} - ${entry.title} clip must stop before answer lyric`);
+    const gap = entry.answerLyricStartTimeSeconds - entry.clipEndTimeSeconds;
+    assert.ok(gap >= 0.25 && gap <= 1, `${entry.artist} - ${entry.title} stop gap must be 0.25-1.0 seconds`);
+    const clipLength = entry.clipEndTimeSeconds - entry.clipStartTimeSeconds;
+    assert.ok(clipLength >= 8 && clipLength <= 15, `${entry.artist} - ${entry.title} clip length must be 8-15 seconds`);
+    assert.equal(new Set(entry.choices.map((choice) => normalizeUsedContentText(choice.text))).size, 4, `${entry.artist} - ${entry.title} choices must be distinct`);
+  }
+});
+
+test("duplicate keys normalize punctuation, articles, and shared music identity", () => {
+  assert.equal(
+    createMusicUsedContentKey("Beyoncé", "Crazy in Love"),
+    createMusicUsedContentKey("Beyonce", "The Crazy in Love")
+  );
+  assert.equal(
+    createUniqueContentKey("ranked-top-5", "answer-set", ["The Beatles|Jay-Z"]),
+    createUniqueContentKey("ranked-top-5", "answer-set", ["Beatles|Jay Z"])
+  );
+});

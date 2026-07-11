@@ -1,13 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ErrorState from "@/components/ErrorState";
 import InteractiveGuessMap, { type MapPoint } from "@/components/InteractiveGuessMap";
+import LoadingState from "@/components/LoadingState";
 import { calculateLandmarkDropScore, type GeographyScoreResult } from "@/games/geography/logic";
-import { resolveLandmarkDropPuzzle } from "@/games/geography/puzzles";
 import { getGameCacheKey, getPacificDateKey } from "@/lib/date";
 import type { MinefieldGameResult } from "@/types/minefield";
 
 type State = { dateKey: string; guess: MapPoint; distanceKm: number; score: number; completed: boolean; diagnostics: GeographyScoreResult };
+type LandmarkPuzzle = {
+  landmark: {
+    name: string;
+    city: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+    imageUrl: string;
+    imageAlt: string;
+  };
+};
+
 export default function LandmarkDropGame({
   onComplete,
   date: selectedDate,
@@ -19,13 +32,16 @@ export default function LandmarkDropGame({
 }) {
   const date = selectedDate ?? getPacificDateKey();
   const storageKey = getGameCacheKey("landmark-drop", date, storageScope);
-  const puzzle = useMemo(() => resolveLandmarkDropPuzzle(date), [date]);
+  const [puzzle, setPuzzle] = useState<LandmarkPuzzle | null>(null);
+  const [loadingPuzzle, setLoadingPuzzle] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [guess, setGuess] = useState<MapPoint | null>(null);
   const [state, setState] = useState<State | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
-  const target = { latitude: puzzle.landmark.latitude, longitude: puzzle.landmark.longitude };
+  const target = useMemo(() => puzzle ? { latitude: puzzle.landmark.latitude, longitude: puzzle.landmark.longitude } : null, [puzzle]);
 
   const report = useCallback((next: State) => {
+    if (!puzzle || !target) return;
     const label = next.diagnostics.label;
     onComplete({
       gameId: "landmark-drop", displayName: "On a Postcard", icon: "🗼",
@@ -39,9 +55,30 @@ export default function LandmarkDropGame({
         scoringDiagnostics: next.diagnostics
       }
     });
-  }, [onComplete, puzzle.landmark, target.latitude, target.longitude]);
+  }, [onComplete, puzzle, target]);
+
+  const loadPuzzle = useCallback(async () => {
+    setLoadingPuzzle(true);
+    setLoadError("");
+    setImageFailed(false);
+    try {
+      const response = await fetch(`/api/landmark-drop?date=${date}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? "Today’s On a Postcard puzzle could not be loaded.");
+      setPuzzle(payload as LandmarkPuzzle);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Today’s On a Postcard puzzle could not be loaded.");
+    } finally {
+      setLoadingPuzzle(false);
+    }
+  }, [date]);
 
   useEffect(() => {
+    loadPuzzle();
+  }, [loadPuzzle]);
+
+  useEffect(() => {
+    if (!puzzle || !target) return;
     try {
       const stored = localStorage.getItem(storageKey);
       if (!stored) return;
@@ -54,18 +91,23 @@ export default function LandmarkDropGame({
         ...parsed,
         diagnostics: calculateLandmarkDropScore(parsed.guess, target, puzzle.landmark.country, puzzle.landmark.city)
       };
-      setState(restored); setGuess(restored.guess);
+      setState(restored);
+      setGuess(restored.guess);
       if (restored.completed) report(restored);
     } catch {}
-  }, [date, report, storageKey]);
+  }, [date, puzzle, report, storageKey, target]);
 
   function submit() {
-    if (!guess || state?.completed) return;
+    if (!guess || state?.completed || !puzzle || !target) return;
     const diagnostics = calculateLandmarkDropScore(guess, target, puzzle.landmark.country, puzzle.landmark.city);
     const next = { dateKey: date, guess, distanceKm: diagnostics.distanceKm, score: diagnostics.finalScore, completed: true, diagnostics };
     localStorage.setItem(storageKey, JSON.stringify(next));
-    setState(next); report(next);
+    setState(next);
+    report(next);
   }
+
+  if (loadingPuzzle) return <LoadingState />;
+  if (loadError || !puzzle || !target) return <ErrorState message={loadError || "Today’s On a Postcard puzzle could not be loaded."} retry={loadPuzzle} />;
 
   return (
     <div className="min-w-0">

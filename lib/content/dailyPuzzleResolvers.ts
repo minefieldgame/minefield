@@ -15,6 +15,7 @@ import { BALLPARK_CATALOG, BUZZWORD_CATALOG, IN_ORDER_CATALOG } from "@/data/dai
 import { SING_ALONG_CATALOG } from "@/data/singAlongCatalog";
 import { searchTrackPreview } from "@/lib/audioProvider";
 import type { SingAlongPuzzle } from "@/games/sing-along/types";
+import { selectFromContentUniverse, seededUniverseSelector } from "@/lib/content/contentUniverse";
 import {
   contentHashFromKey,
   createMusicUsedContentKey,
@@ -25,8 +26,7 @@ import {
 import {
   checkUsedContentKeys,
   getPersistedPuzzle,
-  savePersistedPuzzle,
-  saveUsedContentRecords
+  publishDailyPuzzleWithUsedContent
 } from "@/lib/content/persistence";
 
 type DuplicateMeta = {
@@ -90,9 +90,16 @@ async function persistAcceptedPuzzle<TPuzzle>({
       source: meta.source
     }
   }));
-  await saveUsedContentRecords(records);
-  await savePersistedPuzzle(gameId, date, puzzle, contentHash);
-  return puzzle;
+  const published = await publishDailyPuzzleWithUsedContent({
+    gameId,
+    dateKey: date,
+    puzzle,
+    contentHash,
+    usedContentRecords: records
+  });
+  return published.created
+    ? puzzle
+    : ({ ...(published.puzzle as Record<string, unknown>), cacheHit: true } as TPuzzle);
 }
 
 export async function resolveRankedTop5ForDate(
@@ -105,25 +112,36 @@ export async function resolveRankedTop5ForDate(
   }
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "ranked-top-5");
-  const candidates = createSeededRandom(`${seed}:${options.retryOffset ?? 0}`).shuffle(IN_ORDER_CATALOG).slice(0, 20);
-  const duplicateFailures: string[] = [];
-
-  for (let attempt = 0; attempt < candidates.length; attempt += 1) {
-  const entry = candidates[attempt];
+  const candidateKey = (entry: typeof IN_ORDER_CATALOG[number]) => createUniqueContentKey("ranked-top-5", "ranking", [
+    entry.category,
+    entry.metric,
+    entry.items.map(([answer]) => answer).join("|")
+  ]);
+  const candidateSecondaryKeys = (entry: typeof IN_ORDER_CATALOG[number]) => [
+    createUniqueContentKey("ranked-top-5", "category", [entry.category, entry.metric]),
+    createUniqueContentKey("ranked-top-5", "answer-set", [entry.items.map(([answer]) => answer).sort().join("|")])
+  ];
+  const selected = await selectFromContentUniverse({
+    gameSeed: `${seed}:${options.retryOffset ?? 0}`,
+    contentSource: "versioned-in-order-reference-universe",
+    softCooldownLabel: "recent In Order category cooldown",
+    universe: {
+      getAllCandidates: () => IN_ORDER_CATALOG,
+      getCandidateId: candidateKey,
+      getHardKeys: (entry) => [candidateKey(entry), ...candidateSecondaryKeys(entry)],
+      validateCandidate: (entry) => ({ valid: entry.items.length === 5 && Boolean(entry.playerPrompt), reason: "Exactly five ranked items required" }),
+      selectCandidate: seededUniverseSelector(candidateKey)
+    }
+  });
+  const entry = selected.selected;
+  if (!entry) throw new Error(`In Order could not generate non-repeating content: ${selected.diagnostics.warnings.join(" ")}`);
   const uniqueContentKey = createUniqueContentKey("ranked-top-5", "ranking", [
     entry.category,
     entry.metric,
     entry.items.map(([answer]) => answer).join("|")
   ]);
-  const secondaryKeys = [
-    createUniqueContentKey("ranked-top-5", "category", [entry.category, entry.metric]),
-    createUniqueContentKey("ranked-top-5", "answer-set", [entry.items.map(([answer]) => answer).join("|")])
-  ];
-  const existingKeys = await checkUsedContentKeys([uniqueContentKey, ...secondaryKeys]);
-  if (existingKeys.length) {
-    duplicateFailures.push(`${uniqueContentKey} -> ${existingKeys.join(",")}`);
-    continue;
-  }
+  const secondaryKeys = candidateSecondaryKeys(entry);
+  const existingKeys: string[] = [];
   const answers = entry.items.map(([answer, value], index) => ({
     rank: index + 1,
     answer,
@@ -161,15 +179,16 @@ export async function resolveRankedTop5ForDate(
     promptConstraints: `Generate/select one general-audience ${entry.category} ranking by ${entry.metric} with exactly 5 widely known items.`,
     uniqueContentKey,
     secondaryKeys,
-    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: attempt }),
+    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: 0 }),
     repeatStatus: {
       checked: true,
       passed: true,
       duplicateDetected: false,
-      retryCount: attempt + (options.retryOffset ?? 0),
+      retryCount: options.retryOffset ?? 0,
       provider: "dynamodb-used-content-registry"
     },
     generationDurationMs: 0,
+    contentUniverse: selected.diagnostics,
     validation: { valid: false, checks: {} as RankedTopTenPuzzle["validation"]["checks"], errors: [] },
     rawAIResponse: null
   };
@@ -189,8 +208,6 @@ export async function resolveRankedTop5ForDate(
       source: "deterministic-catalog"
     }
   });
-  }
-  throw new Error(`In Order could not generate non-repeating content after ${candidates.length} attempts: ${duplicateFailures.join(" | ")}`);
 }
 
 export async function resolveSpellDropForDate(

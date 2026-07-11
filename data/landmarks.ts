@@ -1,6 +1,7 @@
 export type Landmark = {
   name: string; city: string; country: string; latitude: number; longitude: number;
   imageUrl: string; imageAlt: string; sourceNote: string; imageValidation?: string;
+  continent?: string; category?: string; aliases?: string[];
 };
 
 const landmarkImage = (name: string, file: string) =>
@@ -68,5 +69,7 @@ const RAW: Array<[string,string,string,number,number,string]> = [
 export const LANDMARKS: Landmark[] = RAW.map(([name, city, country, latitude, longitude, file]) => ({
   name, city, country, latitude, longitude, imageUrl: landmarkImage(name, file),
   imageAlt: `${name} in ${city}, ${country}`, sourceNote,
+  category: "landmark",
+  aliases: [name],
   imageValidation: `Pinned Wikimedia Commons file: ${file}. Search fallback rejects illustrations, paintings, maps, logos, SVGs, and AI-art terms.`
 }));

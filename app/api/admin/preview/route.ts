@@ -8,7 +8,7 @@ import {
   resolveSpellDropForDate
 } from "@/lib/content/dailyPuzzleResolvers";
 import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
-import { resolveLandmarkDropPuzzle, resolveMeetMeHalfwayPuzzle } from "@/games/geography/puzzles";
+import { resolveLandmarkDropForDate, resolveMeetMeHalfwayForDate } from "@/games/geography/serverPuzzles";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
 import { getAIStatus } from "@/lib/content/aiClient";
 import { buildDailyBoardSeedManifest, getDailyMasterSeed, getGameSeedForDate, hashString, type SeededGameId } from "@/lib/dailySeed";
@@ -173,6 +173,17 @@ export async function GET(request: NextRequest) {
       }
     : dynamicError("closer", "/api/closer", closerResult.reason);
 
+  const [meetMeHalfwayResult, landmarkDropResult] = await Promise.allSettled([
+    resolveMeetMeHalfwayForDate(date),
+    resolveLandmarkDropForDate(date)
+  ]);
+  const meetMeHalfway = meetMeHalfwayResult.status === "fulfilled"
+    ? { status: "ready" as const, puzzle: meetMeHalfwayResult.value }
+    : { status: "error" as const, error: meetMeHalfwayResult.reason instanceof Error ? meetMeHalfwayResult.reason.message : "Meet Me Halfway failed." };
+  const landmarkDrop = landmarkDropResult.status === "fulfilled"
+    ? { status: "ready" as const, puzzle: landmarkDropResult.value, imageStatus: "Verified photograph candidate" }
+    : { status: "error" as const, error: landmarkDropResult.reason instanceof Error ? landmarkDropResult.reason.message : "On a Postcard failed." };
+
   const dailySeed = getGameSeedForDate(date, "minefield");
   const puzzleHashes: Partial<Record<SeededGameId, string>> = {
     needledrop: needledrop.status === "ready" ? hashString(`${needledrop.puzzle.title}:${needledrop.puzzle.artist}:${needledrop.puzzle.chartDate}`).toString(16) : undefined,
@@ -180,8 +191,8 @@ export async function GET(request: NextRequest) {
     "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.contentHash : undefined,
     spelldrop: spellDrop.status === "ready" ? spellDrop.contentHash : undefined,
     closer: closer.status === "ready" ? closer.contentHash : undefined,
-    "meet-me-halfway": hashString(JSON.stringify(resolveMeetMeHalfwayPuzzle(date))).toString(16),
-    "landmark-drop": hashString(JSON.stringify(resolveLandmarkDropPuzzle(date))).toString(16),
+    "meet-me-halfway": meetMeHalfway.status === "ready" ? meetMeHalfway.puzzle.contentHash : undefined,
+    "landmark-drop": landmarkDrop.status === "ready" ? landmarkDrop.puzzle.contentHash : undefined,
     minefield: resolveMinefieldPuzzle(date, 560, 700).uniqueContentKey
   };
   const duplicateChecks: Partial<Record<SeededGameId, { passed: boolean; duplicateDetected: boolean; retryCount?: number; warning?: string }>> = {
@@ -190,8 +201,8 @@ export async function GET(request: NextRequest) {
     "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.duplicateCheck : undefined,
     spelldrop: spellDrop.status === "ready" ? spellDrop.puzzle.duplicateCheck : undefined,
     closer: closer.status === "ready" ? closer.puzzle.duplicateCheck : undefined,
-    "meet-me-halfway": resolveMeetMeHalfwayPuzzle(date).duplicateCheck,
-    "landmark-drop": resolveLandmarkDropPuzzle(date).duplicateCheck,
+    "meet-me-halfway": meetMeHalfway.status === "ready" ? meetMeHalfway.puzzle.duplicateCheck : undefined,
+    "landmark-drop": landmarkDrop.status === "ready" ? landmarkDrop.puzzle.duplicateCheck : undefined,
     minefield: resolveMinefieldPuzzle(date, 560, 700).duplicateCheck
   };
   const dailyBoard = buildDailyBoardSeedManifest(date, [
@@ -209,8 +220,8 @@ export async function GET(request: NextRequest) {
     "ranked-top-5": "deterministic-catalog",
     spelldrop: "deterministic-catalog",
     closer: "deterministic-catalog",
-    "meet-me-halfway": "deterministic-seeded-world-cities",
-    "landmark-drop": "deterministic-seeded-landmarks",
+    "meet-me-halfway": "enumerated-world-city-pairs + DynamoDB duplicate filtering",
+    "landmark-drop": "verified-landmark-photograph catalog + DynamoDB duplicate filtering",
     minefield: "deterministic-seeded-board"
   }, duplicateChecks);
   return NextResponse.json({
@@ -235,8 +246,8 @@ export async function GET(request: NextRequest) {
       topTen,
       spellDrop,
       closer,
-      meetMeHalfway: { status: "ready", puzzle: resolveMeetMeHalfwayPuzzle(date) },
-      landmarkDrop: { status: "ready", puzzle: resolveLandmarkDropPuzzle(date), imageStatus: "Client image check pending" }
+      meetMeHalfway,
+      landmarkDrop
     }
   }, { headers: { "Cache-Control": "no-store" } });
 }

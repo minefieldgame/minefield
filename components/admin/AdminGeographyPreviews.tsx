@@ -6,6 +6,9 @@ import type { AdminLandmarkDropPreview, AdminMeetMeHalfwayPreview } from "@/type
 import { calculateLandmarkDropScore, calculateMeetMeHalfwayScore } from "@/games/geography/logic";
 
 export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHalfwayPreview }) {
+  if (preview.status === "error") {
+    return <section className="theme-surface rounded-[2rem] border p-5 sm:p-6"><h2 className="text-2xl font-black">Meet Me Halfway</h2><p className="mt-3 text-sm font-bold text-red-600 dark:text-red-300">{preview.error}</p></section>;
+  }
   const { puzzle } = preview;
   const [guess, setGuess] = useState<MapPoint | null>(null);
   const diagnostics = guess ? calculateMeetMeHalfwayScore(guess, puzzle.finalGameplayMidpoint ?? puzzle.midpoint) : null;
@@ -28,6 +31,7 @@ export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHal
       </div>
       <div className="mt-4"><InteractiveGuessMap guess={guess} onGuess={setGuess} correct={puzzle.finalGameplayMidpoint ?? puzzle.midpoint} /></div>
       {puzzle.duplicateCheck.warning && <p className="mt-3 rounded-xl border border-amber-300 bg-amber-400/10 p-3 text-sm font-bold text-amber-800 dark:text-amber-200">{puzzle.duplicateCheck.warning}</p>}
+      {puzzle.contentUniverse && <ContentUniversePanel diagnostics={puzzle.contentUniverse} />}
       {diagnostics && <GeoDiagnostics diagnostics={diagnostics} />}
       <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
@@ -35,6 +39,9 @@ export function AdminMeetMeHalfwayPreview({ preview }: { preview: AdminMeetMeHal
 }
 
 export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDropPreview }) {
+  if (preview.status === "error") {
+    return <section className="theme-surface rounded-[2rem] border p-5 sm:p-6"><h2 className="text-2xl font-black">On a Postcard</h2><p className="mt-3 text-sm font-bold text-red-600 dark:text-red-300">{preview.error}</p></section>;
+  }
   const { puzzle } = preview;
   const [imageStatus, setImageStatus] = useState<"loading" | "loaded" | "failed">("loading");
   const [guess, setGuess] = useState<MapPoint | null>(null);
@@ -57,6 +64,7 @@ export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDr
         ].map(([label, value]) => <div key={label} className="theme-raised rounded-xl border p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 break-all text-sm font-bold">{value}</p></div>)}
       </div>
       {puzzle.duplicateCheck.warning && <p className="mt-3 rounded-xl border border-amber-300 bg-amber-400/10 p-3 text-sm font-bold text-amber-800 dark:text-amber-200">{puzzle.duplicateCheck.warning}</p>}
+      {puzzle.contentUniverse && <ContentUniversePanel diagnostics={puzzle.contentUniverse} />}
       <div className="theme-raised mt-4 overflow-hidden rounded-2xl border">
         {imageStatus !== "failed" ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -77,6 +85,38 @@ export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDr
       {diagnostics && <GeoDiagnostics diagnostics={diagnostics} />}
       <details className="mt-3 rounded-xl border"><summary className="cursor-pointer px-4 py-3 font-extrabold">Raw JSON</summary><pre className="max-h-80 overflow-auto border-t p-4 text-[11px]">{JSON.stringify(puzzle, null, 2)}</pre></details>
     </section>
+  );
+}
+
+function ContentUniversePanel({ diagnostics }: { diagnostics: Record<string, unknown> }) {
+  const rows = [
+    ["Health", diagnostics.healthStatus],
+    ["Source", diagnostics.contentSource],
+    ["Total candidates", diagnostics.totalCandidates],
+    ["Validated", diagnostics.validatedCandidateCount],
+    ["Exact duplicates excluded", diagnostics.excludedPreviouslyUsed],
+    ["Soft cooldown excluded", diagnostics.excludedSoftCooldown],
+    ["Invalid excluded", diagnostics.excludedInvalid],
+    ["Remaining", diagnostics.remainingCandidates],
+    ["Selection stage", diagnostics.selectionStage],
+    ["Relaxed rules", Array.isArray(diagnostics.relaxationRulesUsed) ? diagnostics.relaxationRulesUsed.join(", ") || "None" : "None"],
+    ["DynamoDB read count", diagnostics.dynamoDbReadCount],
+    ["Sequential retries", diagnostics.sequentialRetries],
+    ["Selected candidate", diagnostics.selectedCandidateId],
+    ["Duration", `${diagnostics.generationDurationMs ?? 0} ms`]
+  ];
+  return (
+    <div className="theme-raised mt-3 rounded-2xl border p-3">
+      <h3 className="text-sm font-black">Content Universe Diagnostics</h3>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {rows.map(([label, value]) => (
+          <div key={String(label)} className="rounded-xl border border-slate-200/70 p-2 dark:border-white/10">
+            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{String(label)}</p>
+            <p className="mt-1 break-words text-xs font-bold">{String(value ?? "—")}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
