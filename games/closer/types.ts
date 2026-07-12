@@ -20,6 +20,11 @@ export type CloserPuzzle = {
   acceptableRangeNote: string;
   sourceNote: string;
   difficulty: CloserDifficulty;
+  difficultyTier?: "approachable" | "standard" | "challenging";
+  qualityScore?: number;
+  recognizabilityScore?: number;
+  unitFamiliarity?: number;
+  answerStability?: number;
   scoringProfile: CloserScoringProfile;
   toleranceType: CloserToleranceType;
   allowNegative?: boolean;

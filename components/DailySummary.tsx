@@ -4,21 +4,16 @@ import { useState } from "react";
 import { formatChartDate } from "@/lib/date";
 import { loadMinefieldStats } from "@/lib/minefieldStorage";
 import { copyResultText, shareResult } from "@/lib/shareResult";
-import type { MinefieldGameResult, MinefieldSummary } from "@/types/minefield";
-import { GAME_DISPLAY } from "@/lib/gameDisplay";
-
-const PREP_IDS: MinefieldGameResult["gameId"][] = [
-  "needledrop",
-  "sing-along",
-  "ranked-top-5",
-  "spelldrop",
-  "closer",
-  "meet-me-halfway",
-  "landmark-drop"
-];
+import type { MinefieldSummary } from "@/types/minefield";
+import { GAME_DISPLAY, PRELIMINARY_GAME_IDS } from "@/lib/gameDisplay";
 
 export function getPrepResults(summary: MinefieldSummary) {
-  return summary.results.filter((result) => PREP_IDS.includes(result.gameId));
+  const isLegacyBoard = !summary.results.some((result) => result.gameId === "odd-one-out") &&
+    summary.results.some((result) => result.gameId === "sing-along");
+  return summary.results.filter((result) =>
+    PRELIMINARY_GAME_IDS.some((gameId) => gameId === result.gameId) ||
+    (isLegacyBoard && result.gameId === "sing-along")
+  );
 }
 
 export function getFinalMinefield(summary: MinefieldSummary) {

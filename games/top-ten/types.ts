@@ -34,6 +34,9 @@ export type RankedTopTenPuzzle = {
   playerPrompt: string;
   adminPrompt: string;
   category: string;
+  categoryFamily?: string;
+  difficultyTier?: "approachable" | "standard" | "challenging";
+  qualityScore?: number;
   rankingMetric: string;
   direction: RankedTopTenDirection;
   answers: RankedTopTenAnswer[];

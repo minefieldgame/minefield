@@ -1,3 +1,16 @@
+import type { SingAlongTimingProviderResult } from "@/lib/content/singAlongTimingProvider";
+
+export type SingAlongEligibilityState =
+  | "discovered"
+  | "preview-playable"
+  | "provider-timed"
+  | "timing-validated"
+  | "playable"
+  | "duplicate-blocked"
+  | "pending-provider-data"
+  | "invalid"
+  | "archive-only";
+
 export type SingAlongCatalogEntry = {
   title: string;
   artist: string;
@@ -18,11 +31,15 @@ export type SingAlongCatalogEntry = {
   correctChoiceId: "a" | "b" | "c" | "d";
   choices: Array<{ id: "a" | "b" | "c" | "d"; text: string; isCorrect: boolean }>;
   sourceNote: string;
+  eligibilityState?: SingAlongEligibilityState;
+  providerResult?: SingAlongTimingProviderResult;
+  rejectionReasons?: string[];
 };
 
 export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
   {
     title: "Sweet Caroline",
+    eligibilityState: "archive-only",
     artist: "Neil Diamond",
     chartYear: 1969,
     chartDate: "1969-08-16",
@@ -49,6 +66,7 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
   },
   {
     title: "Hey Jude",
+    eligibilityState: "archive-only",
     artist: "The Beatles",
     chartYear: 1968,
     chartDate: "1968-09-28",
@@ -75,6 +93,7 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
   },
   {
     title: "Billie Jean",
+    eligibilityState: "archive-only",
     artist: "Michael Jackson",
     chartYear: 1983,
     chartDate: "1983-03-05",
@@ -101,6 +120,7 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
   },
   {
     title: "Stayin' Alive",
+    eligibilityState: "archive-only",
     artist: "Bee Gees",
     chartYear: 1978,
     chartDate: "1978-02-04",
@@ -127,6 +147,7 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
   },
   {
     title: "I Will Survive",
+    eligibilityState: "archive-only",
     artist: "Gloria Gaynor",
     chartYear: 1979,
     chartDate: "1979-03-10",
@@ -153,6 +174,7 @@ export const SING_ALONG_CATALOG: SingAlongCatalogEntry[] = [
   },
   {
     title: "Call Me Maybe",
+    eligibilityState: "archive-only",
     artist: "Carly Rae Jepsen",
     chartYear: 2012,
     chartDate: "2012-06-23",

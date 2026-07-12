@@ -3,11 +3,28 @@
 import type { AdminSingAlongPreview } from "@/types/admin";
 
 export default function AdminSingAlongPreview({ preview }: { preview: AdminSingAlongPreview }) {
+  if (preview.status === "retired") {
+    return (
+      <section className="theme-surface rounded-[2rem] border border-slate-200 p-5 sm:p-6 dark:border-white/10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-black">Sing Along</h2>
+          <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-black text-slate-700 dark:bg-white/10 dark:text-slate-200">Retired</span>
+        </div>
+        <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{preview.message}</p>
+      </section>
+    );
+  }
   if (preview.status === "error") {
     return (
-      <section className="theme-surface rounded-[2rem] border border-red-200 p-5 sm:p-6 dark:border-red-400/20">
-        <h2 className="text-2xl font-black">Sing Along</h2>
-        <p className="mt-2 text-sm font-bold text-red-600 dark:text-red-300">{preview.error}</p>
+      <section className="theme-surface rounded-[2rem] border border-slate-200 p-5 sm:p-6 dark:border-white/10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-black">Sing Along</h2>
+          <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-black text-slate-700 dark:bg-white/10 dark:text-slate-200">Retired</span>
+        </div>
+        <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          This legacy game is not part of the active daily board. Its synchronized lyric timing could not be scaled without commercial licensing.
+        </p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Legacy route status: {preview.error}</p>
       </section>
     );
   }
@@ -15,7 +32,13 @@ export default function AdminSingAlongPreview({ preview }: { preview: AdminSingA
   const { puzzle, diagnostics } = preview;
   return (
     <section className="theme-surface rounded-[2rem] border p-5 sm:p-6">
-      <h2 className="text-2xl font-black">Sing Along</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-black">Sing Along</h2>
+        <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-black text-slate-700 dark:bg-white/10 dark:text-slate-200">Retired</span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+        Preserved for legacy diagnostics only; this game is not scored and cannot block the active daily board.
+      </p>
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {[
           ["Song", `${puzzle.title} — ${puzzle.artist}`],

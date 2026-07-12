@@ -11,7 +11,7 @@ import LandmarkDropGame from "@/games/geography/LandmarkDropGame";
 import MeetMeHalfwayGame from "@/games/geography/MeetMeHalfwayGame";
 import MinefieldGame from "@/games/minefield/MinefieldGame";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
-import SingAlongGame from "@/games/sing-along/SingAlongGame";
+import OddOneOutGame from "@/games/odd-one-out/OddOneOutGame";
 import SpellDropGame from "@/games/spelldrop/SpellDropGame";
 import TopTenGame from "@/games/top-ten/TopTenGame";
 import { formatChartDate, getGameCacheKey, getPacificDateKey } from "@/lib/date";
@@ -22,32 +22,13 @@ import {
   saveGameProgress
 } from "@/lib/minefieldStorage";
 import type { MinefieldDailyBoard, MinefieldGameId, MinefieldGameResult } from "@/types/minefield";
-import { GAME_DISPLAY } from "@/lib/gameDisplay";
+import { ACTIVE_GAME_IDS, GAME_DISPLAY, PRELIMINARY_GAME_IDS } from "@/lib/gameDisplay";
 
-const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = [
-  "needledrop",
-  "sing-along",
-  "ranked-top-5",
-  "spelldrop",
-  "closer",
-  "meet-me-halfway",
-  "landmark-drop",
-  "minefield"
-].map((id) => ({
-  id: id as MinefieldGameId,
-  title: GAME_DISPLAY[id as MinefieldGameId].name,
-  subtitle: GAME_DISPLAY[id as MinefieldGameId].instruction
+const GAMES: Array<{ id: MinefieldGameId; title: string; subtitle: string }> = ACTIVE_GAME_IDS.map((id) => ({
+  id,
+  title: GAME_DISPLAY[id].name,
+  subtitle: GAME_DISPLAY[id].instruction
 }));
-
-const PRELIMINARY_GAME_IDS: MinefieldGameId[] = [
-  "needledrop",
-  "sing-along",
-  "ranked-top-5",
-  "spelldrop",
-  "closer",
-  "meet-me-halfway",
-  "landmark-drop"
-];
 
 type FeedMode = "daily" | "admin-preview";
 type FlashTone = "green" | "red" | "amber";
@@ -61,10 +42,15 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
       ? { title: "Correct", detail: `${result.score} points`, tone: "green" }
       : { title: "Missed", detail: "Answer saved for final review", tone: "red" };
   }
-  if (result.gameId === "sing-along") {
+  if (result.gameId === "odd-one-out") {
+    const review = result.reviewData.type === "odd-one-out" ? result.reviewData : null;
     return result.score > 0
-      ? { title: result.score === 100 ? "Perfect lyric" : "Typo accepted", detail: `${result.score} points`, tone: "green" }
-      : { title: "Missed lyric", detail: "Answer saved for final review", tone: "red" };
+      ? { title: "Odd one found", detail: review?.explanation ?? `${result.score} points`, tone: "green" }
+      : {
+          title: review ? `Correct: ${review.correctItem}` : "Not the odd one",
+          detail: review?.explanation ?? "Correct answer revealed",
+          tone: "red"
+        };
   }
   if (result.gameId === "minefield") {
     const hitMine = result.reviewData?.type === "minefield" && result.reviewData.hitMine;
@@ -185,7 +171,7 @@ export default function MinefieldFeed({
       } else {
         goNext();
       }
-    }, 950);
+    }, activeGame?.id === "odd-one-out" ? 1_800 : 950);
     return () => window.clearTimeout(timeout);
   }, [activeComplete, activeGame?.id, activeIndex, completionResult, date, goNext, mode, router]);
 
@@ -282,8 +268,8 @@ export default function MinefieldFeed({
                         {active && (
                           game.id === "needledrop" ? (
                             <NeedleDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />
-                          ) : game.id === "sing-along" ? (
-                            <SingAlongGame onComplete={handleComplete} date={date} storageScope={storageScope} />
+                          ) : game.id === "odd-one-out" ? (
+                            <OddOneOutGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "minefield" ? (
                             <MinefieldGame
                               onComplete={handleComplete}
@@ -318,7 +304,7 @@ export default function MinefieldFeed({
                           }`}
                         >
                           <h3 className="text-xl font-black">{flash.title}</h3>
-                          <p className="mt-0.5 text-sm font-bold opacity-90">{flash.detail}</p>
+                          <p className="mt-0.5 break-words text-sm font-bold opacity-90">{flash.detail}</p>
                           <p className="mt-1 text-[10px] font-black uppercase tracking-wider opacity-75">
                             {activeIndex === GAMES.length - 1 ? "Opening results" : `Next: ${nextTitle}`}
                           </p>

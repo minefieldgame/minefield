@@ -5,6 +5,7 @@ export type ITunesResult = {
   wrapperType?: string;
   artistId?: number;
   trackId?: number;
+  collectionId?: number;
   trackName?: string;
   artistName?: string;
   collectionName?: string;
@@ -12,6 +13,17 @@ export type ITunesResult = {
   previewUrl?: string;
   trackViewUrl?: string;
 };
+
+const verifiedTrackPreviewCache = new Map<string, TrackPreview>();
+
+function verifiedPreviewKey(songTitle: string, artistName: string) {
+  return `${cleanSongTitle(songTitle)}::${cleanArtistName(artistName)}`.toLowerCase();
+}
+
+/** Only call this after a persisted provider result passes the full Sing Along eligibility gate. */
+export function registerVerifiedTrackPreview(songTitle: string, artistName: string, track: TrackPreview) {
+  verifiedTrackPreviewCache.set(verifiedPreviewKey(songTitle, artistName), track);
+}
 
 async function searchITunes(params: URLSearchParams) {
   const response = await fetch(`https://itunes.apple.com/search?${params}`, {
@@ -79,7 +91,12 @@ export function getBestITunesMatch(
     collectionName: item.collectionName ?? "",
     artworkUrl: (item.artworkUrl100 ?? "").replace("100x100", "600x600"),
     previewUrl: item.previewUrl!,
-    trackViewUrl: item.trackViewUrl ?? ""
+    trackViewUrl: item.trackViewUrl ?? "",
+    trackId: item.trackId,
+    collectionId: item.collectionId,
+    recordingIdentity: item.trackId ? `itunes:${item.trackId}` : undefined,
+    matchConfidence: Math.min(1, best.score),
+    sourceProvider: "iTunes Search API"
   };
 }
 
@@ -107,6 +124,8 @@ export function getBestITunesMatchDiagnostic(
 }
 
 export async function searchTrackPreview(songTitle: string, artistName: string) {
+  const verified = verifiedTrackPreviewCache.get(verifiedPreviewKey(songTitle, artistName));
+  if (verified) return verified;
   const params = new URLSearchParams({
     term: `${songTitle} ${artistName}`,
     media: "music",

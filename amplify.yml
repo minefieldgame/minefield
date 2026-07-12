@@ -8,6 +8,11 @@ frontend:
       commands:
         - printf "OPENAI_API_KEY=%s\n" "$OPENAI_API_KEY" >> .env.production
         - printf "OPENAI_MODEL=%s\n" "${OPENAI_MODEL:-gpt-5.4-mini}" >> .env.production
+        - printf "MINEFIELD_BUILD_COMMIT=%s\n" "$AWS_COMMIT_ID" >> .env.production
+        - printf "MINEFIELD_BUILD_BRANCH=%s\n" "$AWS_BRANCH" >> .env.production
+        - printf "MINEFIELD_BUILD_JOB_ID=%s\n" "$AWS_JOB_ID" >> .env.production
+        - printf "MINEFIELD_BUILD_TIME=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> .env.production
+        - printf "SING_ALONG_TIMING_PROVIDER=%s\n" "${SING_ALONG_TIMING_PROVIDER:-disabled}" >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next

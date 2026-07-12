@@ -14,6 +14,15 @@ import {
   type WriteRequest
 } from "@aws-sdk/client-dynamodb";
 import type { UsedContentRecord } from "@/lib/content/usedContentRegistry";
+import {
+  CandidateContentCollisionError,
+  dedupeItemKeys,
+  dedupeKeyedItems,
+  dedupeUsedContentRecords,
+  usedContentReservationCondition
+} from "@/lib/content/publishSemantics";
+
+export { CandidateContentCollisionError, CandidatePoolExhaustedError, retryCandidateCollisions, usedContentReservationCondition } from "@/lib/content/publishSemantics";
 
 const REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
 const DAILY_CONTENT_TABLE = process.env.MINEFIELD_DAILY_CONTENT_TABLE || "MinefieldDailyContent";
@@ -53,9 +62,12 @@ export type AtomicPublishDiagnostics = {
   dailyContentTable: string;
   usedContentTable: string;
   attemptedUsedContentKeys: number;
+  attemptedPermanentKeys: number;
+  attemptedCooldownKeys: number;
   dynamoDbWrite: "created" | "existing-daily-returned";
   conditionalConflict: boolean;
 };
+
 
 function s(value: string): AttributeValue {
   return { S: value };
@@ -152,7 +164,10 @@ export async function getPersistedCandidateInventory<T>(gameId: string): Promise
     Key: { dateGameKey: s(inventoryManifestKey(gameId)) },
     ConsistentRead: true
   }));
-  const candidateIds = parseJson<string[]>(manifestResponse.Item?.candidateIds) ?? [];
+  // Older manifests could contain the same candidate id more than once. DynamoDB
+  // rejects a BatchGet request containing duplicate primary keys, so normalize the
+  // manifest before constructing any request batches.
+  const candidateIds = dedupeItemKeys(parseJson<string[]>(manifestResponse.Item?.candidateIds) ?? []);
   const candidates: Array<PersistedCandidate<T>> = [];
   for (let index = 0; index < candidateIds.length; index += 100) {
     let requestKeys: Record<string, AttributeValue>[] = candidateIds.slice(index, index + 100).map((candidateId) => ({
@@ -177,12 +192,15 @@ export async function getPersistedCandidateInventory<T>(gameId: string): Promise
 export async function savePersistedCandidates<T>(gameId: string, records: Array<PersistedCandidate<T>>) {
   if (!records.length) return { written: 0, total: (await getPersistedCandidateInventory<T>(gameId)).length };
   await ensureTable(DAILY_CONTENT_TABLE, "dateGameKey");
+  // BatchWriteItem has the same duplicate-key restriction as BatchGetItem. Keep
+  // the last copy so a revalidated candidate wins deterministically.
+  const uniqueIncomingRecords = dedupeKeyedItems(records, (record) => record.candidateId);
   const existing = await getPersistedCandidateInventory<T>(gameId);
   const merged = new Map(existing.map((record) => [record.candidateId, record]));
-  for (const record of records) merged.set(record.candidateId, record);
+  for (const record of uniqueIncomingRecords) merged.set(record.candidateId, record);
   const items = [...merged.values()];
-  for (let index = 0; index < records.length; index += 25) {
-    let requests: WriteRequest[] = records.slice(index, index + 25).map((record) => ({ PutRequest: { Item: {
+  for (let index = 0; index < uniqueIncomingRecords.length; index += 25) {
+    let requests: WriteRequest[] = uniqueIncomingRecords.slice(index, index + 25).map((record) => ({ PutRequest: { Item: {
       dateGameKey: s(inventoryCandidateKey(gameId, record.candidateId)),
       gameId: s(gameId),
       candidateId: s(record.candidateId),
@@ -208,7 +226,7 @@ export async function savePersistedCandidates<T>(gameId: string, records: Array<
       updatedAt: s(new Date().toISOString())
     }
   }));
-  return { written: records.length, total: items.length };
+  return { written: uniqueIncomingRecords.length, total: items.length };
 }
 
 export async function getInventoryUsageCounts(gameIds: string[]) {
@@ -238,24 +256,28 @@ export async function savePersistedPuzzle<T>(
 ): Promise<T> {
   await ensureTable(DAILY_CONTENT_TABLE, "dateGameKey");
   const now = new Date().toISOString();
-  await client.send(new PutItemCommand({
-    TableName: DAILY_CONTENT_TABLE,
-    Item: {
-      dateGameKey: s(dateGameKey(gameId, dateKey)),
-      date: s(dateKey),
-      gameId: s(gameId),
-      puzzle: s(json(puzzle)),
-      contentHash: s(contentHash),
-      createdAt: s(now),
-      updatedAt: s(now)
-    },
-    ConditionExpression: "attribute_not_exists(dateGameKey)"
-  })).catch(async (error) => {
+  try {
+    await client.send(new PutItemCommand({
+      TableName: DAILY_CONTENT_TABLE,
+      Item: {
+        dateGameKey: s(dateGameKey(gameId, dateKey)),
+        date: s(dateKey),
+        gameId: s(gameId),
+        puzzle: s(json(puzzle)),
+        contentHash: s(contentHash),
+        createdAt: s(now),
+        updatedAt: s(now)
+      },
+      ConditionExpression: "attribute_not_exists(dateGameKey)"
+    }));
+  } catch (error) {
     if (error instanceof ConditionalCheckFailedException || error instanceof Error && error.name === "ConditionalCheckFailedException") {
-      return;
+      const winner = await getPersistedPuzzle<T>(gameId, dateKey);
+      if (winner) return winner;
+      throw new Error(`Daily puzzle race for ${gameId}:${dateKey} had no readable authoritative winner.`);
     }
     throw error;
-  });
+  }
   return puzzle;
 }
 
@@ -270,7 +292,7 @@ export async function hasUsedContentKey(uniqueContentKey: string) {
 }
 
 export async function checkUsedContentKeys(keys: string[]) {
-  const uniqueKeys = [...new Set(keys.filter(Boolean))];
+  const uniqueKeys = dedupeItemKeys(keys);
   if (!uniqueKeys.length) return [];
   await ensureTable(USED_CONTENT_TABLE, "uniqueContentKey");
   const existing: string[] = [];
@@ -304,7 +326,7 @@ export async function checkUsedContentKeys(keys: string[]) {
 }
 
 export async function getUsedContentKeyDates(keys: string[]) {
-  const uniqueKeys = [...new Set(keys.filter(Boolean))];
+  const uniqueKeys = dedupeItemKeys(keys);
   const dates = new Map<string, string>();
   if (!uniqueKeys.length) return dates;
   await ensureTable(USED_CONTENT_TABLE, "uniqueContentKey");
@@ -353,9 +375,12 @@ export async function saveUsedContentRecord(record: UsedContentRecord) {
       source: s(record.sourceMetadata?.source ? String(record.sourceMetadata.source) : "minefield"),
       sourceMetadata: s(json(record.sourceMetadata ?? {})),
       createdAt: s(record.createdAt),
-      duplicateChecked: bool(true)
+      duplicateChecked: bool(record.reservationMode === "permanent"),
+      reservationMode: s(record.reservationMode)
     },
-    ConditionExpression: "attribute_not_exists(uniqueContentKey)"
+    ...(usedContentReservationCondition(record)
+      ? { ConditionExpression: usedContentReservationCondition(record) }
+      : {})
   }));
   return record;
 }
@@ -381,7 +406,8 @@ function usedContentRecordItem(record: UsedContentRecord): Record<string, Attrib
     source: s(record.sourceMetadata?.source ? String(record.sourceMetadata.source) : "minefield"),
     sourceMetadata: s(json(record.sourceMetadata ?? {})),
     createdAt: s(record.createdAt),
-    duplicateChecked: bool(true)
+    duplicateChecked: bool(record.reservationMode === "permanent"),
+    reservationMode: s(record.reservationMode)
   };
 }
 
@@ -402,6 +428,8 @@ export async function publishDailyPuzzleWithUsedContent<T>({
   await ensureTable(USED_CONTENT_TABLE, "uniqueContentKey");
 
   const dailyKey = dateGameKey(gameId, dateKey);
+  const permanentRecords = usedContentRecords.filter((record) => record.reservationMode === "permanent");
+  const cooldownRecords = usedContentRecords.filter((record) => record.reservationMode === "cooldown");
   const existing = await getPersistedPuzzle<T>(gameId, dateKey);
   if (existing) {
     return {
@@ -412,6 +440,8 @@ export async function publishDailyPuzzleWithUsedContent<T>({
         dailyContentTable: DAILY_CONTENT_TABLE,
         usedContentTable: USED_CONTENT_TABLE,
         attemptedUsedContentKeys: usedContentRecords.length,
+        attemptedPermanentKeys: permanentRecords.length,
+        attemptedCooldownKeys: cooldownRecords.length,
         dynamoDbWrite: "existing-daily-returned",
         conditionalConflict: false
       }
@@ -419,7 +449,7 @@ export async function publishDailyPuzzleWithUsedContent<T>({
   }
 
   const now = new Date().toISOString();
-  const uniqueRecords = [...new Map(usedContentRecords.map((record) => [record.uniqueContentKey, record])).values()];
+  const uniqueRecords = dedupeUsedContentRecords(usedContentRecords);
   if (uniqueRecords.length > 98) {
     throw new Error(`Atomic publish for ${gameId} has ${uniqueRecords.length} used-content records; DynamoDB transactions allow at most 98 plus the daily puzzle and inventory counter.`);
   }
@@ -455,7 +485,9 @@ export async function publishDailyPuzzleWithUsedContent<T>({
           Put: {
             TableName: USED_CONTENT_TABLE,
             Item: usedContentRecordItem(record),
-            ConditionExpression: "attribute_not_exists(uniqueContentKey)"
+            ...(usedContentReservationCondition(record)
+              ? { ConditionExpression: usedContentReservationCondition(record) }
+              : {})
           }
         }))
       ]
@@ -468,6 +500,8 @@ export async function publishDailyPuzzleWithUsedContent<T>({
         dailyContentTable: DAILY_CONTENT_TABLE,
         usedContentTable: USED_CONTENT_TABLE,
         attemptedUsedContentKeys: uniqueRecords.length,
+        attemptedPermanentKeys: uniqueRecords.filter((record) => record.reservationMode === "permanent").length,
+        attemptedCooldownKeys: uniqueRecords.filter((record) => record.reservationMode === "cooldown").length,
         dynamoDbWrite: "created",
         conditionalConflict: false
       }
@@ -485,12 +519,40 @@ export async function publishDailyPuzzleWithUsedContent<T>({
             dailyContentTable: DAILY_CONTENT_TABLE,
             usedContentTable: USED_CONTENT_TABLE,
             attemptedUsedContentKeys: uniqueRecords.length,
+            attemptedPermanentKeys: uniqueRecords.filter((record) => record.reservationMode === "permanent").length,
+            attemptedCooldownKeys: uniqueRecords.filter((record) => record.reservationMode === "cooldown").length,
             dynamoDbWrite: "existing-daily-returned",
             conditionalConflict: true
           }
         };
       }
-      throw new Error(`Duplicate content key prevented publishing ${gameId}:${dateKey}.`);
+      const permanentKeys = uniqueRecords
+        .filter((record) => record.reservationMode === "permanent")
+        .map((record) => record.uniqueContentKey);
+      const conflictingKeys = await checkUsedContentKeys(permanentKeys);
+      if (conflictingKeys.length) throw new CandidateContentCollisionError(gameId, dateKey, conflictingKeys);
+
+      // A same-date transaction winner can become visible just after the first strongly consistent read.
+      const secondWinnerRead = await getPersistedPuzzle<T>(gameId, dateKey);
+      if (secondWinnerRead) {
+        return {
+          puzzle: secondWinnerRead,
+          created: false,
+          diagnostics: {
+            dateGameKey: dailyKey,
+            dailyContentTable: DAILY_CONTENT_TABLE,
+            usedContentTable: USED_CONTENT_TABLE,
+            attemptedUsedContentKeys: uniqueRecords.length,
+            attemptedPermanentKeys: permanentKeys.length,
+            attemptedCooldownKeys: uniqueRecords.length - permanentKeys.length,
+            dynamoDbWrite: "existing-daily-returned",
+            conditionalConflict: true
+          }
+        };
+      }
+      const cancellationReasons = (error as { CancellationReasons?: Array<{ Code?: string }> }).CancellationReasons ?? [];
+      const reasonSummary = cancellationReasons.map((reason) => reason.Code).filter(Boolean).join(", ") || name;
+      throw new Error(`DynamoDB atomic publication failed for ${gameId}:${dateKey} (${reasonSummary}); no daily winner or exact-key collision was found.`);
     }
     throw error;
   }

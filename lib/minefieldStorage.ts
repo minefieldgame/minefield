@@ -1,22 +1,17 @@
 import type { MinefieldDailyBoard, MinefieldGameResult, MinefieldStats, MinefieldSummary } from "@/types/minefield";
 import { getBoardCacheKey, getGameCacheKey } from "@/lib/date";
-import { GAME_DISPLAY } from "@/lib/gameDisplay";
+import { ACTIVE_GAME_IDS, GAME_DISPLAY } from "@/lib/gameDisplay";
 import { buildDailyBoardSeedManifest, hashString, type SeededGameId } from "@/lib/dailySeed";
 
 const ARCHIVE_KEY = "minefield:archive";
 const STATS_KEY = "minefield:stats";
 const EMPTY_STATS: MinefieldStats = { currentStreak: 0, maxStreak: 0 };
-const RESULT_ORDER: MinefieldGameResult["gameId"][] = [
-  "needledrop", "sing-along", "ranked-top-5", "spelldrop", "closer",
-  "meet-me-halfway", "landmark-drop", "minefield"
-];
-const SEED_MANIFEST_ORDER: SeededGameId[] = [
-  "needledrop", "sing-along", "ranked-top-5", "spelldrop", "closer",
-  "meet-me-halfway", "landmark-drop", "minefield"
-];
+const RESULT_ORDER: MinefieldGameResult["gameId"][] = [...ACTIVE_GAME_IDS];
+const SEED_MANIFEST_ORDER: SeededGameId[] = [...ACTIVE_GAME_IDS];
 const GAME_DEFAULTS = {
   "sing-along": { displayName: "Sing Along", icon: "🎤", totalUnits: 1 },
   needledrop: { displayName: "Rewind", icon: "🎵", totalUnits: 7 },
+  "odd-one-out": { displayName: "Odd One Out", icon: "🧩", totalUnits: 1 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 6 },
   "ranked-top-5": { displayName: "In Order", icon: "🏆", totalUnits: 5 },
   spelldrop: { displayName: "Buzzword", icon: "🔤", totalUnits: 1 },
@@ -73,6 +68,33 @@ function recoverReviewData(
 ): MinefieldGameResult["reviewData"] | null {
   if (typeof window === "undefined") return null;
   try {
+    if (gameId === "odd-one-out") {
+      const state = read<{
+        selectedItem: string;
+        correct: boolean;
+        puzzle: {
+          prompt: string;
+          items: string[];
+          answer: string;
+          explanation: string;
+          category: string;
+          difficulty: string;
+        };
+      } | null>(getGameCacheKey("odd-one-out", date), null);
+      if (state?.puzzle) {
+        return {
+          type: "odd-one-out",
+          prompt: state.puzzle.prompt,
+          items: state.puzzle.items,
+          selectedItem: state.selectedItem,
+          correctItem: state.puzzle.answer,
+          correct: state.correct,
+          explanation: state.puzzle.explanation,
+          category: state.puzzle.category,
+          difficulty: state.puzzle.difficulty
+        };
+      }
+    }
     if (gameId === "ranked-top-5") {
       const state = read<{
         puzzle: { playerPrompt: string; answers: Array<{ rank: number; answer: string }> };
@@ -178,9 +200,9 @@ export function saveGameProgress(date: string, result: MinefieldGameResult, scop
 }
 
 export function calculateDailySummary(board: MinefieldDailyBoard, totalGames = 8): MinefieldSummary {
-  const results = (Object.values(board.results).filter(Boolean) as MinefieldGameResult[]).sort(
-    (left, right) => RESULT_ORDER.indexOf(left.gameId) - RESULT_ORDER.indexOf(right.gameId)
-  );
+  const results = (Object.values(board.results).filter(Boolean) as MinefieldGameResult[])
+    .filter((result) => RESULT_ORDER.includes(result.gameId))
+    .sort((left, right) => RESULT_ORDER.indexOf(left.gameId) - RESULT_ORDER.indexOf(right.gameId));
   return {
     date: board.date,
     dailyBoard: buildDailyBoardSeedManifest(

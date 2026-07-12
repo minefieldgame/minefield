@@ -1,5 +1,6 @@
 export type MinefieldGameId =
   | "needledrop"
+  | "odd-one-out"
   | "sing-along"
   | "minefield"
   | "ranked-top-5"
@@ -31,6 +32,18 @@ export type SingAlongReviewData = {
   selectedChoice: string;
   correctChoice: string;
   correct: boolean;
+};
+
+export type OddOneOutReviewData = {
+  type: "odd-one-out";
+  prompt: string;
+  items: string[];
+  selectedItem: string;
+  correctItem: string;
+  correct: boolean;
+  explanation: string;
+  category: string;
+  difficulty: string;
 };
 
 export type RankedTopTenReviewData = {
@@ -110,6 +123,7 @@ export type LandmarkDropReviewData = {
 
 export type MinefieldReviewData =
   | NeedleDropReviewData
+  | OddOneOutReviewData
   | SingAlongReviewData
   | RankedTopTenReviewData
   | SpellDropReviewData

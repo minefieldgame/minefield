@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
 import { getInventoryOverview } from "@/lib/content/inventoryHealth";
-import { discoverSingAlongMetadata } from "@/lib/content/singAlongInventory";
 import { replenishModelCandidates } from "@/lib/content/modelReplenishment";
 import { replenishLandmarkCandidates } from "@/lib/content/landmarkInventory";
 
@@ -13,7 +12,11 @@ function authorized(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  return NextResponse.json({ generatedAt: new Date().toISOString(), games: await getInventoryOverview() }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({
+    generatedAt: new Date().toISOString(),
+    games: await getInventoryOverview(),
+    retiredGames: [{ gameId: "sing-along", status: "retired", replenishmentEnabled: false }]
+  }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {
@@ -23,15 +26,6 @@ export async function POST(request: NextRequest) {
   for (const game of before) {
     if (game.unusedInventory >= game.replenishBelow) {
       results.push({ gameId: game.gameId, status: "healthy-skipped", generated: 0, validated: 0, rejected: 0, message: `Inventory ${game.unusedInventory} is above threshold ${game.replenishBelow}.` });
-      continue;
-    }
-    if (game.gameId === "sing-along") {
-      try {
-        const discovery = await discoverSingAlongMetadata(`admin:${Date.now()}`, 8);
-        results.push({ gameId: game.gameId, status: discovery.pendingReview ? "review-required" : "provider-unavailable", generated: discovery.discovered, validated: 0, rejected: Math.max(0, discovery.discovered - discovery.pendingReview), pendingReview: discovery.pendingReview, apiCalls: discovery.apiCalls, message: "Discovered tracks were queued; none become playable until sourced preview-relative lyric timing passes review.", errors: discovery.errors });
-      } catch (error) {
-        results.push({ gameId: game.gameId, status: "provider-unavailable", generated: 0, validated: 0, rejected: 0, message: error instanceof Error ? error.message : "Sing Along discovery failed." });
-      }
       continue;
     }
     if (game.gameId === "spelldrop" || game.gameId === "closer" || game.gameId === "ranked-top-5") {
@@ -52,7 +46,23 @@ export async function POST(request: NextRequest) {
       }
       continue;
     }
+    if (game.gameId === "odd-one-out" || game.gameId === "meet-me-halfway") {
+      results.push({
+        gameId: game.gameId,
+        status: "manual-curation-required",
+        generated: 0,
+        validated: 0,
+        rejected: 0,
+        message: "This game uses a complete validated prepared inventory. New candidates require source-backed authoring and deterministic review."
+      });
+      continue;
+    }
     results.push({ gameId: game.gameId, status: "validation-failure", generated: 0, validated: 0, rejected: 0, message: "No automatic provider is permitted to bypass this game's factual/media validator." });
   }
-  return NextResponse.json({ startedAt: new Date().toISOString(), results, games: await getInventoryOverview() }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({
+    startedAt: new Date().toISOString(),
+    results,
+    games: await getInventoryOverview(),
+    retiredGames: [{ gameId: "sing-along", status: "retired", replenishmentEnabled: false }]
+  }, { headers: { "Cache-Control": "no-store" } });
 }

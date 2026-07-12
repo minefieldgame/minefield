@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-07-11T21:03:52.215Z",
+  "generatedAt": "2026-07-12T19:30:06.693Z",
   "counts": {
     "buzzwords": 5000,
+    "buzzwordEligible": 4493,
     "countryFacts": 194,
     "landmarks": 500
   },

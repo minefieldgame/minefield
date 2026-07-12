@@ -5,10 +5,11 @@ import { WORLD_CITIES } from "@/data/worldCities";
 import { calculateGeographicMidpoint, calculateProjectedMidpoint, haversineDistanceKm } from "@/games/geography/logic";
 import { selectFromContentUniverse, seededUniverseSelector, type ContentUniverseDiagnostics } from "@/lib/content/contentUniverse";
 import { createUsedContentRecord, createUniqueContentKey, contentHashFromKey } from "@/lib/content/usedContentRegistry";
-import { getDailyMasterSeed, getGameSeedForDate } from "@/lib/dailySeed";
-import { getInventoryUsageCounts, getPersistedPuzzle, publishDailyPuzzleWithUsedContent } from "@/lib/content/persistence";
+import { createSeededRandom, getDailyMasterSeed, getGameSeedForDate } from "@/lib/dailySeed";
+import { getInventoryUsageCounts, getPersistedPuzzle, publishDailyPuzzleWithUsedContent, retryCandidateCollisions } from "@/lib/content/persistence";
 import { CONTENT_INVENTORY_POLICY } from "@/lib/content/inventoryPolicy";
 import { getAllLandmarkCandidates, replenishLandmarkCandidates } from "@/lib/content/landmarkInventory";
+import { isLandmarkEligible } from "@/lib/content/landmarkQuality";
 
 type City = typeof WORLD_CITIES[number];
 type CityPair = { id: string; locationA: City; locationB: City };
@@ -42,7 +43,25 @@ function landmarkId(landmark: Landmark) {
 }
 
 function verifiedLandmarkImage(landmark: Landmark) {
-  return Boolean(landmark.imageUrl && !/blank|placeholder|\.svg/i.test(landmark.imageUrl));
+  return Boolean(landmark.imageUrl && !/blank|placeholder|\.svg/i.test(landmark.imageUrl)) && isLandmarkEligible(landmark);
+}
+
+export function selectQualityLandmark(candidates: readonly Landmark[], gameSeed: string) {
+  const eligible = candidates.filter(isLandmarkEligible);
+  if (!eligible.length) return null;
+  const random = createSeededRandom(`${gameSeed}:postcard-quality-tier`);
+  const preferred = eligible.filter((landmark) => landmark.recognizabilityTier !== "challenging");
+  // A small deterministic challenge window keeps difficult landmarks in the
+  // rotation without allowing a large challenging catalog to dominate normal
+  // play. If preferred exact identities are exhausted, challenges remain a
+  // safe no-repeat fallback.
+  const selectionPool = preferred.length && random.random() >= 0.06 ? preferred : eligible;
+  return random.weightedChoice(
+    selectionPool.map((landmark) => ({
+      value: landmark,
+      weight: landmark.recognizabilityTier === "iconic" ? 14 : landmark.recognizabilityTier === "recognizable" ? 7 : 0.25
+    }))
+  );
 }
 
 export type MeetMeHalfwayPuzzle = ReturnType<typeof buildMeetMeHalfwayPuzzle>;
@@ -118,7 +137,7 @@ function buildLandmarkDropPuzzle(date: string, landmark: Landmark, diagnostics: 
   };
 }
 
-export async function resolveMeetMeHalfwayForDate(date: string): Promise<MeetMeHalfwayPuzzle> {
+async function resolveMeetMeHalfwayAttempt(date: string): Promise<MeetMeHalfwayPuzzle> {
   const persisted = await getPersistedPuzzle<MeetMeHalfwayPuzzle>("meet-me-halfway", date);
   if (persisted) return { ...persisted, cacheHit: true } as MeetMeHalfwayPuzzle;
   const seed = String(getGameSeedForDate(date, "meet-me-halfway"));
@@ -174,6 +193,7 @@ export async function resolveMeetMeHalfwayForDate(date: string): Promise<MeetMeH
         prompt: city.name,
         answer: city.country,
         uniqueContentKey: createUniqueContentKey("meet-me-halfway", "city-soft", [cityId(city)]),
+        reservationMode: "cooldown",
         sourceMetadata: { source: "enumerated-world-city-pairs", cooldownDays: CONTENT_INVENTORY_POLICY["meet-me-halfway"].cooldownDays }
       }))
     ]
@@ -181,29 +201,45 @@ export async function resolveMeetMeHalfwayForDate(date: string): Promise<MeetMeH
   return published.puzzle;
 }
 
-export async function resolveLandmarkDropForDate(date: string): Promise<LandmarkDropPuzzle> {
+export async function resolveMeetMeHalfwayForDate(date: string): Promise<MeetMeHalfwayPuzzle> {
+  return retryCandidateCollisions({
+    gameId: "meet-me-halfway",
+    dateKey: date,
+    operation: () => resolveMeetMeHalfwayAttempt(date)
+  });
+}
+
+async function resolveLandmarkDropAttempt(date: string): Promise<LandmarkDropPuzzle> {
   const persisted = await getPersistedPuzzle<LandmarkDropPuzzle>("landmark-drop", date);
   if (persisted) return { ...persisted, cacheHit: true } as LandmarkDropPuzzle;
   const seed = String(getGameSeedForDate(date, "landmark-drop"));
   let landmarkCandidates = await getAllLandmarkCandidates();
   const usage = await getInventoryUsageCounts(["landmark-drop"]);
-  if (landmarkCandidates.length - (usage.get("landmark-drop") ?? 0) < CONTENT_INVENTORY_POLICY["landmark-drop"].replenishBelow) {
+  const eligibleBeforeReplenishment = landmarkCandidates.filter(isLandmarkEligible).length;
+  if (eligibleBeforeReplenishment - (usage.get("landmark-drop") ?? 0) < CONTENT_INVENTORY_POLICY["landmark-drop"].replenishBelow) {
     const replenished = await replenishLandmarkCandidates(`${date}:${seed}`, CONTENT_INVENTORY_POLICY["landmark-drop"].batchSize).catch(() => null);
     if (replenished?.validated) landmarkCandidates = await getAllLandmarkCandidates();
   }
   const universe = {
     getAllCandidates: () => landmarkCandidates,
     getCandidateId: landmarkId,
-    getHardKeys: (landmark: Landmark) => [createUniqueContentKey("landmark-drop", "landmark", [landmarkId(landmark)])],
+    getHardKeys: (landmark: Landmark) => [
+      createUniqueContentKey("landmark-drop", "landmark", [landmarkId(landmark)]),
+      createUniqueContentKey("landmark-drop", "landmark-alias", [landmark.name]),
+      createUniqueContentKey("landmark-drop", "landmark-coordinate", [landmark.latitude.toFixed(4), landmark.longitude.toFixed(4)])
+    ],
     getSoftKeys: (landmark: Landmark) => [
       createUniqueContentKey("landmark-drop", "country-soft", [landmark.country]),
       createUniqueContentKey("landmark-drop", "category-soft", [landmark.category ?? "landmark"])
     ],
+    shouldRelaxSoftCooldown: (strictCandidates: readonly Landmark[], hardEligibleCandidates: readonly Landmark[]) =>
+      !strictCandidates.some((landmark) => landmark.recognizabilityTier !== "challenging") &&
+      hardEligibleCandidates.some((landmark) => landmark.recognizabilityTier !== "challenging"),
     validateCandidate: (landmark: Landmark) => ({
       valid: Number.isFinite(landmark.latitude) && Number.isFinite(landmark.longitude) && verifiedLandmarkImage(landmark),
       reason: "Coordinates and verified photograph URL required"
     }),
-    selectCandidate: seededUniverseSelector<Landmark>(landmarkId)
+    selectCandidate: selectQualityLandmark
   };
   const { selected, diagnostics } = await selectFromContentUniverse({
     universe,
@@ -215,6 +251,18 @@ export async function resolveLandmarkDropForDate(date: string): Promise<Landmark
     batchSizes: [150, 350, 500]
   });
   if (!selected) throw new Error("On a Postcard has no eligible verified landmark photographs after duplicate filtering.");
+  Object.assign(diagnostics, {
+    technicallyValidatedCount: landmarkCandidates.length,
+    qualityApprovedCount: landmarkCandidates.filter(isLandmarkEligible).length,
+    recognizabilityTierDistribution: Object.fromEntries(
+      ["iconic", "recognizable", "challenging", "archive-only"].map((tier) => [tier, landmarkCandidates.filter((landmark) => landmark.recognizabilityTier === tier).length])
+    ),
+    selectedRecognizabilityTier: selected.recognizabilityTier,
+    selectedImageQualityScore: selected.imageQualityScore,
+    selectedLandmarkPlayabilityScore: selected.landmarkPlayabilityScore,
+    selectedCategory: selected.category,
+    selectedRegion: selected.region
+  });
   const puzzle = buildLandmarkDropPuzzle(date, selected, diagnostics);
   const published = await publishDailyPuzzleWithUsedContent({
     gameId: "landmark-drop",
@@ -232,18 +280,40 @@ export async function resolveLandmarkDropForDate(date: string): Promise<Landmark
         sourceMetadata: { source: "verified-landmark-photograph-catalog", imageUrl: selected.imageUrl, contentUniverse: diagnostics }
       }),
       createUsedContentRecord({
+        gameId: "landmark-drop", date, contentType: "landmark-alias",
+        prompt: selected.name, answer: selected.name,
+        uniqueContentKey: createUniqueContentKey("landmark-drop", "landmark-alias", [selected.name]),
+        sourceMetadata: { source: "verified-landmark-photograph-catalog", landmarkId: selected.id }
+      }),
+      createUsedContentRecord({
+        gameId: "landmark-drop", date, contentType: "landmark-coordinate",
+        prompt: selected.name, answer: `${selected.latitude},${selected.longitude}`,
+        uniqueContentKey: createUniqueContentKey("landmark-drop", "landmark-coordinate", [selected.latitude.toFixed(4), selected.longitude.toFixed(4)]),
+        sourceMetadata: { source: "verified-landmark-photograph-catalog", landmarkId: selected.id }
+      }),
+      createUsedContentRecord({
         gameId: "landmark-drop", date, contentType: "semantic-country-cooldown",
         prompt: selected.country, answer: selected.country,
         uniqueContentKey: createUniqueContentKey("landmark-drop", "country-soft", [selected.country]),
+        reservationMode: "cooldown",
         sourceMetadata: { source: "verified-landmark-photograph-catalog", cooldownDays: CONTENT_INVENTORY_POLICY["landmark-drop"].cooldownDays }
       }),
       createUsedContentRecord({
         gameId: "landmark-drop", date, contentType: "semantic-category-cooldown",
         prompt: selected.category, answer: selected.category,
         uniqueContentKey: createUniqueContentKey("landmark-drop", "category-soft", [selected.category]),
+        reservationMode: "cooldown",
         sourceMetadata: { source: "verified-landmark-photograph-catalog", cooldownDays: CONTENT_INVENTORY_POLICY["landmark-drop"].cooldownDays }
       })
     ]
   });
   return published.puzzle;
+}
+
+export async function resolveLandmarkDropForDate(date: string): Promise<LandmarkDropPuzzle> {
+  return retryCandidateCollisions({
+    gameId: "landmark-drop",
+    dateKey: date,
+    operation: () => resolveLandmarkDropAttempt(date)
+  });
 }

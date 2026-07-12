@@ -7,6 +7,8 @@ export type SpellDropPuzzle = {
   commonMisspellings: string[];
   difficulty: "easy" | "medium" | "hard";
   pronunciationHint: string;
+  qualityScore?: number;
+  misspellingPlausibilityScore?: number;
   contentHash?: string;
   confidence?: number;
   generatedAt?: string;

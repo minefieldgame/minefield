@@ -22,45 +22,79 @@ const phonemeMap = {
   UH: "oo", UW: "oo", V: "v", W: "w", Y: "y", Z: "z", ZH: "zh"
 };
 
-function misspellings(word) {
-  const variants = new Set();
-  const add = (value) => {
-    if (value !== word && /^[a-z]+$/.test(value) && value.length >= 4) variants.add(value);
+const vowelPhonemes = new Set(["AA", "AE", "AH", "AO", "AW", "AY", "EH", "ER", "EY", "IH", "IY", "OW", "OY", "UH", "UW"]);
+
+function misspellings(word, knownWords) {
+  const variants = new Map();
+  const add = (value, rule, score) => {
+    if (value === word || !/^[a-z]+$/.test(value) || value.length < 4 || knownWords.has(value)) return;
+    const existing = variants.get(value);
+    if (!existing || score > existing.score) variants.set(value, { value, rule, score });
   };
-  if (word.includes("ie")) add(word.replace("ie", "ei"));
-  if (word.includes("ei")) add(word.replace("ei", "ie"));
-  if (word.includes("able")) add(word.replace(/able$/, "ible"));
-  if (word.includes("ible")) add(word.replace(/ible$/, "able"));
-  if (word.includes("ance")) add(word.replace(/ance$/, "ence"));
-  if (word.includes("ence")) add(word.replace(/ence$/, "ance"));
-  if (word.includes("ant")) add(word.replace(/ant$/, "ent"));
-  if (word.includes("ent")) add(word.replace(/ent$/, "ant"));
-  if (word.includes("ary")) add(word.replace(/ary$/, "ery"));
-  if (word.includes("ery")) add(word.replace(/ery$/, "ary"));
-  if (word.includes("ous")) add(word.replace(/ous$/, "us"));
-  if (word.includes("tion")) add(word.replace(/tion$/, "sion"));
-  if (word.includes("sion")) add(word.replace(/sion$/, "tion"));
+  if (word.includes("ie")) add(word.replace("ie", "ei"), "ie-ei confusion", 0.98);
+  if (word.includes("ei")) add(word.replace("ei", "ie"), "ie-ei confusion", 0.98);
+  for (const [left, right] of [["able", "ible"], ["ible", "able"], ["ance", "ence"], ["ence", "ance"], ["ant", "ent"], ["ent", "ant"], ["ary", "ery"], ["ery", "ary"], ["tion", "sion"], ["sion", "tion"]]) {
+    if (word.endsWith(left)) add(`${word.slice(0, -left.length)}${right}`, "common suffix confusion", 0.94);
+  }
+  if (word.endsWith("ous")) add(word.replace(/ous$/, "us"), "unstressed vowel omission", 0.9);
   const doubled = word.match(/([bcdfglmnpqrst])\1/);
-  if (doubled) add(word.replace(doubled[0], doubled[1]));
-  const middle = Math.max(1, Math.floor(word.length / 2));
-  if (!doubled && /[bcdfglmnpqrst]/.test(word[middle] ?? "")) add(`${word.slice(0, middle)}${word[middle]}${word.slice(middle)}`);
-  for (let index = 1; index < word.length - 1 && variants.size < 5; index += 1) {
-    if (word[index] !== word[index + 1]) add(`${word.slice(0, index)}${word[index + 1]}${word[index]}${word.slice(index + 2)}`);
+  if (doubled) add(word.replace(doubled[0], doubled[1]), "omitted doubled consonant", 0.98);
+  const clusters = [["ph", "f"], ["ck", "k"], ["wr", "r"], ["rh", "r"], ["ps", "s"], ["mn", "n"], ["gue", "g"], ["ough", "uff"], ["gh", "g"]];
+  for (const [left, right] of clusters) {
+    if (word.includes(left)) add(word.replace(left, right), "common phonetic or silent-letter substitution", 0.88);
   }
-  for (let index = 2; index < word.length - 1 && variants.size < 5; index += 2) {
-    add(`${word.slice(0, index)}${word.slice(index + 1)}`);
+  const consonantCandidates = [...word].map((letter, index) => ({ letter, index }))
+    .filter(({ letter, index }) => index > 1 && index < word.length - 2 && /[bcdfglmnprst]/.test(letter));
+  for (const { letter, index } of consonantCandidates.slice(0, 2)) {
+    if (word[index - 1] !== letter && word[index + 1] !== letter) {
+      add(`${word.slice(0, index)}${letter}${word.slice(index)}`, "plausible doubled consonant", 0.8);
+    }
   }
-  return [...variants].slice(0, 4);
+  const vowels = [...word].map((letter, index) => ({ letter, index }))
+    .filter(({ letter, index }) => index > 1 && index < word.length - 2 && /[aeiou]/.test(letter));
+  for (const { letter, index } of vowels.slice(-2)) {
+    const replacement = letter === "e" ? "a" : letter === "a" ? "e" : letter === "i" ? "e" : letter === "o" ? "u" : "o";
+    add(`${word.slice(0, index)}${replacement}${word.slice(index + 1)}`, "common unstressed-vowel confusion", 0.74);
+  }
+  return [...variants.values()].sort((left, right) => right.score - left.score || left.value.localeCompare(right.value)).slice(0, 4);
 }
 
 function pronunciation(word, dictionary) {
   const raw = dictionary[word.toUpperCase()] ?? dictionary[word.toUpperCase().replace(/-/g, "")];
   if (!raw) return "";
-  return raw.split(/\s+/).map((token) => {
-    const stress = token.match(/[12]/) ? "*" : "";
-    const phoneme = token.replace(/\d/g, "");
-    return `${stress}${phonemeMap[phoneme] ?? phoneme.toLowerCase()}`;
-  }).join("-").replace(/\*-([a-z])/g, "*$1");
+  const tokens = raw.trim().split(/\s+/).map((token) => ({
+    phoneme: token.replace(/\d/g, ""),
+    stress: Number(token.match(/\d/)?.[0] ?? 0)
+  }));
+  const vowelIndexes = tokens.flatMap((token, index) => vowelPhonemes.has(token.phoneme) ? [index] : []);
+  if (!vowelIndexes.length) return "";
+  const syllables = [];
+  let start = 0;
+  for (let index = 0; index < vowelIndexes.length - 1; index += 1) {
+    const vowel = vowelIndexes[index];
+    const nextVowel = vowelIndexes[index + 1];
+    const consonantGap = nextVowel - vowel - 1;
+    const bridge = tokens[vowel + 1]?.phoneme;
+    const keepBridgeAsCoda = consonantGap === 1 && (
+      (bridge === "R" && tokens[nextVowel]?.phoneme === "AH") ||
+      (index === vowelIndexes.length - 2 && ["T", "D"].includes(bridge) && tokens[nextVowel]?.phoneme === "IY")
+    );
+    const nextStart = keepBridgeAsCoda ? nextVowel : consonantGap <= 1 ? vowel + 1 : nextVowel - 1;
+    syllables.push(tokens.slice(start, nextStart));
+    start = nextStart;
+  }
+  syllables.push(tokens.slice(start));
+  return syllables.map((syllable) => {
+    let text = syllable.map((token, index) => {
+      if (token.phoneme === "EH" && syllable[index + 1]?.phoneme === "R") return "air";
+      if (token.phoneme === "R" && syllable[index - 1]?.phoneme === "EH") return "";
+      return phonemeMap[token.phoneme] ?? token.phoneme.toLowerCase();
+    }).join("").replace(/ih(?=[bcdfgjklmnpqrstvwxyz]+$)/, "i").replace(/([a-z])\1\1+/g, "$1$1");
+    if (text.length === 1 && /[aeiou]/.test(text)) text = `${text}h`;
+    const stressed = syllable.some((token) => token.stress === 1);
+    text = text.replace(/^([kg])uh(?=[mn])/, "$1uh");
+    return stressed ? text.toUpperCase() : text.toLowerCase();
+  }).filter(Boolean).join("-");
 }
 
 async function prepareWords() {
@@ -69,12 +103,14 @@ async function prepareWords() {
   const rows = [];
   const seen = new Set();
   const seenDefinitions = new Set();
+  const knownWords = new Set(frequencyRows.map((row) => String(row?.word ?? "").toLowerCase()).filter((word) => /^[a-z]+$/.test(word)));
   const spellingTrap = /(ie|ei|([bcdfglmnpqrst])\2|able$|ible$|ance$|ence$|ant$|ent$|ary$|ery$|ous$|tion$|sion$|cious$|ph|gh|ough|qu|sc|mn|rh|ps|wr|ck|dge|gue$)/;
   for (let rank = 1500; rank < frequencyRows.length && rows.length < 5200; rank += 1) {
     const original = String(frequencyRows[rank]?.word ?? "");
     const word = original.toLowerCase();
     if (original !== word || !/^[a-z]{7,18}$/.test(word) || !spellingTrap.test(word) || seen.has(word) || blockedWords.test(word)) continue;
-    const commonMisspellings = misspellings(word);
+    const misspellingRecords = misspellings(word, knownWords);
+    const commonMisspellings = misspellingRecords.map((record) => record.value);
     const pronunciationHint = pronunciation(word, dictionary);
     if (commonMisspellings.length < 2 || !pronunciationHint) continue;
     const definitions = await wordnet.lookup(word, true).catch(() => []);
@@ -88,11 +124,16 @@ async function prepareWords() {
       word,
       definition,
       commonMisspellings,
+      misspellingEvidence: misspellingRecords,
+      misspellingPlausibilityScore: Math.round(misspellingRecords.reduce((total, record) => total + record.score, 0) / misspellingRecords.length * 100),
       pronunciationHint,
+      pronunciationValid: pronunciationHint.length >= 3 && !/[\d*]|(?:^|-)[a-z](?:-|$)/.test(pronunciationHint),
+      misspellingValid: misspellingRecords.length >= 2 && misspellingRecords.every((record) => record.score >= 0.7),
+      qualityScore: Math.max(35, Math.min(98, Math.round(96 - Math.max(0, rank - 3000) / 1200))),
       difficulty: rank < 4500 ? "easy" : rank < 12000 ? "medium" : "hard",
       frequencyRank: rank + 1,
       sourceNote: "Princeton WordNet definition; SUBTLEX-US frequency rank; CMUdict pronunciation",
-      validationVersion: "buzzword-v3"
+      validationVersion: "buzzword-v4"
     });
   }
   if (rows.length < 5000) throw new Error(`Only ${rows.length} word candidates passed validation.`);
@@ -273,13 +314,15 @@ async function prepareLandmarks() {
 }
 
 await fs.mkdir(OUTPUT, { recursive: true });
-const words = await prepareWords();
-const countryFacts = await prepareCountries();
-const landmarks = await prepareLandmarks();
+const scope = process.env.CONTENT_PREPARE_SCOPE ?? "all";
+const loadExisting = async (name) => JSON.parse(await fs.readFile(path.join(OUTPUT, name), "utf8"));
+const words = scope === "all" || scope === "words" ? await prepareWords() : await loadExisting("buzzwords.json");
+const countryFacts = scope === "all" || scope === "countries" ? await prepareCountries() : await loadExisting("countryFacts.json");
+const landmarks = scope === "all" || scope === "landmarks" ? await prepareLandmarks() : await loadExisting("landmarks.json");
 await Promise.all([
   fs.writeFile(path.join(OUTPUT, "buzzwords.json"), `${JSON.stringify(words)}\n`),
   fs.writeFile(path.join(OUTPUT, "countryFacts.json"), `${JSON.stringify(countryFacts)}\n`),
   fs.writeFile(path.join(OUTPUT, "landmarks.json"), `${JSON.stringify(landmarks)}\n`),
-  fs.writeFile(path.join(OUTPUT, "manifest.json"), `${JSON.stringify({ generatedAt, counts: { buzzwords: words.length, countryFacts: countryFacts.length, landmarks: landmarks.length }, sources: ["Princeton WordNet", "SUBTLEX-US", "CMUdict", "REST Countries", "Wikidata", "Wikimedia Commons"] }, null, 2)}\n`)
+  fs.writeFile(path.join(OUTPUT, "manifest.json"), `${JSON.stringify({ generatedAt, counts: { buzzwords: words.length, buzzwordEligible: words.filter((word) => word.pronunciationValid && word.misspellingValid && word.qualityScore >= 70).length, countryFacts: countryFacts.length, landmarks: landmarks.length }, sources: ["Princeton WordNet", "SUBTLEX-US", "CMUdict", "REST Countries", "Wikidata", "Wikimedia Commons"] }, null, 2)}\n`)
 ]);
 console.log(JSON.stringify({ generatedAt, buzzwords: words.length, countryFacts: countryFacts.length, landmarks: landmarks.length }, null, 2));

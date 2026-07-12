@@ -59,6 +59,42 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
               </div>
             )}
 
+            {review.type === "odd-one-out" && (
+              <div className="mt-3">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span>{review.category}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{review.difficulty}</span>
+                </div>
+                <p className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100">{review.prompt}</p>
+                <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                  {review.items.map((item) => {
+                    const isAnswer = item === review.correctItem;
+                    const isSelected = item === review.selectedItem;
+                    return (
+                      <div
+                        key={item}
+                        className={`flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${
+                          isAnswer
+                            ? "border-emerald-300 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                            : isSelected
+                              ? "border-red-300 bg-red-500/10 text-red-800 dark:text-red-200"
+                              : "border-slate-200 bg-slate-50 text-slate-600 dark:border-[#3b424f] dark:bg-[#292e38] dark:text-slate-300"
+                        }`}
+                      >
+                        <span className="min-w-0 break-words">{item}</span>
+                        {isAnswer && <span className="shrink-0">Correct</span>}
+                        {isSelected && !isAnswer && <span className="shrink-0">Your pick</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 break-words text-sm font-semibold leading-5 text-slate-600 dark:text-slate-300">
+                  {review.explanation}
+                </p>
+              </div>
+            )}
+
             {review.type === "ranked-top-5" && (
               <div className="mt-3">
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{review.prompt}</p>

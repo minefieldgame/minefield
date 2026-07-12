@@ -9,6 +9,7 @@ export type UsedContentRecord = {
   uniqueContentKey: string;
   sourceMetadata?: Record<string, unknown>;
   createdAt: string;
+  reservationMode: "permanent" | "cooldown";
 };
 
 export type DuplicateCheckResult = {
@@ -58,6 +59,7 @@ export function createUsedContentRecord(input: {
   answer: string;
   uniqueContentKey: string;
   sourceMetadata?: Record<string, unknown>;
+  reservationMode?: "permanent" | "cooldown";
 }): UsedContentRecord {
   return {
     gameId: input.gameId,
@@ -67,7 +69,8 @@ export function createUsedContentRecord(input: {
     normalizedAnswer: normalizeUsedContentText(input.answer),
     uniqueContentKey: input.uniqueContentKey,
     sourceMetadata: input.sourceMetadata,
-    createdAt: `${input.date}T12:00:00.000Z`
+    createdAt: `${input.date}T12:00:00.000Z`,
+    reservationMode: input.reservationMode ?? "permanent"
   };
 }
 

@@ -6,6 +6,8 @@ import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { GeneratedContentEnvelope } from "@/lib/content/dailyContentEngine";
 import type { resolveMeetMeHalfwayForDate, resolveLandmarkDropForDate } from "@/games/geography/serverPuzzles";
 import type { SingAlongPuzzle } from "@/games/sing-along/types";
+import type { OddOneOutPuzzle } from "@/games/odd-one-out/types";
+import type { InventoryMetrics } from "@/lib/content/inventoryMetrics";
 
 export type AdminResolverDiagnostics = {
   route: string;
@@ -137,13 +139,21 @@ export type AdminPreviewResponse = {
     generationArchitecture: string;
     totalCandidateInventory: number;
     validatedInventory: number;
+    qualityApprovedInventory: number;
+    playableInventory: number;
     unusedInventory: number;
     invalidCandidates: number;
     pendingReview: number;
+    rejectedQuality: number;
+    metrics: InventoryMetrics;
+    metricsScope: string;
+    distributions: Record<string, Record<string, number>>;
     target: number;
     replenishBelow: number;
     cooldownDays: number;
     healthStatus: string;
+    inventoryHealthStatus: string;
+    selectedDateStatus: "Ready" | "Cached" | "Generated" | "Retired" | "Disabled" | "Failed" | "Provider unavailable" | "Infrastructure failure";
     sourceStrategy: string;
     exactDuplicatesUsed: number;
     candidatesOnCooldown: number;
@@ -159,12 +169,14 @@ export type AdminPreviewResponse = {
   }>;
   cacheKeys: {
     rankedTopTen: string;
+    oddOneOut: string;
     singAlong: string;
     spellDrop: string;
     closer: string;
   };
   games: {
     needledrop: AdminNeedleDropPreview;
+    oddOneOut: AdminOddOneOutPreview;
     singAlong: AdminSingAlongPreview;
     topTen: AdminTopTenPreview;
     spellDrop: AdminSpellDropPreview;
@@ -176,6 +188,7 @@ export type AdminPreviewResponse = {
 };
 
 export type AdminSingAlongPreview =
+  | { status: "retired"; message: string }
   | {
       status: "ready";
       puzzle: SingAlongPuzzle;
@@ -213,6 +226,10 @@ export type AdminSingAlongPreview =
         gameSeed: number;
       };
     }
+  | { status: "error"; error: string };
+
+export type AdminOddOneOutPreview =
+  | { status: "ready"; puzzle: OddOneOutPuzzle; diagnostics: NonNullable<OddOneOutPuzzle["diagnostics"]> }
   | { status: "error"; error: string };
 
 export type AdminDynamicError = {

@@ -11,6 +11,13 @@ export type TrackPreview = {
   artworkUrl: string;
   previewUrl: string;
   trackViewUrl: string;
+  trackId?: number | string;
+  collectionId?: number | string;
+  recordingIdentity?: string;
+  previewDurationSeconds?: number;
+  matchConfidence?: number;
+  sourceProvider?: string;
+  lastVerifiedAt?: string;
 };
 
 export type SongSuggestion = {

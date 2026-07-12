@@ -3,7 +3,7 @@ import "server-only";
 import { validateTopTenPuzzle } from "@/games/top-ten/providers";
 import { validateSpellDropPuzzle } from "@/games/spelldrop/providers";
 import { inferCloserScoringProfile, validateCloserPuzzle } from "@/games/closer/providers";
-import { resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
+import { clearNeedleDropResolutionCache, resolveNeedleDropDiagnostic } from "@/lib/needledropResolver";
 import type { RankedTopTenPuzzle } from "@/games/top-ten/types";
 import type { SpellDropPuzzle } from "@/games/spelldrop/types";
 import type { CloserPuzzle } from "@/games/closer/types";
@@ -31,16 +31,18 @@ import {
   getInventoryUsageCounts,
   getPersistedCandidateInventory,
   getPersistedPuzzle,
-  publishDailyPuzzleWithUsedContent
+  publishDailyPuzzleWithUsedContent,
+  retryCandidateCollisions
 } from "@/lib/content/persistence";
 import { CONTENT_INVENTORY_POLICY } from "@/lib/content/inventoryPolicy";
-import { discoverSingAlongMetadata, getValidatedSingAlongCandidates, singAlongCandidateId, singAlongHardKeys } from "@/lib/content/singAlongInventory";
+import { getValidatedSingAlongCandidates, singAlongCandidateId, singAlongHardKeys } from "@/lib/content/singAlongInventory";
 import { validateSingAlongTimingCandidate } from "@/lib/content/candidateValidation";
 import { replenishModelCandidates } from "@/lib/content/modelReplenishment";
 
 type DuplicateMeta = {
   uniqueContentKey: string;
   secondaryKeys: string[];
+  cooldownKeys?: string[];
   prompt: string;
   answer: string;
   contentType: string;
@@ -68,6 +70,19 @@ function duplicateCheck({
     dynamoDbWriteSucceeded: existingKeys.length === 0,
     warning: existingKeys.length ? `Rejected duplicate keys: ${existingKeys.join(", ")}` : undefined
   };
+}
+
+function qualityWeightedSelector<T extends { difficultyTier?: string; difficulty?: string; qualityScore?: number }>(
+  candidates: readonly T[],
+  gameSeed: string
+) {
+  if (!candidates.length) return null;
+  return createSeededRandom(`${gameSeed}:quality-weighted`).weightedChoice(candidates.map((candidate) => {
+    const tier = candidate.difficultyTier ?? candidate.difficulty;
+    const tierWeight = tier === "approachable" || tier === "easy" ? 6 : tier === "standard" || tier === "medium" ? 4 : 1;
+    const qualityWeight = Math.max(0.7, Math.min(1.2, (candidate.qualityScore ?? 80) / 80));
+    return { value: candidate, weight: tierWeight * qualityWeight };
+  }));
 }
 
 async function loadReplenishableInventory<T>({
@@ -117,8 +132,8 @@ async function persistAcceptedPuzzle<TPuzzle>({
   meta: DuplicateMeta;
   contentHash: string;
 }) {
-  const keys = [meta.uniqueContentKey, ...meta.secondaryKeys];
-  const records = keys.map((key) => createUsedContentRecord({
+  const permanentKeys = [meta.uniqueContentKey, ...meta.secondaryKeys];
+  const records = permanentKeys.map((key) => createUsedContentRecord({
     gameId,
     date,
     contentType: meta.contentType,
@@ -133,6 +148,22 @@ async function persistAcceptedPuzzle<TPuzzle>({
       source: meta.source
     }
   }));
+  records.push(...(meta.cooldownKeys ?? []).map((key) => createUsedContentRecord({
+    gameId,
+    date,
+    contentType: `${meta.contentType}-cooldown`,
+    prompt: meta.prompt,
+    answer: meta.answer,
+    uniqueContentKey: key,
+    reservationMode: "cooldown",
+    sourceMetadata: {
+      prompt: meta.prompt,
+      answer: meta.answer,
+      primaryContentKey: meta.uniqueContentKey,
+      source: meta.source,
+      cooldown: true
+    }
+  })));
   const published = await publishDailyPuzzleWithUsedContent({
     gameId,
     dateKey: date,
@@ -145,14 +176,15 @@ async function persistAcceptedPuzzle<TPuzzle>({
     : ({ ...(published.puzzle as Record<string, unknown>), cacheHit: true } as TPuzzle);
 }
 
-export async function resolveRankedTop5ForDate(
+async function resolveRankedTop5Attempt(
   date: string,
   options: { force?: boolean; retryOffset?: number } = {}
 ): Promise<RankedTopTenPuzzle> {
-  if (!options.force) {
-    const persisted = await getPersistedPuzzle<RankedTopTenPuzzle>("ranked-top-5", date);
-    if (persisted) return { ...persisted, cacheHit: true };
-  }
+  // Published daily puzzles are immutable and authoritative, including admin
+  // refresh requests. "Force" may influence generation only when no daily row
+  // exists; it must never bypass the same-date read.
+  const persisted = await getPersistedPuzzle<RankedTopTenPuzzle>("ranked-top-5", date);
+  if (persisted) return { ...persisted, cacheHit: true };
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "ranked-top-5");
   const candidateKey = (entry: typeof IN_ORDER_CANDIDATES[number]) => createUniqueContentKey("ranked-top-5", "ranking", [
@@ -180,7 +212,7 @@ export async function resolveRankedTop5ForDate(
       getHardKeys: (entry) => [candidateKey(entry), answerSetKey(entry)],
       getSoftKeys: (entry) => [topicKey(entry)],
       validateCandidate: (entry) => ({ valid: validateObjectiveOrdering(entry), reason: "Exactly five uniquely ordered factual values required" }),
-      selectCandidate: seededUniverseSelector(candidateKey)
+      selectCandidate: (candidates, gameSeed) => qualityWeightedSelector(candidates, gameSeed)
     }
   });
   selected.diagnostics.candidatesGeneratedCurrentRequest = inventory.generated;
@@ -192,7 +224,8 @@ export async function resolveRankedTop5ForDate(
     entry.metric,
     entry.items.map(([answer]) => answer).join("|")
   ]);
-  const secondaryKeys = [answerSetKey(entry), topicKey(entry)];
+  const secondaryKeys = [answerSetKey(entry)];
+  const cooldownKeys = [topicKey(entry)];
   const existingKeys: string[] = [];
   const answers = entry.items.map(([answer, value], index) => ({
     rank: index + 1,
@@ -210,8 +243,11 @@ export async function resolveRankedTop5ForDate(
     playerPrompt: entry.playerPrompt,
     adminPrompt: `${entry.playerPrompt} Metric: ${entry.metric}. Source: ${entry.source}`,
     category: entry.category,
+    categoryFamily: entry.categoryFamily,
+    difficultyTier: entry.difficultyTier,
+    qualityScore: entry.qualityScore,
     rankingMetric: entry.metric,
-    direction: "highest-to-lowest" as const,
+    direction: entry.direction,
     answers,
     sources: [entry.source],
     confidence: 1,
@@ -245,6 +281,14 @@ export async function resolveRankedTop5ForDate(
     rawAIResponse: null
   };
   const validation = validateTopTenPuzzle(base);
+  if (!validation.valid) throw new Error(`In Order final validation failed: ${validation.errors.join("; ")}`);
+  Object.assign(selected.diagnostics, {
+    selectedCategoryFamily: entry.categoryFamily,
+    selectedDifficultyTier: entry.difficultyTier,
+    selectedQualityScore: entry.qualityScore,
+    categoryFamilyDistribution: Object.fromEntries([...new Set(inventory.candidates.map((candidate) => candidate.categoryFamily))]
+      .map((family) => [family, inventory.candidates.filter((candidate) => candidate.categoryFamily === family).length]))
+  });
   const puzzle = { ...base, validation, contentHash: contentHashFromKey(uniqueContentKey) };
   return persistAcceptedPuzzle({
     gameId: "ranked-top-5",
@@ -254,6 +298,7 @@ export async function resolveRankedTop5ForDate(
     meta: {
       uniqueContentKey,
       secondaryKeys,
+      cooldownKeys,
       prompt: entry.playerPrompt,
       answer: entry.items.map(([answer]) => answer).join("|"),
       contentType: "ranking",
@@ -262,14 +307,27 @@ export async function resolveRankedTop5ForDate(
   });
 }
 
-export async function resolveSpellDropForDate(
+export async function resolveRankedTop5ForDate(
   date: string,
-  force = false
+  options: { force?: boolean; retryOffset?: number } = {}
+): Promise<RankedTopTenPuzzle> {
+  return retryCandidateCollisions({
+    gameId: "ranked-top-5",
+    dateKey: date,
+    operation: (attempt) => resolveRankedTop5Attempt(date, {
+      ...options,
+      retryOffset: (options.retryOffset ?? 0) + attempt
+    })
+  });
+}
+
+async function resolveSpellDropAttempt(
+  date: string,
+  force = false,
+  retryOffset = 0
 ): Promise<GeneratedContentEnvelope<SpellDropPuzzle>> {
-  if (!force) {
-    const persisted = await getPersistedPuzzle<GeneratedContentEnvelope<SpellDropPuzzle>>("spelldrop", date);
-    if (persisted) return { ...persisted, cacheHit: true };
-  }
+  const persisted = await getPersistedPuzzle<GeneratedContentEnvelope<SpellDropPuzzle>>("spelldrop", date);
+  if (persisted) return { ...persisted, cacheHit: true };
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "spelldrop");
   const wordKey = (entry: typeof BUZZWORD_CANDIDATES[number]) => createUniqueContentKey("spelldrop", "word", [entry.word]);
@@ -280,7 +338,7 @@ export async function resolveSpellDropForDate(
     validate: validateBuzzwordCandidate, seed: `${date}:${seed}:buzzword-replenishment`
   });
   const selection = await selectFromContentUniverse({
-    gameSeed: String(seed),
+    gameSeed: `${seed}:${retryOffset}`,
     contentSource: "prepared-wordnet-subtlex-cmudict-inventory",
     softCooldownLabel: "recent Buzzword difficulty cooldown",
     dateKey: date,
@@ -292,7 +350,7 @@ export async function resolveSpellDropForDate(
       getHardKeys: (entry) => [wordKey(entry), createUniqueContentKey("spelldrop", "answer", [entry.word]), definitionKey(entry)],
       getSoftKeys: (entry) => [difficultyKey(entry)],
       validateCandidate: (entry) => ({ valid: validateBuzzwordCandidate(entry), reason: "Lexical candidate validation failed" }),
-      selectCandidate: seededUniverseSelector(wordKey)
+      selectCandidate: (candidates, gameSeed) => qualityWeightedSelector(candidates, gameSeed)
     }
   });
   selection.diagnostics.candidatesGeneratedCurrentRequest = inventory.generated;
@@ -300,7 +358,8 @@ export async function resolveSpellDropForDate(
   const entry = selection.selected;
   if (!entry) throw new Error(`Buzzword exhausted every configured strategy. Prepared inventory: ${BUZZWORD_CANDIDATES.length}; ${selection.diagnostics.warnings.join(" ")}`);
   const uniqueContentKey = wordKey(entry);
-  const secondaryKeys = [createUniqueContentKey("spelldrop", "answer", [entry.word]), definitionKey(entry), difficultyKey(entry)];
+  const secondaryKeys = [createUniqueContentKey("spelldrop", "answer", [entry.word]), definitionKey(entry)];
+  const cooldownKeys = [difficultyKey(entry)];
   const existingKeys: string[] = [];
   const puzzle: SpellDropPuzzle = {
     gameId: "spelldrop", date, seed,
@@ -309,6 +368,8 @@ export async function resolveSpellDropForDate(
     commonMisspellings: entry.commonMisspellings,
     difficulty: entry.difficulty,
     pronunciationHint: entry.pronunciationHint,
+    qualityScore: entry.qualityScore,
+    misspellingPlausibilityScore: entry.misspellingPlausibilityScore,
     masterSeed,
     gameSeed: seed,
     deterministicSelectors: {
@@ -319,7 +380,7 @@ export async function resolveSpellDropForDate(
     promptConstraints: `Select one ${entry.difficulty} commonly misspelled everyday word.`,
     uniqueContentKey,
     secondaryKeys,
-    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: 0 }),
+    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: retryOffset }),
     repeatStatus: {
       checked: true,
       passed: true,
@@ -328,8 +389,10 @@ export async function resolveSpellDropForDate(
       provider: "dynamodb-used-content-registry"
     }
   } as SpellDropPuzzle;
+  const spellValidation = validateSpellDropPuzzle(puzzle);
+  if (!spellValidation.valid) throw new Error(`Buzzword final validation failed: ${spellValidation.errors.join("; ")}`);
   const envelope = deterministicEnvelope({
-    gameId: "spelldrop", date, puzzle, validation: validateSpellDropPuzzle(puzzle),
+    gameId: "spelldrop", date, puzzle, validation: spellValidation,
     topic: "commonly misspelled English words", answer: puzzle.word,
     sourceNotes: [entry.sourceNote],
     generator: "Prepared WordNet + SUBTLEX + CMUdict inventory; model-assisted batch replenishment",
@@ -343,6 +406,7 @@ export async function resolveSpellDropForDate(
     meta: {
       uniqueContentKey,
       secondaryKeys,
+      cooldownKeys,
       prompt: puzzle.definition,
       answer: puzzle.word,
       contentType: "spelling-word",
@@ -352,14 +416,24 @@ export async function resolveSpellDropForDate(
   return accepted;
 }
 
-export async function resolveCloserForDate(
+export async function resolveSpellDropForDate(
   date: string,
   force = false
+): Promise<GeneratedContentEnvelope<SpellDropPuzzle>> {
+  return retryCandidateCollisions({
+    gameId: "spelldrop",
+    dateKey: date,
+    operation: (attempt) => resolveSpellDropAttempt(date, force, attempt)
+  });
+}
+
+async function resolveCloserAttempt(
+  date: string,
+  force = false,
+  retryOffset = 0
 ): Promise<GeneratedContentEnvelope<CloserPuzzle>> {
-  if (!force) {
-    const persisted = await getPersistedPuzzle<GeneratedContentEnvelope<CloserPuzzle>>("closer", date);
-    if (persisted) return { ...persisted, cacheHit: true };
-  }
+  const persisted = await getPersistedPuzzle<GeneratedContentEnvelope<CloserPuzzle>>("closer", date);
+  if (persisted) return { ...persisted, cacheHit: true };
   const masterSeed = getDailyMasterSeed(date);
   const seed = getGameSeedForDate(date, "closer");
   const questionKey = (entry: typeof BALLPARK_CANDIDATES[number]) => createUniqueContentKey("closer", "question-answer", [entry.prompt, entry.answer, entry.unit]);
@@ -370,7 +444,7 @@ export async function resolveCloserForDate(
     validate: validateNumericCandidate, seed: `${date}:${seed}:ballpark-replenishment`
   });
   const selection = await selectFromContentUniverse({
-    gameSeed: String(seed),
+    gameSeed: `${seed}:${retryOffset}`,
     contentSource: "verified-structured-numeric-inventory",
     softCooldownLabel: "recent numeric-trivia category cooldown",
     dateKey: date,
@@ -382,7 +456,7 @@ export async function resolveCloserForDate(
       getHardKeys: (entry) => [questionKey(entry), topicAnswerKey(entry)],
       getSoftKeys: (entry) => [categoryKey(entry)],
       validateCandidate: (entry) => ({ valid: validateNumericCandidate(entry), reason: "Numeric fact validation failed" }),
-      selectCandidate: seededUniverseSelector(questionKey)
+      selectCandidate: (candidates, gameSeed) => qualityWeightedSelector(candidates, gameSeed)
     }
   });
   selection.diagnostics.candidatesGeneratedCurrentRequest = inventory.generated;
@@ -390,7 +464,8 @@ export async function resolveCloserForDate(
   const entry = selection.selected;
   if (!entry) throw new Error(`In the Ballpark exhausted every configured strategy. Prepared structured candidates: ${BALLPARK_CANDIDATES.length}; ${selection.diagnostics.warnings.join(" ")}`);
   const uniqueContentKey = questionKey(entry);
-  const secondaryKeys = [topicAnswerKey(entry), categoryKey(entry)];
+  const secondaryKeys = [topicAnswerKey(entry)];
+  const cooldownKeys = [categoryKey(entry)];
   const existingKeys: string[] = [];
   const scoringProfile = inferCloserScoringProfile(entry);
   const puzzle: CloserPuzzle = {
@@ -404,6 +479,11 @@ export async function resolveCloserForDate(
     acceptableRangeNote: entry.acceptableRangeNote,
     sourceNote: entry.sourceNote,
     difficulty: entry.difficulty,
+    difficultyTier: entry.difficultyTier,
+    qualityScore: entry.qualityScore,
+    recognizabilityScore: entry.qualityDimensions.recognizability,
+    unitFamiliarity: entry.qualityDimensions.unitFamiliarity,
+    answerStability: entry.qualityDimensions.answerStability,
     scoringProfile,
     toleranceType: scoringProfile === "small-integer" || scoringProfile === "year" || scoringProfile === "percentage" ? "absolute" : "percent"
   } as CloserPuzzle;
@@ -420,7 +500,7 @@ export async function resolveCloserForDate(
     ,
     uniqueContentKey,
     secondaryKeys,
-    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: 0 }),
+    duplicateCheck: duplicateCheck({ uniqueContentKey, existingKeys, retryCount: retryOffset }),
     repeatStatus: {
       checked: true,
       passed: true,
@@ -429,8 +509,18 @@ export async function resolveCloserForDate(
       provider: "dynamodb-used-content-registry"
     }
   });
+  const closerValidation = validateCloserPuzzle(puzzle);
+  if (!closerValidation.valid) throw new Error(`In the Ballpark final validation failed: ${closerValidation.errors.join("; ")}`);
+  Object.assign(selection.diagnostics, {
+    selectedCategory: entry.category,
+    selectedDifficultyTier: entry.difficultyTier,
+    selectedQualityScore: entry.qualityScore,
+    selectedRecognizabilityScore: entry.qualityDimensions.recognizability,
+    categoryDistribution: Object.fromEntries([...new Set(inventory.candidates.map((candidate) => candidate.category))]
+      .map((category) => [category, inventory.candidates.filter((candidate) => candidate.category === category).length]))
+  });
   const envelope = deterministicEnvelope({
-    gameId: "closer", date, puzzle, validation: validateCloserPuzzle(puzzle),
+    gameId: "closer", date, puzzle, validation: closerValidation,
     topic: puzzle.category, answer: String(puzzle.answer), sourceNotes: [puzzle.sourceNote],
     generator: "Prepared verified structured-data inventory; model-assisted batch replenishment",
     contentUniverse: selection.diagnostics
@@ -443,6 +533,7 @@ export async function resolveCloserForDate(
     meta: {
       uniqueContentKey,
       secondaryKeys,
+      cooldownKeys,
       prompt: puzzle.prompt,
       answer: `${puzzle.answer} ${puzzle.unit}`,
       contentType: "numeric-trivia",
@@ -451,9 +542,20 @@ export async function resolveCloserForDate(
   });
 }
 
-export async function resolveNeedleDropForDate(date: string) {
+export async function resolveCloserForDate(
+  date: string,
+  force = false
+): Promise<GeneratedContentEnvelope<CloserPuzzle>> {
+  return retryCandidateCollisions({
+    gameId: "closer",
+    dateKey: date,
+    operation: (attempt) => resolveCloserAttempt(date, force, attempt)
+  });
+}
+
+async function resolveNeedleDropAttempt(date: string) {
   const persisted = await getPersistedPuzzle<Awaited<ReturnType<typeof resolveNeedleDropDiagnostic>>>("needledrop", date);
-  if (persisted) return persisted;
+  if (persisted) return { ...persisted, cacheHit: true };
   const result = await resolveNeedleDropDiagnostic(date);
   const puzzle = result.puzzle;
   if (!puzzle.uniqueContentKey) throw new Error("Rewind did not produce a content key.");
@@ -464,12 +566,22 @@ export async function resolveNeedleDropForDate(date: string) {
     contentHash: contentHashFromKey(puzzle.uniqueContentKey),
     meta: {
       uniqueContentKey: puzzle.uniqueContentKey,
-      secondaryKeys: puzzle.secondaryKeys ?? (puzzle.musicUsedContentKey ? [puzzle.musicUsedContentKey] : []),
+      secondaryKeys: puzzle.musicUsedContentKey ? [puzzle.musicUsedContentKey] : [],
+      cooldownKeys: (puzzle.secondaryKeys ?? []).filter((key) => key.includes("needledrop:artist-soft:")),
       prompt: `${puzzle.title} — ${puzzle.artist}`,
       answer: `${puzzle.title} — ${puzzle.artist}`,
       contentType: "song",
       source: "Billboard archive + iTunes Search API"
     }
+  });
+}
+
+export async function resolveNeedleDropForDate(date: string) {
+  return retryCandidateCollisions({
+    gameId: "needledrop",
+    dateKey: date,
+    operation: () => resolveNeedleDropAttempt(date),
+    onCollision: () => clearNeedleDropResolutionCache(date)
   });
 }
 
@@ -513,14 +625,14 @@ export async function resolveSingAlongForDate(date: string): Promise<SingAlongPu
   });
   const entry = selection.selected;
   if (!entry) {
-    const discovery = await discoverSingAlongMetadata(`${date}:${seed}`, 4).catch((error) => ({ discovered: 0, pendingReview: 0, apiCalls: 4, errors: [error instanceof Error ? error.message : "discovery failed"] }));
-    throw new Error(`Sing Along exhausted every configured strategy. Reviewed timing records: ${timedValid.length}; playable previews: ${playable.length}; preview rejected: ${previewRejected}; duplicate/cooldown remaining: ${selection.diagnostics.remainingCandidates}; expanded discovery: ${discovery.discovered}; queued for timing review: ${discovery.pendingReview}; provider errors: ${discovery.errors.join(" | ") || "none"}. Exact song and lyric duplicates were not relaxed.`);
+    throw new Error(`Sing Along is retired. No new lyric inventory is generated. Legacy reviewed records: ${timedValid.length}; playable previews: ${playable.length}; preview rejected: ${previewRejected}; duplicate/cooldown remaining: ${selection.diagnostics.remainingCandidates}.`);
   }
   const track = trackByCandidate.get(singAlongCandidateId(entry));
   if (!track) throw new Error("Sing Along selected a candidate whose preview disappeared after validation.");
   const [uniqueContentKey, ...hardSecondaryKeys] = singAlongHardKeys(entry);
   const musicUsedContentKey = createMusicUsedContentKey(entry.artist, entry.title);
-  const secondaryKeys = [...hardSecondaryKeys, artistSoftKey(entry)];
+  const secondaryKeys = hardSecondaryKeys;
+  const cooldownKeys = [artistSoftKey(entry)];
     const allAccepted = [entry.acceptedLyric, ...entry.alternateAcceptedLyrics];
     const puzzle: SingAlongPuzzle = {
       gameId: "sing-along",
@@ -594,6 +706,7 @@ export async function resolveSingAlongForDate(date: string): Promise<SingAlongPu
       meta: {
         uniqueContentKey,
         secondaryKeys,
+        cooldownKeys,
         prompt: entry.setupLyricExcerpt,
         answer: entry.answerLyricExcerpt,
         contentType: "song-lyric",
