@@ -416,13 +416,16 @@ export async function publishDailyPuzzleWithUsedContent<T>({
   dateKey,
   puzzle,
   contentHash = "",
-  usedContentRecords
+  usedContentRecords,
+  conditionalAbsentUsedContentKeys = []
 }: {
   gameId: string;
   dateKey: string;
   puzzle: T;
   contentHash?: string;
   usedContentRecords: UsedContentRecord[];
+  /** Additional used-content keys that must still be absent when this transaction commits. */
+  conditionalAbsentUsedContentKeys?: string[];
 }): Promise<{ puzzle: T; created: boolean; diagnostics: AtomicPublishDiagnostics }> {
   await ensureTable(DAILY_CONTENT_TABLE, "dateGameKey");
   await ensureTable(USED_CONTENT_TABLE, "uniqueContentKey");
@@ -430,6 +433,10 @@ export async function publishDailyPuzzleWithUsedContent<T>({
   const dailyKey = dateGameKey(gameId, dateKey);
   const permanentRecords = usedContentRecords.filter((record) => record.reservationMode === "permanent");
   const cooldownRecords = usedContentRecords.filter((record) => record.reservationMode === "cooldown");
+  const uniqueRecords = dedupeUsedContentRecords(usedContentRecords);
+  const writtenKeys = new Set(uniqueRecords.map((record) => record.uniqueContentKey));
+  const conditionalAbsentKeys = dedupeItemKeys(conditionalAbsentUsedContentKeys)
+    .filter((key) => !writtenKeys.has(key));
   const existing = await getPersistedPuzzle<T>(gameId, dateKey);
   if (existing) {
     return {
@@ -439,7 +446,7 @@ export async function publishDailyPuzzleWithUsedContent<T>({
         dateGameKey: dailyKey,
         dailyContentTable: DAILY_CONTENT_TABLE,
         usedContentTable: USED_CONTENT_TABLE,
-        attemptedUsedContentKeys: usedContentRecords.length,
+        attemptedUsedContentKeys: uniqueRecords.length + conditionalAbsentKeys.length,
         attemptedPermanentKeys: permanentRecords.length,
         attemptedCooldownKeys: cooldownRecords.length,
         dynamoDbWrite: "existing-daily-returned",
@@ -449,9 +456,8 @@ export async function publishDailyPuzzleWithUsedContent<T>({
   }
 
   const now = new Date().toISOString();
-  const uniqueRecords = dedupeUsedContentRecords(usedContentRecords);
-  if (uniqueRecords.length > 98) {
-    throw new Error(`Atomic publish for ${gameId} has ${uniqueRecords.length} used-content records; DynamoDB transactions allow at most 98 plus the daily puzzle and inventory counter.`);
+  if (uniqueRecords.length + conditionalAbsentKeys.length > 98) {
+    throw new Error(`Atomic publish for ${gameId} has ${uniqueRecords.length} used-content writes and ${conditionalAbsentKeys.length} conditional reservations; DynamoDB transactions allow at most 98 plus the daily puzzle and inventory counter.`);
   }
 
   try {
@@ -481,6 +487,13 @@ export async function publishDailyPuzzleWithUsedContent<T>({
             ExpressionAttributeValues: { ":gameId": s(gameId), ":updatedAt": s(now), ":one": { N: "1" } }
           }
         },
+        ...conditionalAbsentKeys.map((uniqueContentKey) => ({
+          ConditionCheck: {
+            TableName: USED_CONTENT_TABLE,
+            Key: { uniqueContentKey: s(uniqueContentKey) },
+            ConditionExpression: "attribute_not_exists(uniqueContentKey)"
+          }
+        })),
         ...uniqueRecords.map((record) => ({
           Put: {
             TableName: USED_CONTENT_TABLE,
@@ -499,7 +512,7 @@ export async function publishDailyPuzzleWithUsedContent<T>({
         dateGameKey: dailyKey,
         dailyContentTable: DAILY_CONTENT_TABLE,
         usedContentTable: USED_CONTENT_TABLE,
-        attemptedUsedContentKeys: uniqueRecords.length,
+        attemptedUsedContentKeys: uniqueRecords.length + conditionalAbsentKeys.length,
         attemptedPermanentKeys: uniqueRecords.filter((record) => record.reservationMode === "permanent").length,
         attemptedCooldownKeys: uniqueRecords.filter((record) => record.reservationMode === "cooldown").length,
         dynamoDbWrite: "created",
@@ -518,7 +531,7 @@ export async function publishDailyPuzzleWithUsedContent<T>({
             dateGameKey: dailyKey,
             dailyContentTable: DAILY_CONTENT_TABLE,
             usedContentTable: USED_CONTENT_TABLE,
-            attemptedUsedContentKeys: uniqueRecords.length,
+            attemptedUsedContentKeys: uniqueRecords.length + conditionalAbsentKeys.length,
             attemptedPermanentKeys: uniqueRecords.filter((record) => record.reservationMode === "permanent").length,
             attemptedCooldownKeys: uniqueRecords.filter((record) => record.reservationMode === "cooldown").length,
             dynamoDbWrite: "existing-daily-returned",
@@ -529,7 +542,7 @@ export async function publishDailyPuzzleWithUsedContent<T>({
       const permanentKeys = uniqueRecords
         .filter((record) => record.reservationMode === "permanent")
         .map((record) => record.uniqueContentKey);
-      const conflictingKeys = await checkUsedContentKeys(permanentKeys);
+      const conflictingKeys = await checkUsedContentKeys([...permanentKeys, ...conditionalAbsentKeys]);
       if (conflictingKeys.length) throw new CandidateContentCollisionError(gameId, dateKey, conflictingKeys);
 
       // A same-date transaction winner can become visible just after the first strongly consistent read.
@@ -542,7 +555,7 @@ export async function publishDailyPuzzleWithUsedContent<T>({
             dateGameKey: dailyKey,
             dailyContentTable: DAILY_CONTENT_TABLE,
             usedContentTable: USED_CONTENT_TABLE,
-            attemptedUsedContentKeys: uniqueRecords.length,
+            attemptedUsedContentKeys: uniqueRecords.length + conditionalAbsentKeys.length,
             attemptedPermanentKeys: permanentKeys.length,
             attemptedCooldownKeys: uniqueRecords.length - permanentKeys.length,
             dynamoDbWrite: "existing-daily-returned",

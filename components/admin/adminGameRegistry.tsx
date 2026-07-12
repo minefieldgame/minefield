@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import AdminNeedleDropPreview from "@/components/admin/AdminNeedleDropPreview";
 import AdminOddOneOutPreview, { type AdminOddOneOutPreviewData } from "@/components/admin/AdminOddOneOutPreview";
+import AdminVaultbreakPreview from "@/components/admin/AdminVaultbreakPreview";
 import AdminSingAlongPreview from "@/components/admin/AdminSingAlongPreview";
 import AdminTopTenPreview from "@/components/admin/AdminTopTenPreview";
 import AdminSpellDropPreview from "@/components/admin/AdminSpellDropPreview";
@@ -22,6 +23,10 @@ function NeedleDropModule({ data, onRegenerate }: AdminGamePreviewProps) {
 function OddOneOutModule({ data, onRegenerate }: AdminGamePreviewProps) {
   const games = data.games as typeof data.games & { oddOneOut?: AdminOddOneOutPreviewData };
   return <AdminOddOneOutPreview preview={games.oddOneOut} onRegenerate={onRegenerate} />;
+}
+
+function VaultbreakModule({ data, onRegenerate }: AdminGamePreviewProps) {
+  return <AdminVaultbreakPreview preview={data.games.vaultbreak} onRegenerate={onRegenerate} />;
 }
 
 function SingAlongModule({ data }: AdminGamePreviewProps) {
@@ -73,6 +78,11 @@ export const adminGameRegistry: Array<{
     gameId: "odd-one-out",
     displayName: "Odd One Out",
     AdminPreviewComponent: OddOneOutModule
+  },
+  {
+    gameId: "vaultbreak",
+    displayName: "Vaultbreak",
+    AdminPreviewComponent: VaultbreakModule
   },
   {
     gameId: "ranked-top-5",

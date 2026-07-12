@@ -40,10 +40,10 @@ export default function GameShell({ embedded = false, onComplete, date, storageS
   const [showStats, setShowStats] = useState(false);
 
   function chartContext(puzzle: DailyPuzzle) {
-    const currentYear = Number(puzzle.puzzleDate.slice(0, 4));
-    const yearsAgo = Math.max(0, currentYear - puzzle.chartYear);
-    const chartIssueDate = puzzle.chartSourceDate ?? puzzle.chartDate;
-    return `Today’s track was #${puzzle.chartPosition} on the Billboard Hot 100 chart dated ${formatChartDate(chartIssueDate)}${yearsAgo ? ` — ${yearsAgo} years ago` : ""}.`;
+    const originalRelease = puzzle.originalReleaseYear
+      ? ` Original release year: ${puzzle.originalReleaseYear}.`
+      : " Original release year unavailable.";
+    return `Appeared on the Billboard Hot 100 during this week in ${puzzle.chartYear} at #${puzzle.chartPosition}.${originalRelease}`;
   }
 
   const loadPuzzle = useCallback(async () => {

@@ -38,11 +38,14 @@ import { CONTENT_INVENTORY_POLICY } from "@/lib/content/inventoryPolicy";
 import { getValidatedSingAlongCandidates, singAlongCandidateId, singAlongHardKeys } from "@/lib/content/singAlongInventory";
 import { validateSingAlongTimingCandidate } from "@/lib/content/candidateValidation";
 import { replenishModelCandidates } from "@/lib/content/modelReplenishment";
+import { buildCooldownWindowKeys, datedCooldownKey } from "@/lib/content/publishSemantics";
+import { REWIND_HOLIDAY_COOLDOWN_DAYS } from "@/lib/content/rewindQuality";
 
 type DuplicateMeta = {
   uniqueContentKey: string;
   secondaryKeys: string[];
   cooldownKeys?: string[];
+  conditionalAbsentUsedContentKeys?: string[];
   prompt: string;
   answer: string;
   contentType: string;
@@ -169,6 +172,7 @@ async function persistAcceptedPuzzle<TPuzzle>({
     dateKey: date,
     puzzle,
     contentHash,
+    conditionalAbsentUsedContentKeys: meta.conditionalAbsentUsedContentKeys,
     usedContentRecords: records
   });
   return published.created
@@ -559,6 +563,14 @@ async function resolveNeedleDropAttempt(date: string) {
   const result = await resolveNeedleDropDiagnostic(date);
   const puzzle = result.puzzle;
   if (!puzzle.uniqueContentKey) throw new Error("Rewind did not produce a content key.");
+  const cooldownKeys = (puzzle.secondaryKeys ?? []).filter((key) =>
+    key.includes("needledrop:artist-soft:") || key.includes("needledrop:seasonal-soft:")
+  );
+  const seasonalBaseKey = cooldownKeys.find((key) => key.includes("needledrop:seasonal-soft:"));
+  const seasonalWriteKey = seasonalBaseKey ? datedCooldownKey(seasonalBaseKey, date) : null;
+  const seasonalReservationChecks = seasonalBaseKey
+    ? buildCooldownWindowKeys(seasonalBaseKey, date, REWIND_HOLIDAY_COOLDOWN_DAYS).filter((key) => key !== seasonalWriteKey)
+    : [];
   return persistAcceptedPuzzle({
     gameId: "needledrop",
     date,
@@ -567,7 +579,8 @@ async function resolveNeedleDropAttempt(date: string) {
     meta: {
       uniqueContentKey: puzzle.uniqueContentKey,
       secondaryKeys: puzzle.musicUsedContentKey ? [puzzle.musicUsedContentKey] : [],
-      cooldownKeys: (puzzle.secondaryKeys ?? []).filter((key) => key.includes("needledrop:artist-soft:")),
+      cooldownKeys: cooldownKeys.map((key) => key === seasonalBaseKey ? seasonalWriteKey! : key),
+      conditionalAbsentUsedContentKeys: seasonalReservationChecks,
       prompt: `${puzzle.title} — ${puzzle.artist}`,
       answer: `${puzzle.title} — ${puzzle.artist}`,
       contentType: "song",

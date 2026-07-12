@@ -10,6 +10,13 @@ import {
 } from "../lib/content/preparedInventories";
 import { simulateDailyInventory, type SimulationCandidate } from "../lib/content/inventorySimulation";
 import { ACTIVE_GAME_IDS } from "../lib/gameDisplay";
+import {
+  generateVaultbreakPuzzle,
+  solveVaultbreak,
+  VAULTBREAK_PROCEDURAL_HEALTH_BASELINE,
+  vaultbreakExactPuzzleKey,
+  vaultbreakNormalizedClueSetKey
+} from "../games/vaultbreak/logic";
 
 const fixtures = (
   prefix: string,
@@ -26,6 +33,22 @@ const fixtures = (
 
 const eligibleBuzzwords = BUZZWORD_CANDIDATES.filter(validateBuzzwordCandidate);
 const eligibleLandmarks = LANDMARKS.filter(isLandmarkEligible);
+const vaultbreakPuzzles = Array.from({ length: 365 }, (_, index) => {
+  const date = new Date(Date.UTC(2027, 0, 1 + index)).toISOString().slice(0, 10);
+  const puzzle = generateVaultbreakPuzzle(date);
+  assert.deepEqual(solveVaultbreak(puzzle.clues), [puzzle.secretCode], `Vaultbreak ${date} must remain solver-unique`);
+  return puzzle;
+});
+assert.equal(new Set(vaultbreakPuzzles.map((puzzle) => vaultbreakNormalizedClueSetKey(puzzle.clues))).size, 365, "Vaultbreak must not repeat normalized clue sets");
+assert.equal(new Set(vaultbreakPuzzles.map((puzzle) => vaultbreakExactPuzzleKey(puzzle.secretCode, puzzle.clues))).size, 365, "Vaultbreak must not repeat exact puzzles");
+const vaultbreakDifficultyDistribution = vaultbreakPuzzles.reduce<Record<string, number>>((counts, puzzle) => {
+  counts[puzzle.difficulty] = (counts[puzzle.difficulty] ?? 0) + 1;
+  return counts;
+}, {});
+const vaultbreakAverageAttempts = Number((vaultbreakPuzzles.reduce((sum, puzzle) => sum + puzzle.diagnostics.generationAttempts, 0) / vaultbreakPuzzles.length).toFixed(3));
+assert.deepEqual(vaultbreakDifficultyDistribution, VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.difficultyDistribution, "Vaultbreak health difficulty baseline must match the release simulation");
+assert.equal(vaultbreakAverageAttempts, VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.averageGenerationAttempts, "Vaultbreak average-attempt baseline must match the release simulation");
+assert.equal(Math.max(...vaultbreakPuzzles.map((puzzle) => puzzle.diagnostics.generationAttempts)), VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.maximumGenerationAttemptsObserved, "Vaultbreak max-attempt baseline must match the release simulation");
 
 const runs = [
   simulateDailyInventory({
@@ -44,6 +67,17 @@ const runs = [
     })),
     cooldownDays: 21,
     qualityTierWeights: { approachable: 6, standard: 4, challenging: 1 }
+  }),
+  simulateDailyInventory({
+    gameId: "vaultbreak",
+    candidates: vaultbreakPuzzles.map((puzzle) => ({
+      id: vaultbreakExactPuzzleKey(puzzle.secretCode, puzzle.clues),
+      softTopic: puzzle.duplicateKeys.cluePatternKey,
+      category: "logic",
+      qualityTier: puzzle.difficulty
+    })),
+    cooldownDays: 0,
+    qualityTierWeights: { approachable: 8, standard: 9, hard: 3 }
   }),
   simulateDailyInventory({
     gameId: "ranked-top-5",

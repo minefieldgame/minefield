@@ -8,14 +8,18 @@ import { createMusicUsedContentKey, createUniqueContentKey } from "@/lib/content
 import { checkUsedContentKeys, getUsedContentKeyDates } from "@/lib/content/persistence";
 import {
   aggregateRewindInventoryMetrics,
+  isRewindSeasonalHolidaySong,
   orderRewindCandidatesByRecognizability,
+  REWIND_HOLIDAY_COOLDOWN_DAYS,
   REWIND_INVENTORY_METRIC_DEFINITIONS,
+  resolveRewindOriginalReleaseProvenance,
   scoreRewindRecognizability,
   summarizeRewindRecognizabilityTiers,
   validateRewindOriginalRecording,
   type RewindInventoryMetrics,
   type RewindRecognizability
 } from "@/lib/content/rewindQuality";
+import { buildCooldownWindowKeys } from "@/lib/content/publishSemantics";
 
 type DiscoveredSongCandidate = {
   year: number;
@@ -34,6 +38,7 @@ type SongCandidate = DiscoveredSongCandidate & {
   distinctChartIssues: number;
   artistDistinctHits: number;
   artistChartAppearances: number;
+  seasonalHoliday: boolean;
   recognizability: RewindRecognizability;
 };
 
@@ -41,6 +46,9 @@ type PreviewAttempt = SongCandidate & {
   available: boolean;
   rejectionReason?: string;
   originalRecordingConfidence?: number;
+  recordingMatchConfidence?: number;
+  versionRejectionReason?: string;
+  alternateRecordingSignals?: string[];
 };
 
 type PreviewResult = {
@@ -49,6 +57,8 @@ type PreviewResult = {
   reason?: string;
   rejectionKind?: "preview" | "recording" | "recognizability" | "provider";
   originalRecordingConfidence?: number;
+  versionRejectionReason?: string;
+  alternateRecordingSignals?: string[];
   previewPlayable?: boolean;
 };
 
@@ -92,6 +102,15 @@ type ResolutionDiagnostics = {
   resolvedBillboardIssueDate: string;
   chartDateDeltaDays: number;
   fallbackWindowDays: number;
+  originalReleaseYear: number | null;
+  originalReleaseYearStatus: string;
+  providerReleaseDate: string | null;
+  recordingMatchConfidence: number;
+  versionRejectionReason: string;
+  selectedSeasonalHoliday: boolean;
+  seasonalCooldownDays: number;
+  seasonalCooldownRejectionCount: number;
+  seasonalCooldownRelaxed: boolean;
 };
 
 type Resolution = { puzzle: DailyPuzzle; diagnostics: ResolutionDiagnostics };
@@ -167,6 +186,7 @@ export async function fetchDateAnchoredCandidateUniverse(puzzleDate: string, see
       distinctChartIssues,
       artistDistinctHits,
       artistChartAppearances: artistAppearances,
+      seasonalHoliday: isRewindSeasonalHolidaySong(representative.title),
       recognizability: scoreRewindRecognizability({
         chartPosition: representative.chartPosition,
         chartAppearances,
@@ -204,13 +224,15 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
   );
   const previewAvailability: PreviewAttempt[] = [];
   let providerApiCalls = 0;
-  let selected: { candidate: SongCandidate; track: TrackPreview } | null = null;
+  let selected: { candidate: SongCandidate; track: TrackPreview; recordingMatchConfidence: number } | null = null;
   const batchSizes: number[] = [];
   let duplicateKeysChecked = 0;
   let duplicateRejected = 0;
   let duplicateCheckBatches = 0;
   let finalCandidateCount = 0;
   let cooldownRejectionCount = 0;
+  let seasonalCooldownRejectionCount = 0;
+  const seasonalCooldownRelaxed = false;
   let originalRecordingRejectionCount = metadataRejected.length;
   let previewRecognizabilityRejectionCount = 0;
   const previouslyUsedTrackKeys = new Set<string>();
@@ -240,14 +262,30 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
     duplicateRejected += sourceBatch.length - unused.length;
     finalCandidateCount += unused.length;
     const artistKeys = unused.map((candidate) => createUniqueContentKey("needledrop", "artist-soft", [candidate.artist]));
-    const artistDates = await getUsedContentKeyDates(artistKeys);
-    const cutoff = Date.parse(`${puzzleDate}T12:00:00Z`) - 45 * 86_400_000;
+    const seasonalCooldownKey = createUniqueContentKey("needledrop", "seasonal-soft", ["holiday"]);
+    const seasonalCooldownWindowKeys = buildCooldownWindowKeys(seasonalCooldownKey, puzzleDate, REWIND_HOLIDAY_COOLDOWN_DAYS);
+    const cooldownKeys = sourceBatch.some((candidate) => candidate.seasonalHoliday)
+      ? [...artistKeys, ...seasonalCooldownWindowKeys]
+      : artistKeys;
+    const artistDates = await getUsedContentKeyDates(cooldownKeys);
+    const selectedDateTime = Date.parse(`${puzzleDate}T12:00:00Z`);
+    const cutoff = selectedDateTime - 45 * 86_400_000;
     const strictUnused = unused.filter((candidate) => {
       const usedDate = artistDates.get(createUniqueContentKey("needledrop", "artist-soft", [candidate.artist]));
-      return !usedDate || Date.parse(`${usedDate}T12:00:00Z`) < cutoff;
+      const usedDateTime = usedDate ? Date.parse(`${usedDate}T12:00:00Z`) : Number.NaN;
+      if (Number.isFinite(usedDateTime) && usedDateTime <= selectedDateTime && usedDateTime >= cutoff) return false;
+      if (candidate.seasonalHoliday && seasonalCooldownWindowKeys.some((key) => artistDates.has(key))) {
+        seasonalCooldownRejectionCount += 1;
+        return false;
+      }
+      return true;
     });
     cooldownRejectionCount += unused.length - strictUnused.length;
-    const previewCandidates = strictUnused.length ? strictUnused : unused;
+    const nonSeasonalFallback = unused.filter((candidate) => !candidate.seasonalHoliday);
+    const previewCandidates = strictUnused.length ? strictUnused : nonSeasonalFallback;
+    if (!previewCandidates.length && unused.some((candidate) => candidate.seasonalHoliday)) {
+      errors.push(`Holiday candidates remained blocked by the ${REWIND_HOLIDAY_COOLDOWN_DAYS}-day seasonal cap; trying the next source batch.`);
+    }
 
     for (let index = 0; index < previewCandidates.length && !selected; index += 12) {
       const batch = previewCandidates.slice(index, index + 12);
@@ -272,7 +310,9 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
               track: null,
               reason: recording.rejectionReasons.join(" "),
               rejectionKind: "recording",
-              originalRecordingConfidence: recording.confidence
+              originalRecordingConfidence: recording.confidence,
+              versionRejectionReason: recording.rejectionReasons.join(" "),
+              alternateRecordingSignals: recording.alternateRecordingSignals
             };
           }
           const recognizability = scoreRewindRecognizability({
@@ -297,7 +337,14 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
               previewPlayable: true
             };
           }
-          return { candidate: scoredCandidate, track, originalRecordingConfidence: recording.confidence, previewPlayable: true };
+          return {
+            candidate: scoredCandidate,
+            track,
+            originalRecordingConfidence: recording.confidence,
+            versionRejectionReason: "No alternate-version marker detected.",
+            alternateRecordingSignals: recording.alternateRecordingSignals,
+            previewPlayable: true
+          };
         } catch (error) {
           return { candidate, track: null, reason: error instanceof Error ? error.message : "preview provider failed", rejectionKind: "provider" };
         }
@@ -307,7 +354,10 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
           ...result.candidate,
           available: Boolean(result.track),
           rejectionReason: result.reason,
-          originalRecordingConfidence: result.originalRecordingConfidence
+          originalRecordingConfidence: result.originalRecordingConfidence,
+          recordingMatchConfidence: result.originalRecordingConfidence,
+          versionRejectionReason: result.versionRejectionReason,
+          alternateRecordingSignals: result.alternateRecordingSignals
         });
         if (result.rejectionKind === "recording") originalRecordingRejectionCount += 1;
         if (result.rejectionKind === "recognizability") previewRecognizabilityRejectionCount += 1;
@@ -315,19 +365,23 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
         if (result.track) {
           qualityApprovedTrackKeys.add(result.candidate.musicIdentityKey);
           unusedEligibleTrackKeys.add(result.candidate.musicIdentityKey);
-          if (!selected) selected = { candidate: result.candidate, track: result.track };
+          if (!selected) selected = {
+            candidate: result.candidate,
+            track: result.track,
+            recordingMatchConfidence: result.originalRecordingConfidence ?? 0
+          };
         }
       }
       if (batchSizes.length >= 8 && !selected) errors.push(`No playable result in ${batchSizes.reduce((sum, size) => sum + size, 0)} preview-validated candidates; expanded search continues.`);
     }
   }
 
-  const finalSelection = selected as { candidate: SongCandidate; track: TrackPreview } | null;
+  const finalSelection = selected as { candidate: SongCandidate; track: TrackPreview; recordingMatchConfidence: number } | null;
   if (!finalSelection) {
     throw new Error(`Rewind exhausted all configured sources. Chart issues: ${universe.issueCount}; discovered unique tracks: ${universe.candidates.length}; metadata rejected: ${metadataRejected.length}; recognizability rejected: ${recognizabilityRejected.length}; duplicate rejected: ${duplicateRejected}; previews tested: ${previewAvailability.length}; preview rejected: ${previewAvailability.filter((entry) => !entry.available).length}; provider errors: ${errors.join(" | ") || "none"}.`);
   }
 
-  const { candidate: song, track } = finalSelection;
+  const { candidate: song, track, recordingMatchConfidence } = finalSelection;
   const inventoryMetrics = aggregateRewindInventoryMetrics({
     discoveryProviderResponsesExamined: universe.providerResponsesExamined,
     previewProviderResponsesExamined: previewAvailability.length,
@@ -343,6 +397,9 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
   const uniqueContentKey = createUniqueContentKey("rewind-song", "song", [song.artist, song.title]);
   const musicUsedContentKey = createMusicUsedContentKey(song.artist, song.title);
   const artistCooldownKey = createUniqueContentKey("needledrop", "artist-soft", [song.artist]);
+  const seasonalCooldownKey = createUniqueContentKey("needledrop", "seasonal-soft", ["holiday"]);
+  const releaseProvenance = resolveRewindOriginalReleaseProvenance(track);
+  const originalReleaseYear = releaseProvenance.year ?? undefined;
   const puzzle: DailyPuzzle = {
     id: puzzleDate,
     number: puzzleNumber(puzzleDate),
@@ -351,11 +408,13 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
     chartSourceDate: song.chartDate,
     chartYear: song.year,
     chartPosition: song.chartPosition,
+    originalReleaseYear,
+    originalReleaseYearSource: releaseProvenance.source ?? undefined,
     title: song.title,
     artist: song.artist,
     track,
     uniqueContentKey,
-    secondaryKeys: [musicUsedContentKey, artistCooldownKey],
+    secondaryKeys: [musicUsedContentKey, artistCooldownKey, ...(song.seasonalHoliday ? [seasonalCooldownKey] : [])],
     musicUsedContentKey,
     duplicateCheck: {
       duplicateDetected: false,
@@ -401,6 +460,8 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
       `${song.recognizability.tier} recognizability score ${song.recognizability.score}/100`,
       `chart recurrence evidence ${song.recognizability.components.chartRecurrence}/14`,
       `artist familiarity evidence ${song.recognizability.components.artistFamiliarity}/12`,
+      `recording identity confidence ${Math.round(recordingMatchConfidence * 100)}%`,
+      song.seasonalHoliday ? `seasonal selection subject to a ${REWIND_HOLIDAY_COOLDOWN_DAYS}-day global holiday cooldown` : "not classified as a seasonal holiday track",
       "playable original-recording preview validated"
     ].join("; "),
     recognizabilityTierDistribution: summarizeRewindRecognizabilityTiers(universe.candidates),
@@ -413,7 +474,16 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
     requestedHistoricalChartDate: song.requestedDate,
     resolvedBillboardIssueDate: song.chartDate,
     chartDateDeltaDays: song.chartDateDeltaDays,
-    fallbackWindowDays: song.fallbackWindowDays
+    fallbackWindowDays: song.fallbackWindowDays,
+    originalReleaseYear: originalReleaseYear ?? null,
+    originalReleaseYearStatus: releaseProvenance.status,
+    providerReleaseDate: releaseProvenance.providerReleaseDate,
+    recordingMatchConfidence,
+    versionRejectionReason: "None; the selected preview passed alternate-version metadata validation.",
+    selectedSeasonalHoliday: song.seasonalHoliday,
+    seasonalCooldownDays: REWIND_HOLIDAY_COOLDOWN_DAYS,
+    seasonalCooldownRejectionCount,
+    seasonalCooldownRelaxed
   };
   latestInventorySnapshot = {
     date: puzzleDate,

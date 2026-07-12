@@ -38,7 +38,29 @@ test("every eligible candidate has exactly five unique items and one in-set answ
     assert.equal(candidate.items.map(normalizeUsedContentText).filter((item) => item === normalizeUsedContentText(candidate.answer)).length, 1);
     assert.equal(candidate.matchingItems.length, 4);
     assert.ok(candidate.explanation.includes(";"), `${candidate.id} should explain its factual split in one sentence`);
+    assert.equal(validation.checks.answerAppearsExactlyOnce, true, `${candidate.id} must have one displayed answer`);
+    assert.equal(validation.checks.explanationNamesAnswer, true, `${candidate.id} explanation must agree with its answer`);
+    assert.ok(
+      normalizeUsedContentText(candidate.explanation).startsWith(normalizeUsedContentText(candidate.answer)),
+      `${candidate.id} explanation should begin by identifying ${candidate.answer}`
+    );
   }
+});
+
+test("bird example answers Bats and admin renders a separate labeled answer", () => {
+  const birdExample = ODD_ONE_OUT_INVENTORY.eligibleCandidates.find((candidate) =>
+    ["Owls", "Sparrows", "Flamingos", "Bats", "Eagles"].every((item) => candidate.items.includes(item))
+  );
+  assert.ok(birdExample, "Expected the production birds-versus-bat candidate");
+  assert.equal(birdExample.answer, "Bats");
+  assert.match(birdExample.explanation, /^Bats are mammals, not birds;/);
+
+  const admin = fs.readFileSync(new URL("../components/admin/AdminOddOneOutPreview.tsx", import.meta.url), "utf8");
+  assert.match(admin, /data-testid="odd-one-out-answer"/);
+  assert.match(admin, />Correct answer</);
+  assert.match(admin, /\{puzzle\.answer\}/);
+  assert.match(admin, /data-testid="odd-one-out-explanation"/);
+  assert.doesNotMatch(admin, /item === puzzle\.answer/);
 });
 
 test("item-set identity is order-independent and duplicate sets are rejected", () => {

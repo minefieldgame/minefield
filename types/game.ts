@@ -18,6 +18,11 @@ export type TrackPreview = {
   matchConfidence?: number;
   sourceProvider?: string;
   lastVerifiedAt?: string;
+  /** Provider catalog date. This is not necessarily the recording's original release date. */
+  providerReleaseDate?: string;
+  /** Populate only from explicit recording-level provenance; never infer from a reissue or collection date. */
+  originalReleaseYear?: number;
+  originalReleaseYearSource?: string;
 };
 
 export type SongSuggestion = {
@@ -42,6 +47,9 @@ export type DailyPuzzle = {
   chartSourceDate?: string;
   chartYear: number;
   chartPosition: number;
+  /** Distinct from chartYear. Absent means authoritative release provenance was unavailable. */
+  originalReleaseYear?: number;
+  originalReleaseYearSource?: string;
   title: string;
   artist: string;
   track: TrackPreview;

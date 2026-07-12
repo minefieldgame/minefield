@@ -25,6 +25,24 @@ export function dedupeItemKeys(keys: readonly string[]) {
   return [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
 }
 
+function shiftDateKey(dateKey: string, offset: number) {
+  const value = new Date(`${dateKey}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + offset);
+  return value.toISOString().slice(0, 10);
+}
+
+export function datedCooldownKey(baseKey: string, dateKey: string) {
+  return `${baseKey}:date:${dateKey}`;
+}
+
+/** Includes both sides so out-of-order admin generation obeys the same cooldown. */
+export function buildCooldownWindowKeys(baseKey: string, dateKey: string, cooldownDays: number) {
+  const radius = Math.max(0, Math.floor(cooldownDays) - 1);
+  return Array.from({ length: radius * 2 + 1 }, (_, index) =>
+    datedCooldownKey(baseKey, shiftDateKey(dateKey, index - radius))
+  );
+}
+
 export function dedupeKeyedItems<T>(items: readonly T[], getKey: (item: T) => string) {
   const byKey = new Map<string, T>();
   for (const item of items) {

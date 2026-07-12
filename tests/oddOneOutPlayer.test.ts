@@ -65,10 +65,11 @@ const puzzle: OddOneOutPuzzle = {
   }
 };
 
-test("active daily lineup replaces retired Sing Along in its exact slot", () => {
+test("active daily lineup includes Vaultbreak and keeps Sing Along retired", () => {
   assert.deepEqual(ACTIVE_GAME_IDS, [
     "needledrop",
     "odd-one-out",
+    "vaultbreak",
     "ranked-top-5",
     "spelldrop",
     "closer",
@@ -77,7 +78,7 @@ test("active daily lineup replaces retired Sing Along in its exact slot", () => 
     "minefield"
   ]);
   assert.equal(new Set<string>(ACTIVE_GAME_IDS).has("sing-along"), false);
-  assert.equal(PRELIMINARY_GAME_IDS.length, 7);
+  assert.equal(PRELIMINARY_GAME_IDS.length, 8);
   assert.equal(new Set<string>(PRELIMINARY_GAME_IDS).has("minefield"), false);
 });
 

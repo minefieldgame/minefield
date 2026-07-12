@@ -19,6 +19,7 @@ import {
 } from "../lib/content/preparedInventories";
 import { ACTIVE_GAME_IDS, PRELIMINARY_GAME_IDS } from "../lib/gameDisplay";
 import { createMusicUsedContentKey, createUniqueContentKey, normalizeUsedContentText } from "../lib/content/usedContentRegistry";
+import { ALL_VAULTBREAK_CODES, generateVaultbreakPuzzle, solveVaultbreak } from "../games/vaultbreak/logic";
 
 function unique(values: string[], label: string) {
   assert.equal(new Set(values).size, values.length, `${label} contains duplicate normalized keys`);
@@ -34,6 +35,11 @@ function distribution<T>(items: readonly T[], getValue: (item: T) => string) {
 }
 
 const eligibleBuzzwords = BUZZWORD_CANDIDATES.filter(validateBuzzwordCandidate);
+assert.equal(ALL_VAULTBREAK_CODES.length, 5_040, "Vaultbreak must enumerate the full no-repeat four-digit code space");
+for (const difficulty of ["approachable", "standard", "hard"] as const) {
+  const puzzle = generateVaultbreakPuzzle(`inventory-validation-${difficulty}`, difficulty);
+  assert.deepEqual(solveVaultbreak(puzzle.clues), [puzzle.secretCode], `${difficulty} Vaultbreak puzzle must have one solution`);
+}
 assert.ok(BUZZWORD_CANDIDATES.length >= 5_000, "Buzzword needs at least 5,000 prepared records");
 assert.ok(eligibleBuzzwords.length >= 4_000, "Buzzword needs at least 4,000 fully quality-approved records");
 unique(BUZZWORD_CANDIDATES.map((item) => normalizeUsedContentText(item.word)), "Buzzword inventory");
@@ -89,6 +95,7 @@ unique(SING_ALONG_CATALOG.map((item) => createMusicUsedContentKey(item.artist, i
 assert.deepEqual(ACTIVE_GAME_IDS, [
   "needledrop",
   "odd-one-out",
+  "vaultbreak",
   "ranked-top-5",
   "spelldrop",
   "closer",
@@ -125,6 +132,12 @@ console.log(JSON.stringify({
     rejected: ODD_ONE_OUT_INVENTORY.rejectedCount,
     categories: ODD_ONE_OUT_INVENTORY.categoryDistribution,
     difficulty: ODD_ONE_OUT_INVENTORY.difficultyDistribution
+  },
+  vaultbreak: {
+    proceduralCodeSpace: ALL_VAULTBREAK_CODES.length,
+    solverValidatedDifficulties: ["approachable", "standard", "hard"],
+    targetDifficultyPercent: { approachable: 40, standard: 45, hard: 15 },
+    timeLimit: false
   },
   postcard: {
     technical: LANDMARKS.length,

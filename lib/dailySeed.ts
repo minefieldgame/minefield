@@ -12,6 +12,7 @@ export const DAILY_SEED_VERSION = "v1";
 export const GAME_VERSIONS = {
   needledrop: "v1",
   "odd-one-out": "v1",
+  vaultbreak: "v1",
   "sing-along": "v2",
   "ranked-top-5": "v2",
   spelldrop: "v1",

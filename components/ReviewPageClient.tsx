@@ -13,7 +13,7 @@ import { formatChartDate, getPacificDateKey } from "@/lib/date";
 import { calculateDailySummary, loadGameProgress, loadMinefieldStats } from "@/lib/minefieldStorage";
 import { copyResultText, shareResult } from "@/lib/shareResult";
 import type { MinefieldSummary } from "@/types/minefield";
-import { GAME_DISPLAY } from "@/lib/gameDisplay";
+import { ACTIVE_GAME_IDS, GAME_DISPLAY } from "@/lib/gameDisplay";
 
 export default function ReviewPageClient({
   requestedDate,
@@ -35,7 +35,7 @@ export default function ReviewPageClient({
   useEffect(() => {
     setSummary(calculateDailySummary(
       loadGameProgress(date, mode === "admin-preview" ? "admin-preview" : undefined),
-      8
+      ACTIVE_GAME_IDS.length
     ));
     setReady(true);
   }, [date, mode]);
@@ -85,7 +85,7 @@ export default function ReviewPageClient({
         <main className="mx-auto min-h-[calc(100dvh-68px)] max-w-xl px-4 py-10">
           <section className="theme-surface rounded-[2rem] border p-7 text-center">
             <h1 className="text-2xl font-black text-slate-950 dark:text-white">Finish the board first</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-300">Daily answers unlock after all eight games are complete.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-300">Daily answers unlock after all nine games are complete.</p>
             <Link href="/" className="mt-5 inline-flex rounded-xl bg-violet px-6 py-3 font-extrabold text-white">Return to today’s board</Link>
           </section>
         </main>
@@ -96,6 +96,7 @@ export default function ReviewPageClient({
   const stats = mode === "admin-preview" ? { currentStreak: 0, maxStreak: 0 } : loadMinefieldStats();
   const prepResults = getPrepResults(summary);
   const prepScore = prepResults.reduce((total, result) => total + result.score, 0);
+  const prepMaxScore = prepResults.reduce((total, result) => total + result.maxScore, 0);
   const final = getFinalMinefield(summary);
   const minefield = final?.reviewData.type === "minefield" ? final.reviewData : null;
 
@@ -114,7 +115,7 @@ export default function ReviewPageClient({
         <section className="theme-surface rounded-2xl border p-5">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">Daily Prep Score</p>
           <p className="mt-1 text-3xl font-black text-slate-950 dark:text-white sm:text-4xl">
-            {prepScore}<span className="text-xl text-slate-400">/700</span>
+            {prepScore}<span className="text-xl text-slate-400">/{prepMaxScore}</span>
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {prepResults.map((result) => (

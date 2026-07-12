@@ -12,6 +12,7 @@ export type ITunesResult = {
   artworkUrl100?: string;
   previewUrl?: string;
   trackViewUrl?: string;
+  releaseDate?: string;
 };
 
 const verifiedTrackPreviewCache = new Map<string, TrackPreview>();
@@ -96,7 +97,8 @@ export function getBestITunesMatch(
     collectionId: item.collectionId,
     recordingIdentity: item.trackId ? `itunes:${item.trackId}` : undefined,
     matchConfidence: Math.min(1, best.score),
-    sourceProvider: "iTunes Search API"
+    sourceProvider: "iTunes Search API",
+    providerReleaseDate: item.releaseDate
   };
 }
 

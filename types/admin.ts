@@ -8,6 +8,7 @@ import type { resolveMeetMeHalfwayForDate, resolveLandmarkDropForDate } from "@/
 import type { SingAlongPuzzle } from "@/games/sing-along/types";
 import type { OddOneOutPuzzle } from "@/games/odd-one-out/types";
 import type { InventoryMetrics } from "@/lib/content/inventoryMetrics";
+import type { ResolvedVaultbreakPuzzle } from "@/lib/content/vaultbreakResolver";
 
 export type AdminResolverDiagnostics = {
   route: string;
@@ -55,6 +56,10 @@ export type AdminNeedleDropPreview =
           title: string;
           artist: string;
           available: boolean;
+          rejectionReason?: string;
+          recordingMatchConfidence?: number;
+          versionRejectionReason?: string;
+          alternateRecordingSignals?: string[];
         }>;
         finalSelectedSong: string;
         selectedDailyDate?: string;
@@ -67,6 +72,15 @@ export type AdminNeedleDropPreview =
         recognizabilityScore?: number;
         recognizabilityTier?: "iconic" | "mainstream" | "challenging" | "reject";
         eligibilityReason?: string;
+        originalReleaseYear?: number | null;
+        originalReleaseYearStatus?: string;
+        providerReleaseDate?: string | null;
+        recordingMatchConfidence?: number;
+        versionRejectionReason?: string;
+        selectedSeasonalHoliday?: boolean;
+        seasonalCooldownDays?: number;
+        seasonalCooldownRejectionCount?: number;
+        seasonalCooldownRelaxed?: boolean;
         errors: string[];
       };
       rawProviderResponse: unknown;
@@ -180,6 +194,7 @@ export type AdminPreviewResponse = {
   cacheKeys: {
     rankedTopTen: string;
     oddOneOut: string;
+    vaultbreak: string;
     singAlong: string;
     spellDrop: string;
     closer: string;
@@ -187,6 +202,7 @@ export type AdminPreviewResponse = {
   games: {
     needledrop: AdminNeedleDropPreview;
     oddOneOut: AdminOddOneOutPreview;
+    vaultbreak: AdminVaultbreakPreview;
     singAlong: AdminSingAlongPreview;
     topTen: AdminTopTenPreview;
     spellDrop: AdminSpellDropPreview;
@@ -240,6 +256,14 @@ export type AdminSingAlongPreview =
 
 export type AdminOddOneOutPreview =
   | { status: "ready"; puzzle: OddOneOutPuzzle; diagnostics: NonNullable<OddOneOutPuzzle["diagnostics"]> }
+  | { status: "error"; error: string };
+
+export type AdminVaultbreakPreview =
+  | {
+      status: "ready";
+      puzzle: ResolvedVaultbreakPuzzle;
+      diagnostics: ResolvedVaultbreakPuzzle["resolverDiagnostics"];
+    }
   | { status: "error"; error: string };
 
 export type AdminDynamicError = {

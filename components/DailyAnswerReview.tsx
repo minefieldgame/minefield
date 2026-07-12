@@ -95,6 +95,39 @@ export default function DailyAnswerReview({ summary }: { summary: MinefieldSumma
               </div>
             )}
 
+            {review.type === "vaultbreak" && (
+              <div className="mt-3">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span>{review.difficulty}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{review.opened ? "Vault opened" : `${review.exactDigits}/4 digits exact`}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{Math.floor(review.elapsedSeconds / 60)}:{String(review.elapsedSeconds % 60).padStart(2, "0")}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <ReviewValue label="Your code" value={review.submittedCode} />
+                  <ReviewValue label="Correct code" value={review.correctCode} />
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-2" aria-label={`${review.exactDigits} of 4 digits correct`}>
+                  {review.correctCode.split("").map((digit, index) => {
+                    const exact = review.submittedCode[index] === digit;
+                    return (
+                      <div key={index} className={`grid aspect-square place-items-center rounded-xl border text-lg font-black ${
+                        exact
+                          ? "border-emerald-300 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "border-slate-300 bg-slate-100 text-slate-500 dark:border-[#454c5a] dark:bg-[#292e38]"
+                      }`}>
+                        {digit}
+                      </div>
+                    );
+                  })}
+                </div>
+                <ol className="mt-3 space-y-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {review.explanation.map((step, index) => <li key={`${index}-${step}`}>{index + 1}. {step}</li>)}
+                </ol>
+              </div>
+            )}
+
             {review.type === "ranked-top-5" && (
               <div className="mt-3">
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{review.prompt}</p>

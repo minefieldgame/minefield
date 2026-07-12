@@ -24,6 +24,17 @@ export async function POST(request: NextRequest) {
   const before = await getInventoryOverview();
   const results = [];
   for (const game of before) {
+    if (game.gameId === "vaultbreak") {
+      results.push({
+        gameId: game.gameId,
+        status: "procedural-healthy",
+        generated: 0,
+        validated: 0,
+        rejected: 0,
+        message: "Vaultbreak generates solver-validated puzzles procedurally and does not require inventory replenishment."
+      });
+      continue;
+    }
     if (game.unusedInventory >= game.replenishBelow) {
       results.push({ gameId: game.gameId, status: "healthy-skipped", generated: 0, validated: 0, rejected: 0, message: `Inventory ${game.unusedInventory} is above threshold ${game.replenishBelow}.` });
       continue;

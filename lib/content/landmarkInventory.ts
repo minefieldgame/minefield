@@ -21,7 +21,11 @@ export async function getAllLandmarkCandidates() {
   const persisted = await getPersistedCandidateInventory<Landmark>("landmark-drop");
   return [...new Map([
     ...LANDMARKS.map((item) => [item.id, item] as const),
-    ...persisted.filter((record) => record.validationStatus === "validated" && isLandmarkEligible(record.payload)).map((record) => [record.payload.id, record.payload] as const)
+    ...persisted
+      .filter((record) => record.validationStatus === "validated")
+      .map((record) => ({ ...record.payload, ...evaluateLandmarkQuality(record.payload) }))
+      .filter(isLandmarkEligible)
+      .map((landmark) => [landmark.id, landmark] as const)
   ]).values()];
 }
 

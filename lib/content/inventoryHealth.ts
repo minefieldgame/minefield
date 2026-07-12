@@ -21,6 +21,7 @@ import { getInventoryUsageCounts, getPersistedCandidateInventory } from "@/lib/c
 import { getAllLandmarkCandidates } from "@/lib/content/landmarkInventory";
 import { isLandmarkEligible } from "@/lib/content/landmarkQuality";
 import { getLatestRewindInventorySnapshot } from "@/lib/needledropResolver";
+import { ALL_VAULTBREAK_CODES, VAULTBREAK_PROCEDURAL_HEALTH_BASELINE } from "@/games/vaultbreak/logic";
 
 export type InventoryOverview = {
   gameId: InventoryGameId;
@@ -185,9 +186,9 @@ export async function getInventoryOverview(): Promise<InventoryOverview[]> {
       generationArchitecture: "Same-week historical Billboard issues -> recognizability gate -> bounded iTunes original-preview validation",
       sourceStrategy: "Billboard issues anchored to the selected month/day across prior years; iTunes original-recording previews",
       usageCount: used("needledrop"),
-      metricsScope: rewindSnapshot ? `Bounded selected-date discovery snapshot for ${rewindSnapshot.date}.` : "Not materialized on this warm instance; generate a selected-date preview to populate bounded provider metrics.",
+      metricsScope: rewindSnapshot ? `Bounded selected-date discovery and preview-validation snapshot for ${rewindSnapshot.date}; not the full reusable Rewind inventory.` : "Bounded selected-date snapshot not materialized on this warm instance; this is not a full-inventory count. Generate a preview to populate provider metrics.",
       distributions: { recognizabilityTier: rewindSnapshot?.tierDistribution ?? { iconic: 0, mainstream: 0, challenging: 0, reject: 0 } },
-      healthOverride: rewindSnapshot ? undefined : "Low eligible inventory"
+      healthOverride: "Bounded snapshot (informational)"
     }),
     overview({
       gameId: "odd-one-out",
@@ -205,6 +206,32 @@ export async function getInventoryOverview(): Promise<InventoryOverview[]> {
       usageCount: used("odd-one-out"),
       metricsScope: "Complete prepared Odd One Out inventory.",
       distributions: { categoryFamily: ODD_ONE_OUT_INVENTORY.categoryDistribution, difficultyTier: ODD_ONE_OUT_INVENTORY.difficultyDistribution }
+    }),
+    overview({
+      gameId: "vaultbreak",
+      metrics: buildInventoryMetrics({
+        discoveredUnique: ALL_VAULTBREAK_CODES.length,
+        technicallyValidUnique: ALL_VAULTBREAK_CODES.length,
+        qualityApproved: ALL_VAULTBREAK_CODES.length,
+        playableEligible: ALL_VAULTBREAK_CODES.length,
+        previouslyUsed: used("vaultbreak"),
+        unusedEligible: ALL_VAULTBREAK_CODES.length
+      }),
+      generationArchitecture: "Deterministic clue templates -> exhaustive 5,040-code solver -> unique-solution proof -> atomic publication",
+      sourceStrategy: "Local procedural logic engine; no model or external provider",
+      usageCount: used("vaultbreak"),
+      metricsScope: "Complete procedural no-repeat code space per request; exact published puzzle count is separate and does not deplete the reusable code space.",
+      distributions: {
+        difficultyTargetPercent: { approachable: 40, standard: 45, hard: 15 },
+        observedDifficulty365Days: { ...VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.difficultyDistribution },
+        proceduralBaseline: {
+          sampleDays: VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.sampleDays,
+          validGeneratedPuzzles: VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.validGeneratedPuzzles,
+          averageGenerationAttemptsX1000: Math.round(VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.averageGenerationAttempts * 1000),
+          maximumGenerationAttemptsObserved: VAULTBREAK_PROCEDURAL_HEALTH_BASELINE.maximumGenerationAttemptsObserved
+        }
+      },
+      healthOverride: "Healthy"
     }),
     overview({
       gameId: "ranked-top-5",

@@ -25,6 +25,7 @@ const inventoryMetricKeys: Array<keyof InventoryMetrics> = [
 
 function statusTone(status: string) {
   if (/Healthy|Ready|Cached|Generated/i.test(status)) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200";
+  if (/informational|snapshot/i.test(status)) return "bg-sky-100 text-sky-800 dark:bg-sky-400/10 dark:text-sky-200";
   if (/Low|warning/i.test(status)) return "bg-amber-100 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200";
   return "bg-red-100 text-red-700 dark:bg-red-400/10 dark:text-red-200";
 }
@@ -273,7 +274,7 @@ export default function AdminDashboard({ environment }: { environment: string })
                       <h3 className="font-black">{item.label}</h3>
                       <div className="flex flex-wrap justify-end gap-1.5">
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusTone(item.inventoryHealthStatus)}`}>
-                          Inventory: {item.inventoryHealthStatus}
+                          {item.gameId === "needledrop" ? "Selected-date inventory sample" : "Inventory"}: {item.inventoryHealthStatus}
                         </span>
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusTone(item.selectedDateStatus)}`}>
                           Selected date: {item.selectedDateStatus}

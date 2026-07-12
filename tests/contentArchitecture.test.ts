@@ -36,6 +36,7 @@ test("active release lineup includes Odd One Out and excludes retired Sing Along
   assert.deepEqual(ACTIVE_GAME_IDS, [
     "needledrop",
     "odd-one-out",
+    "vaultbreak",
     "ranked-top-5",
     "spelldrop",
     "closer",
@@ -126,6 +127,10 @@ test("Postcard separates technical validity from normal-play quality", () => {
     assert.ok(item.width >= 640 && item.height >= 480);
     assert.ok(item.attribution && item.license && item.sourceNote.includes("commons.wikimedia.org"));
     assert.ok(item.imageQualityScore >= 0 && item.imageQualityScore <= 100);
+    assert.ok(item.focalSubjectQuality >= 0 && item.focalSubjectQuality <= 100);
+    assert.ok(item.subjectDominance >= 0 && item.subjectDominance <= 100);
+    assert.ok(["subject-dominant", "subject-in-context", "incidental-or-unclear"].includes(item.imageFraming));
+    assert.ok(item.focalSubjectReason.length >= 20);
     assert.ok(item.landmarkPlayabilityScore >= 0 && item.landmarkPlayabilityScore <= 100);
   }
   assert.ok(eligibleLandmarks.every((item) => item.eligibilityStatus === "eligible" && item.qualityEvaluation.finalEligibility));
@@ -137,6 +142,11 @@ test("Postcard separates technical validity from normal-play quality", () => {
   assert.equal(LANDMARKS.find((item) => item.id === "Q234364")?.eligibilityStatus, "archive-only", "Demolished Tuileries Palace must not enter normal play");
   assert.equal(LANDMARKS.find((item) => item.id === "Q202902")?.eligibilityStatus, "archive-only", "Destroyed Crystal Palace must not enter normal play");
   assert.equal(LANDMARKS.find((item) => item.name === "Volksparkstadion")?.recognizabilityTier, "challenging");
+  const bakuTower = LANDMARKS.find((item) => item.name === "Baku TV Tower");
+  assert.equal(bakuTower?.imageFile, "Baku Botanical Garden 60 (cropped).jpg");
+  assert.equal(bakuTower?.eligibilityStatus, "archive-only", "An incidental Botanical Garden image must not enter normal play as Baku TV Tower");
+  assert.equal(bakuTower?.imageFraming, "incidental-or-unclear");
+  assert.ok(eligibleLandmarks.every((item) => !["tower", "stadium", "bridge"].includes(item.category.toLowerCase()) || item.subjectDominance >= 70));
 
   const selectorSource = fs.readFileSync(new URL("../games/geography/serverPuzzles.ts", import.meta.url), "utf8");
   assert.match(selectorSource, /candidates\.filter\(isLandmarkEligible\)/);
@@ -144,6 +154,16 @@ test("Postcard separates technical validity from normal-play quality", () => {
   assert.match(selectorSource, /random\.random\(\) >= 0\.06/);
   assert.match(selectorSource, /recognizabilityTier === "iconic" \? 14/);
   assert.match(selectorSource, /recognizabilityTier === "recognizable" \? 7 : 0\.25/);
+  assert.match(selectorSource, /selectedFocalSubjectQuality/);
+  assert.match(selectorSource, /selectedSubjectDominance/);
+  assert.match(selectorSource, /selectedImageFraming/);
+
+  const adminSource = fs.readFileSync(new URL("../components/admin/AdminGeographyPreviews.tsx", import.meta.url), "utf8");
+  assert.match(adminSource, /Selected landmark tier/);
+  assert.match(adminSource, /Focal-subject quality/);
+  assert.match(adminSource, /Subject dominance/);
+  assert.match(adminSource, /Image framing/);
+  assert.match(adminSource, /Landmark playability score/);
 });
 
 test("retired Sing Along catalog remains structurally safe for legacy records", () => {
@@ -180,6 +200,7 @@ test("365-day release simulation covers every active game with no exact repeats"
   const runs = [
     simulateDailyInventory({ gameId: "needledrop", candidates: fixtures("rewind", 4_000), cooldownDays: 45 }),
     simulateDailyInventory({ gameId: "odd-one-out", candidates: ODD_ONE_OUT_INVENTORY.eligibleCandidates.map((item) => ({ id: item.exactDuplicateKey, category: item.category, qualityTier: item.difficulty, softTopic: item.semanticTopicKey })), cooldownDays: 21 }),
+    simulateDailyInventory({ gameId: "vaultbreak", candidates: fixtures("vaultbreak", 5_040), cooldownDays: 30 }),
     simulateDailyInventory({ gameId: "ranked-top-5", candidates: IN_ORDER_CANDIDATES.map((item) => ({ id: item.id, category: item.categoryFamily, qualityTier: item.difficultyTier, softTopic: item.semanticTopic })), cooldownDays: 45 }),
     simulateDailyInventory({ gameId: "spelldrop", candidates: eligibleBuzzwords.map((item) => ({ id: item.id, category: item.difficulty, qualityTier: item.difficulty })), cooldownDays: 90 }),
     simulateDailyInventory({ gameId: "closer", candidates: BALLPARK_CANDIDATES.map((item) => ({ id: item.id, category: item.category, qualityTier: item.difficultyTier, softTopic: item.topic })), cooldownDays: 45 }),

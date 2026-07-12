@@ -1,15 +1,16 @@
 # Minefield
 
-Minefield is a server-authoritative daily feed of eight short games:
+Minefield is a server-authoritative daily feed of nine short games:
 
 1. Rewind
 2. Odd One Out
-3. In Order
-4. Buzzword
-5. In the Ballpark
-6. Meet Me Halfway
-7. On a Postcard
-8. Minefield
+3. Vaultbreak
+4. In Order
+5. Buzzword
+6. In the Ballpark
+7. Meet Me Halfway
+8. On a Postcard
+9. Minefield
 
 The app uses Next.js App Router, React, TypeScript, Tailwind, DynamoDB, legal media/metadata providers, and the OpenAI Responses API for validated inventory replenishment.
 
@@ -53,6 +54,7 @@ Current prepared inventory baselines:
 |---|---:|---:|---:|
 | Rewind | selected-date discovery snapshot | 1,200 | 45 days |
 | Odd One Out | 1,224 across 17 balanced families | 300 | 21 days |
+| Vaultbreak | procedural 5,040-code solver space | procedural | 30-day code/pattern cooldowns |
 | In Order | 600 objective lists across 18 families | 200 | 45 days |
 | Buzzword | 5,000 prepared; full quality gates determine eligibility | 1,500 | 90 days |
 | In the Ballpark | 540 stable numeric questions across 10 categories | 200 | 45 days |
@@ -62,6 +64,8 @@ Current prepared inventory baselines:
 Rewind means "Rewind this date through music history." The selected daily month and day are projected into prior years, then resolved to the nearest Billboard issue, preferably within 7 days and never beyond 14 days. Selection favors iconic and mainstream original recordings with playable iTunes previews. Diagnostics keep provider-response totals separate from unique, metadata-valid, preview-playable, quality-approved, used, and unused counts.
 
 Odd One Out uses project-authored, source-backed templates and an original five-item mechanic. Its prepared inventory contains 72 eligible puzzles in each of 17 category families. Exact item-set identity is order independent; semantic topic and answer reuse use dated cooldowns.
+
+Vaultbreak is a deterministic four-digit deduction puzzle. A local solver enumerates all 5,040 no-repeat codes, proves that the selected clue set has exactly one solution, and publishes the puzzle through the same authoritative daily transaction. Exact code-and-clue puzzles are permanently reserved; secret codes and clue patterns use dated cooldowns. The public route withholds the secret until a submitted answer is scored.
 
 In Order limits country facts to at most 15%, excludes country latitude/longitude rankings, rejects ties, and spans mainstream movies, games, television, books, music metadata, history, sports, landmarks, animals, science, technology, and geography. In the Ballpark uses stable, recognizable facts, natural player copy, explicit quality dimensions, and no internal provider/snapshot wording. Buzzword converts phonetic data to readable syllables and admits only plausible misspellings. On a Postcard excludes archive-only sites and heavily favors iconic or recognizable landmarks over challenging ones.
 
@@ -82,7 +86,7 @@ The preparation pipeline uses WordNet, SUBTLEX-US, CMUdict, structured reference
 - **Inventory health** describes the reusable eligible inventory.
 - **Selected-date status** describes the actual route result: Ready, Cached, Generated, Failed, Provider unavailable, or Infrastructure failure.
 
-A failed route cannot show a puzzle hash or a passed duplicate check. Odd One Out appears in the active section. Sing Along appears only in a retired/legacy section and does not count as an active failure.
+A failed route cannot show a puzzle hash or a passed duplicate check. Odd One Out and Vaultbreak appear in the active section. Sing Along appears only in a retired/legacy section and does not count as an active failure.
 
 Inventory metric labels are intentionally precise:
 
@@ -123,6 +127,6 @@ npm run content:simulate
 npm run build
 ```
 
-After a build, verify `.next/required-server-files.json`, `/api/odd-one-out`, and `/api/deployment-info` in the route manifest. `amplify.yml` records non-secret commit, branch, job, and build-time metadata. `/api/deployment-info` returns those values with the app version and is the production proof that the expected commit is live.
+After a build, verify `.next/required-server-files.json`, `/api/odd-one-out`, `/api/vaultbreak`, and `/api/deployment-info` in the route manifest. `amplify.yml` records non-secret commit, branch, job, and build-time metadata. `/api/deployment-info` returns those values with the app version and is the production proof that the expected commit is live.
 
 Pushes to the connected `main` branch trigger Amplify. A release is complete only after Amplify reports Deployed, `/api/deployment-info` matches the pushed commit, the public board loads, and at least five future admin dates generate every active game successfully.

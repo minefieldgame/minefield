@@ -12,6 +12,7 @@ const GAME_DEFAULTS = {
   "sing-along": { displayName: "Sing Along", icon: "🎤", totalUnits: 1 },
   needledrop: { displayName: "Rewind", icon: "🎵", totalUnits: 7 },
   "odd-one-out": { displayName: "Odd One Out", icon: "🧩", totalUnits: 1 },
+  vaultbreak: { displayName: "Vaultbreak", icon: "🔐", totalUnits: 4 },
   minefield: { displayName: "Minefield", icon: "💣", totalUnits: 6 },
   "ranked-top-5": { displayName: "In Order", icon: "🏆", totalUnits: 5 },
   spelldrop: { displayName: "Buzzword", icon: "🔤", totalUnits: 1 },
@@ -92,6 +93,32 @@ function recoverReviewData(
           explanation: state.puzzle.explanation,
           category: state.puzzle.category,
           difficulty: state.puzzle.difficulty
+        };
+      }
+    }
+    if (gameId === "vaultbreak") {
+      const state = read<{
+        puzzle: { clues: Array<{ text: string }>; difficulty: string };
+        submittedCode: string;
+        result: {
+          correctCode: string;
+          exactDigits: number;
+          solved: boolean;
+          elapsedSeconds: number;
+          explanation: string[];
+        };
+      } | null>(getGameCacheKey("vaultbreak", date), null);
+      if (state?.puzzle && state.result) {
+        return {
+          type: "vaultbreak",
+          clueTexts: state.puzzle.clues.map((clue) => clue.text),
+          submittedCode: state.submittedCode,
+          correctCode: state.result.correctCode,
+          exactDigits: state.result.exactDigits,
+          opened: state.result.solved,
+          elapsedSeconds: state.result.elapsedSeconds,
+          difficulty: state.puzzle.difficulty,
+          explanation: state.result.explanation
         };
       }
     }
@@ -199,7 +226,7 @@ export function saveGameProgress(date: string, result: MinefieldGameResult, scop
   return next;
 }
 
-export function calculateDailySummary(board: MinefieldDailyBoard, totalGames = 8): MinefieldSummary {
+export function calculateDailySummary(board: MinefieldDailyBoard, totalGames: number = ACTIVE_GAME_IDS.length): MinefieldSummary {
   const results = (Object.values(board.results).filter(Boolean) as MinefieldGameResult[])
     .filter((result) => RESULT_ORDER.includes(result.gameId))
     .sort((left, right) => RESULT_ORDER.indexOf(left.gameId) - RESULT_ORDER.indexOf(right.gameId));
@@ -228,7 +255,7 @@ function previousPacificDate(dateKey: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export function completeDailyBoard(board: MinefieldDailyBoard, totalGames = 8, scope?: string) {
+export function completeDailyBoard(board: MinefieldDailyBoard, totalGames: number = ACTIVE_GAME_IDS.length, scope?: string) {
   const summary = calculateDailySummary(board, totalGames);
   if (summary.gamesCompleted < totalGames) return summary;
   if (scope) return summary;

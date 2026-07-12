@@ -23,6 +23,7 @@ export function getFinalMinefield(summary: MinefieldSummary) {
 export function buildMinefieldShare(summary: MinefieldSummary) {
   const prepResults = getPrepResults(summary);
   const prepScore = prepResults.reduce((total, result) => total + result.score, 0);
+  const prepMaxScore = prepResults.reduce((total, result) => total + result.maxScore, 0);
   const final = getFinalMinefield(summary);
   const review = final?.reviewData.type === "minefield" ? final.reviewData : null;
   const survived = Boolean(review && !review.hitMine);
@@ -30,9 +31,11 @@ export function buildMinefieldShare(summary: MinefieldSummary) {
     "Minefield Daily",
     formatChartDate(summary.date),
     "",
-    `Prep Score: ${prepScore} / 700`,
+    `Prep Score: ${prepScore} / ${prepMaxScore}`,
     "",
-    ...prepResults.map((result) => `${GAME_DISPLAY[result.gameId].icon} ${GAME_DISPLAY[result.gameId].name}: ${result.score}`),
+    ...prepResults.map((result) => result.gameId === "vaultbreak"
+      ? result.shareLine
+      : `${GAME_DISPLAY[result.gameId].icon} ${GAME_DISPLAY[result.gameId].name}: ${result.score}`),
     "",
     `Final Minefield: ${survived ? "Survived" : "Did not survive"}`,
     `Difficulty: ${review?.difficulty ?? "Unavailable"}`,
@@ -53,6 +56,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const prepResults = getPrepResults(summary);
   const prepScore = prepResults.reduce((total, result) => total + result.score, 0);
+  const prepMaxScore = prepResults.reduce((total, result) => total + result.maxScore, 0);
   const final = getFinalMinefield(summary);
   const minefield = final?.reviewData.type === "minefield" ? final.reviewData : null;
 
@@ -79,7 +83,7 @@ export default function DailySummary({ summary }: { summary: MinefieldSummary })
       <section className="theme-raised mt-5 rounded-2xl border p-4">
         <p className="text-xs font-black uppercase tracking-wider text-slate-500">Daily Prep Score</p>
         <p className="mt-1 text-3xl font-black text-slate-950 dark:text-white">
-          {prepScore}<span className="text-lg text-slate-400">/700</span>
+          {prepScore}<span className="text-lg text-slate-400">/{prepMaxScore}</span>
         </p>
         <div className="mt-3 space-y-1.5">
           {prepResults.map((result) => (

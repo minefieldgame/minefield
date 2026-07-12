@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   CandidateContentCollisionError,
   CandidatePoolExhaustedError,
+  buildCooldownWindowKeys,
+  datedCooldownKey,
   dedupeItemKeys,
   dedupeKeyedItems,
   dedupeUsedContentRecords,
@@ -33,6 +35,21 @@ test("DynamoDB item keys are deduplicated before batch and transaction construct
   ]);
   assert.equal(deduped.length, 2);
   assert.deepEqual(deduped.map((entry) => entry.uniqueContentKey).sort(), ["exact:a", "topic:a"]);
+});
+
+test("dated cooldown windows block out-of-order and concurrent nearby publications", () => {
+  const base = "vaultbreak:secret:5278";
+  const firstWindow = buildCooldownWindowKeys(base, "2028-05-10", 30);
+  const nearbyWindow = buildCooldownWindowKeys(base, "2028-05-01", 30);
+  const outsideWindow = buildCooldownWindowKeys(base, "2028-06-09", 30);
+  const firstOwnKey = datedCooldownKey(base, "2028-05-10");
+  const nearbyOwnKey = datedCooldownKey(base, "2028-05-01");
+  const outsideOwnKey = datedCooldownKey(base, "2028-06-09");
+  assert.equal(firstWindow.includes(nearbyOwnKey), true, "earlier admin generation must be visible in the later date's transaction checks");
+  assert.equal(nearbyWindow.includes(firstOwnKey), true, "later admin generation must be visible in the earlier date's transaction checks");
+  assert.equal(firstWindow.includes(outsideOwnKey), false, "the code may return once the full cooldown expires");
+  assert.equal(outsideWindow.includes(firstOwnKey), false);
+  assert.notEqual(firstOwnKey, nearbyOwnKey, "dated rows must never overwrite each other");
 });
 
 test("persisted candidate writes collapse duplicate primary keys before batching", () => {

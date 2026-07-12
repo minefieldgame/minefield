@@ -5,7 +5,11 @@ import { chartIssueDeltaDays, historicalChartAnchorDate, isChartIssueAnchoredToD
 import {
   aggregateRewindInventoryMetrics,
   assertRewindInventoryMetricInvariants,
+  isRewindSeasonalCooldownActive,
+  isRewindSeasonalHolidaySong,
   orderRewindCandidatesByRecognizability,
+  REWIND_HOLIDAY_COOLDOWN_DAYS,
+  resolveRewindOriginalReleaseProvenance,
   scoreRewindRecognizability,
   summarizeRewindRecognizabilityTiers,
   validateRewindOriginalRecording
@@ -95,6 +99,53 @@ test("original-recording validation rejects altered, cover, live, karaoke, and t
     assert.equal(validation.valid, false, `${candidate.title} / ${candidate.artist} should be rejected`);
     assert.ok(validation.alternateRecordingSignals.length > 0);
   }
+});
+
+test("Rewind rejects the Beach Boys 1991 Remixes collection scenario", () => {
+  const validation = validateRewindOriginalRecording({
+    title: "Little Saint Nick",
+    artist: "The Beach Boys",
+    collectionName: "Christmas with The Beach Boys (1991 Remixes)",
+    previewUrl: "https://example.test/little-saint-nick.m4a",
+    expectedTitle: "Little Saint Nick",
+    expectedArtist: "The Beach Boys",
+    requirePreview: true
+  });
+  assert.equal(validation.valid, false);
+  assert.ok(validation.alternateRecordingSignals.includes("remix"));
+  assert.match(validation.rejectionReasons.join(" "), /alternate recording marker/i);
+});
+
+test("Rewind classifies seasonal songs and applies a bounded holiday cadence", () => {
+  assert.equal(isRewindSeasonalHolidaySong("Little Saint Nick"), true);
+  assert.equal(isRewindSeasonalHolidaySong("Last Christmas"), true);
+  assert.equal(isRewindSeasonalHolidaySong("Dreams", "Rumours"), false);
+  assert.equal(REWIND_HOLIDAY_COOLDOWN_DAYS, 7);
+  assert.equal(isRewindSeasonalCooldownActive("2026-12-04", "2026-12-09"), true);
+  assert.equal(isRewindSeasonalCooldownActive("2026-12-02", "2026-12-09"), false);
+  assert.equal(isRewindSeasonalCooldownActive("2026-12-10", "2026-12-09"), false);
+
+  const resolverSource = fs.readFileSync(new URL("../lib/needledropResolver.ts", import.meta.url), "utf8");
+  const persistenceSource = fs.readFileSync(new URL("../lib/content/dailyPuzzleResolvers.ts", import.meta.url), "utf8");
+  assert.match(resolverSource, /needledrop", "seasonal-soft"/);
+  assert.match(resolverSource, /seasonalCooldownRejectionCount/);
+  assert.match(persistenceSource, /needledrop:seasonal-soft:/);
+});
+
+test("Rewind never substitutes a provider catalog date for an original release year", () => {
+  const reissueOnly = resolveRewindOriginalReleaseProvenance({ providerReleaseDate: "1991-11-19T12:00:00Z" });
+  assert.equal(reissueOnly.year, null);
+  assert.match(reissueOnly.status, /original release year unavailable/i);
+  assert.match(reissueOnly.status, /provider catalog date.*not used as substitutes/i);
+
+  const sourcedOriginal = resolveRewindOriginalReleaseProvenance({
+    originalReleaseYear: 1963,
+    originalReleaseYearSource: "recording-level release registry",
+    providerReleaseDate: "1991-11-19T12:00:00Z"
+  });
+  assert.equal(sourcedOriginal.year, 1963);
+  assert.equal(sourcedOriginal.source, "recording-level release registry");
+  assert.match(sourcedOriginal.status, /1963/);
 });
 
 test("recording validation checks provider identity without rejecting legitimate titles or artist names", () => {
@@ -199,8 +250,37 @@ test("Rewind admin surfaces the historical anchor and recognizability evidence",
     "Fallback window used",
     "Recognizability score",
     "Recognizability tier",
+    "Chart appearance year",
+    "Original release year",
+    "Provider catalog date, not original release",
+    "Recording match confidence",
+    "Version rejection reason",
+    "Holiday cooldown",
     "Why eligible"
   ]) assert.match(source, new RegExp(label));
   assert.match(source, /Not recorded on legacy cached puzzle/);
   assert.match(source, /Legacy cached puzzle predates the Rewind quality-evidence diagnostics/);
+});
+
+test("Rewind player copy separates chart appearance from original release provenance", () => {
+  const source = fs.readFileSync(new URL("../components/GameShell.tsx", import.meta.url), "utf8");
+  assert.match(source, /Appeared on the Billboard Hot 100 during this week in/);
+  assert.match(source, /Original release year unavailable/);
+  assert.doesNotMatch(source, /track was .*years ago/);
+});
+
+test("Rewind health treats provider validation counts as an informational bounded snapshot", () => {
+  const healthSource = fs.readFileSync(new URL("../lib/content/inventoryHealth.ts", import.meta.url), "utf8");
+  const dashboardSource = fs.readFileSync(new URL("../components/admin/AdminDashboard.tsx", import.meta.url), "utf8");
+  assert.match(healthSource, /not the full reusable Rewind inventory/);
+  assert.match(healthSource, /healthOverride: "Bounded snapshot \(informational\)"/);
+  assert.match(dashboardSource, /Selected-date inventory sample/);
+});
+
+test("Rewind holiday cooldown uses dated history and atomic window reservations", () => {
+  const resolver = fs.readFileSync(new URL("../lib/needledropResolver.ts", import.meta.url), "utf8");
+  const dailyResolver = fs.readFileSync(new URL("../lib/content/dailyPuzzleResolvers.ts", import.meta.url), "utf8");
+  assert.match(resolver, /buildCooldownWindowKeys\(seasonalCooldownKey, puzzleDate, REWIND_HOLIDAY_COOLDOWN_DAYS\)/);
+  assert.match(dailyResolver, /datedCooldownKey\(seasonalBaseKey, date\)/);
+  assert.match(dailyResolver, /conditionalAbsentUsedContentKeys: seasonalReservationChecks/);
 });

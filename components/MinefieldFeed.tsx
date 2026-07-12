@@ -12,6 +12,7 @@ import MeetMeHalfwayGame from "@/games/geography/MeetMeHalfwayGame";
 import MinefieldGame from "@/games/minefield/MinefieldGame";
 import NeedleDropGame from "@/games/needledrop/NeedleDropGame";
 import OddOneOutGame from "@/games/odd-one-out/OddOneOutGame";
+import VaultbreakGame from "@/games/vaultbreak/VaultbreakGame";
 import SpellDropGame from "@/games/spelldrop/SpellDropGame";
 import TopTenGame from "@/games/top-ten/TopTenGame";
 import { formatChartDate, getGameCacheKey, getPacificDateKey } from "@/lib/date";
@@ -50,6 +51,16 @@ function resultFlash(result: MinefieldGameResult): { title: string; detail: stri
           title: review ? `Correct: ${review.correctItem}` : "Not the odd one",
           detail: review?.explanation ?? "Correct answer revealed",
           tone: "red"
+        };
+  }
+  if (result.gameId === "vaultbreak") {
+    const review = result.reviewData.type === "vaultbreak" ? result.reviewData : null;
+    return review?.opened
+      ? { title: "Vault opened", detail: `${result.score} points · ${review.elapsedSeconds}s`, tone: "green" }
+      : {
+          title: "Lock jammed",
+          detail: review ? `${review.exactDigits}/4 digits exact · code ${review.correctCode}` : `${result.score} points`,
+          tone: review?.exactDigits ? "amber" : "red"
         };
   }
   if (result.gameId === "minefield") {
@@ -171,7 +182,7 @@ export default function MinefieldFeed({
       } else {
         goNext();
       }
-    }, activeGame?.id === "odd-one-out" ? 1_800 : 950);
+    }, activeGame?.id === "vaultbreak" ? 5_000 : activeGame?.id === "odd-one-out" ? 1_800 : 950);
     return () => window.clearTimeout(timeout);
   }, [activeComplete, activeGame?.id, activeIndex, completionResult, date, goNext, mode, router]);
 
@@ -205,7 +216,7 @@ export default function MinefieldFeed({
               />
             ))}
           </div>
-          <span className="shrink-0 text-xs font-black text-violet dark:text-[#9187f6] sm:text-sm">{runPerformance}/700</span>
+          <span className="shrink-0 text-xs font-black text-violet dark:text-[#9187f6] sm:text-sm">{runPerformance}/800</span>
         </div>
 
         <main className="relative flex-1 overflow-hidden">
@@ -218,14 +229,14 @@ export default function MinefieldFeed({
                 <div className="mx-auto flex h-20 items-center justify-center sm:h-28">
                   <BrandLogo priority className="h-20 w-auto max-w-full object-contain drop-shadow-xl sm:h-28" />
                 </div>
-                <p className="mt-6 text-xs font-black uppercase tracking-[.22em] text-coral">Eight quick games · daily</p>
+                <p className="mt-6 text-xs font-black uppercase tracking-[.22em] text-coral">Nine quick games · daily</p>
                 <h1 className="mt-2 text-3xl font-black tracking-[-.05em] text-slate-950 dark:text-white sm:text-4xl">Minefield</h1>
                 <p className="mx-auto mt-3 max-w-sm text-base font-semibold leading-7 text-slate-500 dark:text-slate-300">
-                  A daily collection of quick trivia and skill games.
+                  A daily collection of quick trivia, logic, and skill games.
                 </p>
                 <div className="mx-auto mt-5 max-w-sm text-left">
                   <div className="grid grid-cols-2 gap-2">
-                    {GAMES.slice(0, 7).map((game) => (
+                    {GAMES.slice(0, -1).map((game) => (
                       <div key={game.id} className="theme-muted rounded-xl px-3 py-2 text-xs font-extrabold text-slate-700 dark:text-slate-200">
                         {GAME_DISPLAY[game.id].icon} {game.title}
                       </div>
@@ -270,13 +281,15 @@ export default function MinefieldFeed({
                             <NeedleDropGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "odd-one-out" ? (
                             <OddOneOutGame onComplete={handleComplete} date={date} storageScope={storageScope} />
+                          ) : game.id === "vaultbreak" ? (
+                            <VaultbreakGame onComplete={handleComplete} date={date} storageScope={storageScope} />
                           ) : game.id === "minefield" ? (
                             <MinefieldGame
                               onComplete={handleComplete}
                               date={date}
                               storageScope={storageScope}
                               runScore={runPerformance}
-                              runMaxScore={700}
+                              runMaxScore={800}
                             />
                           ) : game.id === "ranked-top-5" ? (
                             <TopTenGame onComplete={handleComplete} date={date} storageScope={storageScope} />

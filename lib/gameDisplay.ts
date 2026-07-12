@@ -15,6 +15,11 @@ export const GAME_DISPLAY: Record<MinefieldGameId, {
     icon: "🧩",
     instruction: "Find the one item that does not belong."
   },
+  vaultbreak: {
+    name: "Vaultbreak",
+    icon: "🔐",
+    instruction: "Use the clues to crack the only possible vault code."
+  },
   "sing-along": {
     name: "Sing Along",
     icon: "🎤",
@@ -55,6 +60,7 @@ export const GAME_DISPLAY: Record<MinefieldGameId, {
 export const ACTIVE_GAME_IDS = [
   "needledrop",
   "odd-one-out",
+  "vaultbreak",
   "ranked-top-5",
   "spelldrop",
   "closer",

@@ -27,6 +27,7 @@ export default function MinefieldArchive() {
           {(() => {
             const prepResults = getPrepResults(day);
             const prepScore = prepResults.reduce((total, result) => total + result.score, 0);
+            const prepMaxScore = prepResults.reduce((total, result) => total + result.maxScore, 0);
             const final = getFinalMinefield(day);
             const minefield = final?.reviewData.type === "minefield" ? final.reviewData : null;
             return (
@@ -37,7 +38,7 @@ export default function MinefieldArchive() {
               <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-white">{day.gamesCompleted}/{day.totalGames} games complete</h2>
             </div>
             <span className="text-right text-lg font-black text-violet dark:text-[#9187f6]">
-              Prep {prepScore}<span className="text-sm text-slate-400">/700</span>
+              Prep {prepScore}<span className="text-sm text-slate-400">/{prepMaxScore}</span>
             </span>
           </div>
           <div className={`mt-4 rounded-2xl border p-3 ${

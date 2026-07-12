@@ -1,6 +1,7 @@
 export type MinefieldGameId =
   | "needledrop"
   | "odd-one-out"
+  | "vaultbreak"
   | "sing-along"
   | "minefield"
   | "ranked-top-5"
@@ -44,6 +45,18 @@ export type OddOneOutReviewData = {
   explanation: string;
   category: string;
   difficulty: string;
+};
+
+export type VaultbreakReviewData = {
+  type: "vaultbreak";
+  clueTexts: string[];
+  submittedCode: string;
+  correctCode: string;
+  exactDigits: number;
+  opened: boolean;
+  elapsedSeconds: number;
+  difficulty: string;
+  explanation: string[];
 };
 
 export type RankedTopTenReviewData = {
@@ -124,6 +137,7 @@ export type LandmarkDropReviewData = {
 export type MinefieldReviewData =
   | NeedleDropReviewData
   | OddOneOutReviewData
+  | VaultbreakReviewData
   | SingAlongReviewData
   | RankedTopTenReviewData
   | SpellDropReviewData

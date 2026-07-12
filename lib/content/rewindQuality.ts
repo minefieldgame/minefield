@@ -49,6 +49,41 @@ export type RewindRecordingValidation = {
   alternateRecordingSignals: string[];
 };
 
+export const REWIND_HOLIDAY_COOLDOWN_DAYS = 7;
+
+const HOLIDAY_SONG_PATTERN = /\b(?:christmas|xmas|santa|rudolph|reindeer|sleigh|mistletoe|jingle bells?|winter wonderland|feliz navidad|holy night|silent night|drummer boy|little saint nick|most wonderful time)\b/i;
+
+export function isRewindSeasonalHolidaySong(title: string, collectionName = "") {
+  return HOLIDAY_SONG_PATTERN.test(`${title} ${collectionName}`);
+}
+
+export function isRewindSeasonalCooldownActive(lastUsedDate: string | undefined, puzzleDate: string) {
+  if (!lastUsedDate) return false;
+  const usedAt = Date.parse(`${lastUsedDate}T12:00:00Z`);
+  const puzzleAt = Date.parse(`${puzzleDate}T12:00:00Z`);
+  if (!Number.isFinite(usedAt) || !Number.isFinite(puzzleAt)) return false;
+  const elapsedDays = (puzzleAt - usedAt) / 86_400_000;
+  return elapsedDays > 0 && elapsedDays < REWIND_HOLIDAY_COOLDOWN_DAYS;
+}
+
+export function resolveRewindOriginalReleaseProvenance(input: {
+  originalReleaseYear?: number;
+  originalReleaseYearSource?: string;
+  providerReleaseDate?: string;
+}) {
+  const year = Number.isInteger(input.originalReleaseYear) && input.originalReleaseYear! >= 1880 && input.originalReleaseYear! <= 2200
+    ? input.originalReleaseYear!
+    : null;
+  return {
+    year,
+    source: year ? input.originalReleaseYearSource ?? "recording-level source" : null,
+    providerReleaseDate: input.providerReleaseDate ?? null,
+    status: year
+      ? `Original release year ${year} (${input.originalReleaseYearSource ?? "recording-level source"})`
+      : "Original release year unavailable; chart year and provider catalog date are not used as substitutes."
+  };
+}
+
 export type RewindInventoryMetrics = {
   discoveredUniqueTracks: number;
   providerResponsesExamined: number;
@@ -91,12 +126,12 @@ const RECORDING_VERSION_PATTERNS: Array<{ signal: string; pattern: RegExp }> = [
   { signal: "tribute", pattern: /\b(?:tribute(?:\s+(?:act|artist|band|version))?|in the style of|made famous by)\b/i },
   { signal: "cover", pattern: /\b(?:cover version|cover of|covered by|acoustic cover)\b|(?:\(|\[|\s[-\u2013\u2014]\s)cover(?:\)|\]|$)/i },
   { signal: "live", pattern: /\b(?:live at|live from|live in|live on|live version|live recording|in concert|concert version)\b|(?:\(|\[|\s[-\u2013\u2014]\s)live(?:\)|\]|$)/i },
-  { signal: "remix", pattern: /\b(?:remix|remixed|club mix|dance mix|extended mix|festival mix|house mix|techno mix)\b/i },
+  { signal: "remix", pattern: /\b(?:remix(?:es|ed)?|club mix|dance mix|extended mix|festival mix|house mix|techno mix|radio mix|original mix|dub mix|mix edit)\b/i },
   { signal: "sped-up", pattern: /\b(?:sped[- ]?up|speed[- ]?up|nightcore|pitch(?:ed)? up)\b/i },
   { signal: "slowed", pattern: /\b(?:slowed(?:\s*(?:and|\+|&)\s*reverb)?|slowed[- ]?down|pitch(?:ed)? down)\b/i },
   { signal: "re-recorded", pattern: /\b(?:re[- ]?recorded|re[- ]?recording|new recording|taylor'?s version)\b/i },
   { signal: "instrumental", pattern: /\b(?:instrumental(?: version)?|backing track|minus one)\b/i },
-  { signal: "alternate-take", pattern: /\b(?:alternate take|alternative take|demo version|rough mix|session version|acoustic version)\b/i },
+  { signal: "alternate-take", pattern: /\b(?:alternate take|alternative take|demo(?: version)?|rough mix|session version|acoustic version|radio edit|single edit|edit version|different version)\b/i },
   { signal: "medley", pattern: /\bmedley\b/i }
 ];
 

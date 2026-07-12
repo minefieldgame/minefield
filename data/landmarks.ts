@@ -1,5 +1,5 @@
 import landmarkData from "@/data/generated/landmarks.json";
-import { evaluateLandmarkQuality, type LandmarkEligibilityStatus, type LandmarkRecognizabilityTier } from "@/lib/content/landmarkQuality";
+import { evaluateLandmarkQuality, type LandmarkEligibilityStatus, type LandmarkImageFraming, type LandmarkRecognizabilityTier } from "@/lib/content/landmarkQuality";
 import type { QualityEvaluation } from "@/lib/content/quality";
 
 export type Landmark = {
@@ -29,13 +29,18 @@ export type Landmark = {
   exclusionReason: string;
   recognizabilityTier: LandmarkRecognizabilityTier;
   imageQualityScore: number;
+  focalSubjectQuality: number;
+  subjectDominance: number;
+  imageFraming: LandmarkImageFraming;
+  focalSubjectReason: string;
   landmarkPlayabilityScore: number;
   qualityEvaluation: QualityEvaluation;
 };
 
 type GeneratedLandmark = Omit<Landmark,
   "aliases" | "imageValidation" | "sitelinks" | "region" | "eligibilityStatus" |
-  "exclusionReason" | "recognizabilityTier" | "imageQualityScore" | "landmarkPlayabilityScore" | "qualityEvaluation"
+  "exclusionReason" | "recognizabilityTier" | "imageQualityScore" | "focalSubjectQuality" | "subjectDominance" |
+  "imageFraming" | "focalSubjectReason" | "landmarkPlayabilityScore" | "qualityEvaluation"
 > & { sitelinks?: number };
 
 const CURATED_QUALITY_REPLACEMENTS: GeneratedLandmark[] = [{

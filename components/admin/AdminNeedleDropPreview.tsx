@@ -46,6 +46,10 @@ export default function AdminNeedleDropPreview({
   const requestedHistoricalChartDate = diagnostics.requestedHistoricalChartDate || diagnostics.requestedChartDate || puzzle.chartDate;
   const resolvedBillboardIssueDate = diagnostics.resolvedBillboardIssueDate || diagnostics.resolvedChartDate || puzzle.chartSourceDate || puzzle.chartDate;
   const eligibilityReason = diagnostics.eligibilityReason || "Legacy cached puzzle predates the Rewind quality-evidence diagnostics.";
+  const originalReleaseYear = diagnostics.originalReleaseYear ?? puzzle.originalReleaseYear;
+  const originalReleaseYearStatus = originalReleaseYear
+    ? `${originalReleaseYear}${puzzle.originalReleaseYearSource ? ` (${puzzle.originalReleaseYearSource})` : ""}`
+    : diagnostics.originalReleaseYearStatus || "Original release year unavailable";
   const guessExplanation = explainNeedleDropGuess({
     displayValue: `${testGuessTitle} — ${testGuessArtist}`,
     title: testGuessTitle,
@@ -77,6 +81,9 @@ export default function AdminNeedleDropPreview({
         <Datum label="Game date" value={puzzle.puzzleDate} />
         <Datum label="Daily seed" value={hashString(`needledrop:${date}`)} />
         <Datum label="Historical year selected" value={diagnostics.historicalYearSelected ?? puzzle.chartYear} />
+        <Datum label="Chart appearance year" value={puzzle.chartYear} />
+        <Datum label="Original release year" value={originalReleaseYearStatus} />
+        <Datum label="Provider catalog date, not original release" value={diagnostics.providerReleaseDate || puzzle.track.providerReleaseDate || "Unavailable"} />
         <Datum label="Selected daily date" value={selectedDailyDate} />
         <Datum label="Target historical month/day" value={diagnostics.targetHistoricalMonthDay || selectedDailyDate.slice(5)} />
         <Datum label="Billboard date" value={puzzle.chartDate} />
@@ -88,6 +95,10 @@ export default function AdminNeedleDropPreview({
         <Datum label="Fallback window used" value={Number.isFinite(diagnostics.fallbackWindowDays) ? `±${diagnostics.fallbackWindowDays} days` : legacyDiagnosticValue} />
         <Datum label="Recognizability score" value={Number.isFinite(diagnostics.recognizabilityScore) ? `${diagnostics.recognizabilityScore}/100` : legacyDiagnosticValue} />
         <Datum label="Recognizability tier" value={diagnostics.recognizabilityTier || legacyDiagnosticValue} />
+        <Datum label="Recording match confidence" value={Number.isFinite(diagnostics.recordingMatchConfidence) ? `${Math.round((diagnostics.recordingMatchConfidence ?? 0) * 100)}%` : legacyDiagnosticValue} />
+        <Datum label="Version rejection reason" value={diagnostics.versionRejectionReason || legacyDiagnosticValue} />
+        <Datum label="Seasonal / holiday track" value={diagnostics.selectedSeasonalHoliday === undefined ? legacyDiagnosticValue : diagnostics.selectedSeasonalHoliday ? "Yes" : "No"} />
+        <Datum label="Holiday cooldown" value={Number.isFinite(diagnostics.seasonalCooldownDays) ? `${diagnostics.seasonalCooldownDays} days; ${diagnostics.seasonalCooldownRejectionCount ?? 0} candidate(s) rejected; ${diagnostics.seasonalCooldownRelaxed ? "relaxed" : "not relaxed"}` : legacyDiagnosticValue} />
         <Datum label="Why eligible" value={eligibilityReason} />
         <Datum label="Fallback used" value={diagnostics.fallbackUsed ? "Yes" : "No"} />
         <Datum label="Fallback reason" value={diagnostics.fallbackReason} />

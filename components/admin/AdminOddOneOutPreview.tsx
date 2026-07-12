@@ -77,8 +77,8 @@ export default function AdminOddOneOutPreview({
     ["Exact duplicate", diagnostics.exactDuplicateStatus ?? (diagnostics.duplicateCheck?.passed ? "Passed" : "Not reported")],
     ["Cooldown", diagnostics.cooldownStatus ?? "Not reported"],
     ["Inventory total", diagnostics.inventoryTotal ?? "Not reported"],
-    ["Eligible inventory", diagnostics.eligibleInventory ?? "Not reported"],
-    ["Unused eligible", diagnostics.unusedEligibleInventory ?? "Not reported"],
+    ["Eligible inventory (complete catalog)", diagnostics.eligibleInventory ?? "Not reported"],
+    ["Unused eligible (inventory-wide)", diagnostics.unusedEligibleInventory ?? "Not reported"],
     ["Rejected", diagnostics.rejectedCandidates ?? "Not reported"],
     ["Source strategy", diagnostics.sourceStrategy ?? diagnostics.sourceGenerationStrategy ?? puzzle.sourceNote ?? "Project-authored prepared inventory"],
     ["DynamoDB reads / writes", `${diagnostics.dynamoDbReads ?? 0} / ${diagnostics.dynamoDbWrites ?? 0}`],
@@ -101,17 +101,17 @@ export default function AdminOddOneOutPreview({
       <p className="mt-4 text-lg font-black text-slate-950 dark:text-white">{puzzle.prompt}</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {puzzle.items.map((item) => (
-          <div key={item} className={`rounded-xl border p-3 text-sm font-bold ${
-            item === puzzle.answer
-              ? "border-emerald-300 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
-              : "theme-raised"
-          }`}>
-            {item}
-            {item === puzzle.answer && <span className="ml-2 text-xs font-black uppercase">Answer</span>}
-          </div>
+          <div key={item} className="theme-raised rounded-xl border p-3 text-sm font-bold">{item}</div>
         ))}
       </div>
-      <p className="mt-3 rounded-xl bg-slate-100 p-3 text-sm font-semibold text-slate-700 dark:bg-[#292e38] dark:text-slate-200">{puzzle.explanation}</p>
+      <div data-testid="odd-one-out-answer" className="mt-3 rounded-xl border border-emerald-300 bg-emerald-500/10 p-3">
+        <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Correct answer</p>
+        <p className="mt-1 text-lg font-black text-emerald-900 dark:text-emerald-100">{puzzle.answer}</p>
+      </div>
+      <div data-testid="odd-one-out-explanation" className="mt-3 rounded-xl bg-slate-100 p-3 text-slate-700 dark:bg-[#292e38] dark:text-slate-200">
+        <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Explanation</p>
+        <p className="mt-1 text-sm font-semibold">{puzzle.explanation}</p>
+      </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {fields.map(([label, value]) => (

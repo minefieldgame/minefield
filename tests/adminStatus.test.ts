@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import {
   buildAdminStatusSummary,
@@ -44,4 +45,17 @@ test("failed daily-board rows never expose a hash or a passed duplicate check", 
   assert.equal(row.puzzleHash, "");
   assert.equal(row.duplicateCheck.passed, false);
   assert.equal(row.duplicateCheck.duplicateDetected, false);
+});
+
+test("admin inventory and selected-date counts label their different scopes", () => {
+  const dashboard = fs.readFileSync(new URL("../components/admin/AdminDashboard.tsx", import.meta.url), "utf8");
+  const oddPreview = fs.readFileSync(new URL("../components/admin/AdminOddOneOutPreview.tsx", import.meta.url), "utf8");
+  const geographyPreview = fs.readFileSync(new URL("../components/admin/AdminGeographyPreviews.tsx", import.meta.url), "utf8");
+  const metrics = fs.readFileSync(new URL("../lib/content/inventoryMetrics.ts", import.meta.url), "utf8");
+
+  assert.match(dashboard, /Metric scope:/);
+  assert.match(metrics, /Unused eligible \(metric scope\)/);
+  assert.match(oddPreview, /Unused eligible \(inventory-wide\)/);
+  assert.match(geographyPreview, /Scope: this selected-date selection request/);
+  assert.match(geographyPreview, /Remaining at selected-date stage/);
 });

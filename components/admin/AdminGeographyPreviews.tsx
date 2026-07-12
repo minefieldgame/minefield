@@ -57,6 +57,13 @@ export function AdminLandmarkDropPreview({ preview }: { preview: AdminLandmarkDr
           ["Image URL", puzzle.landmark.imageUrl],
           ["Source", puzzle.landmark.sourceNote],
           ["Validation", puzzle.landmark.imageValidation ?? "photograph candidate"],
+          ["Selected landmark tier", puzzle.landmark.recognizabilityTier ?? "Not reported (legacy cached puzzle)"],
+          ["Image quality score", puzzle.landmark.imageQualityScore ?? "Not reported (legacy cached puzzle)"],
+          ["Focal-subject quality", puzzle.landmark.focalSubjectQuality ?? "Not reported (legacy cached puzzle)"],
+          ["Subject dominance", puzzle.landmark.subjectDominance ?? "Not reported (legacy cached puzzle)"],
+          ["Image framing", puzzle.landmark.imageFraming ?? "Not reported (legacy cached puzzle)"],
+          ["Focal-subject evidence", puzzle.landmark.focalSubjectReason ?? "Not reported (legacy cached puzzle)"],
+          ["Landmark playability score", puzzle.landmark.landmarkPlayabilityScore ?? "Not reported (legacy cached puzzle)"],
           ["Content key", puzzle.uniqueContentKey],
           ["Duplicate check", puzzle.duplicateCheck.passed ? "Passed" : "Warning"],
           ["Image status", imageStatus],
@@ -92,12 +99,12 @@ function ContentUniversePanel({ diagnostics }: { diagnostics: Record<string, unk
   const rows = [
     ["Health", diagnostics.healthStatus],
     ["Source", diagnostics.contentSource],
-    ["Total candidates", diagnostics.totalCandidates],
-    ["Validated", diagnostics.validatedCandidateCount],
-    ["Exact duplicates excluded", diagnostics.excludedPreviouslyUsed],
-    ["Soft cooldown excluded", diagnostics.excludedSoftCooldown],
-    ["Invalid excluded", diagnostics.excludedInvalid],
-    ["Remaining", diagnostics.remainingCandidates],
+    ["Candidates in selected-date universe", diagnostics.totalCandidates],
+    ["Validated in selected-date request", diagnostics.validatedCandidateCount],
+    ["Exact duplicates excluded for selected date", diagnostics.excludedPreviouslyUsed],
+    ["Soft cooldown excluded for selected date", diagnostics.excludedSoftCooldown],
+    ["Invalid excluded for selected date", diagnostics.excludedInvalid],
+    ["Remaining at selected-date stage", diagnostics.remainingCandidates],
     ["Selection stage", diagnostics.selectionStage],
     ["Relaxed rules", Array.isArray(diagnostics.relaxationRulesUsed) ? diagnostics.relaxationRulesUsed.join(", ") || "None" : "None"],
     ["DynamoDB read count", diagnostics.dynamoDbReadCount],
@@ -108,6 +115,7 @@ function ContentUniversePanel({ diagnostics }: { diagnostics: Record<string, unk
   return (
     <div className="theme-raised mt-3 rounded-2xl border p-3">
       <h3 className="text-sm font-black">Content Universe Diagnostics</h3>
+      <p className="mt-1 text-[10px] font-semibold text-slate-500">Scope: this selected-date selection request. These counts can differ from inventory-wide health metrics.</p>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {rows.map(([label, value]) => (
           <div key={String(label)} className="rounded-xl border border-slate-200/70 p-2 dark:border-white/10">

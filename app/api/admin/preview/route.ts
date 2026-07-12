@@ -7,6 +7,7 @@ import {
   resolveSpellDropForDate
 } from "@/lib/content/dailyPuzzleResolvers";
 import { resolveOddOneOutForDate } from "@/lib/content/oddOneOutResolver";
+import { resolveVaultbreakForDate } from "@/lib/content/vaultbreakResolver";
 import { resolveMinefieldPuzzle } from "@/games/minefield/logic";
 import { resolveLandmarkDropForDate, resolveMeetMeHalfwayForDate } from "@/games/geography/serverPuzzles";
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from "@/lib/adminAuth";
@@ -59,9 +60,10 @@ export async function GET(request: NextRequest) {
   };
   };
 
-  const [needledropResult, oddOneOutResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
+  const [needledropResult, oddOneOutResult, vaultbreakResult, topTenResult, spellDropResult, closerResult] = await Promise.allSettled([
     resolveNeedleDropForDate(date),
     resolveOddOneOutForDate(date),
+    resolveVaultbreakForDate(date),
     resolveRankedTop5ForDate(date, {
       force: topTenRetry > 0 || force,
       retryOffset: topTenRetry
@@ -106,6 +108,17 @@ export async function GET(request: NextRequest) {
     : {
         status: "error" as const,
         error: oddOneOutResult.reason instanceof Error ? oddOneOutResult.reason.message : "Odd One Out failed."
+      };
+
+  const vaultbreak = vaultbreakResult.status === "fulfilled"
+    ? {
+        status: "ready" as const,
+        puzzle: vaultbreakResult.value,
+        diagnostics: vaultbreakResult.value.resolverDiagnostics
+      }
+    : {
+        status: "error" as const,
+        error: vaultbreakResult.reason instanceof Error ? vaultbreakResult.reason.message : "Vaultbreak failed."
       };
 
   const singAlong = {
@@ -196,11 +209,12 @@ export async function GET(request: NextRequest) {
     ? { status: "ready" as const, puzzle: landmarkDropResult.value, imageStatus: "Verified photograph candidate" }
     : { status: "error" as const, error: landmarkDropResult.reason instanceof Error ? landmarkDropResult.reason.message : "On a Postcard failed." };
 
-  const minefieldPuzzle = resolveMinefieldPuzzle(date, 560, 700);
+  const minefieldPuzzle = resolveMinefieldPuzzle(date, 640, 800);
   const dailySeed = getGameSeedForDate(date, "minefield");
   const puzzleHashes: Partial<Record<SeededGameId, string>> = {
     needledrop: needledrop.status === "ready" ? hashString(`${needledrop.puzzle.title}:${needledrop.puzzle.artist}:${needledrop.puzzle.chartDate}`).toString(16) : undefined,
     "odd-one-out": oddOneOut.status === "ready" ? oddOneOut.diagnostics.contentHash : undefined,
+    vaultbreak: vaultbreak.status === "ready" ? vaultbreak.puzzle.contentHash : undefined,
     "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.contentHash : undefined,
     spelldrop: spellDrop.status === "ready" ? spellDrop.contentHash : undefined,
     closer: closer.status === "ready" ? closer.contentHash : undefined,
@@ -211,6 +225,7 @@ export async function GET(request: NextRequest) {
   const duplicateChecks: Partial<Record<SeededGameId, { passed: boolean; duplicateDetected: boolean; retryCount?: number; warning?: string }>> = {
     needledrop: needledrop.status === "ready" ? needledrop.puzzle.duplicateCheck : undefined,
     "odd-one-out": oddOneOut.status === "ready" ? oddOneOut.puzzle.duplicateCheck : undefined,
+    vaultbreak: vaultbreak.status === "ready" ? vaultbreak.puzzle.duplicateCheck : undefined,
     "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.duplicateCheck : undefined,
     spelldrop: spellDrop.status === "ready" ? spellDrop.puzzle.duplicateCheck : undefined,
     closer: closer.status === "ready" ? closer.puzzle.duplicateCheck : undefined,
@@ -223,6 +238,7 @@ export async function GET(request: NextRequest) {
   const routeReady: Partial<Record<SeededGameId, boolean>> = {
     needledrop: needledrop.status === "ready",
     "odd-one-out": oddOneOut.status === "ready",
+    vaultbreak: vaultbreak.status === "ready",
     "ranked-top-5": topTen.status === "ready",
     spelldrop: spellDrop.status === "ready",
     closer: closer.status === "ready",
@@ -233,6 +249,7 @@ export async function GET(request: NextRequest) {
   const failureByGame: Partial<Record<SeededGameId, string>> = {
     needledrop: needledrop.status === "error" ? needledrop.error : undefined,
     "odd-one-out": oddOneOut.status === "error" ? oddOneOut.error : undefined,
+    vaultbreak: vaultbreak.status === "error" ? vaultbreak.error : undefined,
     "ranked-top-5": topTen.status === "error" ? topTen.error : undefined,
     spelldrop: spellDrop.status === "error" ? spellDrop.error : undefined,
     closer: closer.status === "error" ? closer.error : undefined,
@@ -242,6 +259,7 @@ export async function GET(request: NextRequest) {
   const cacheHitByGame: Partial<Record<SeededGameId, boolean>> = {
     needledrop: needledrop.status === "ready" && Boolean((needledrop as typeof needledrop & { cacheHit?: boolean }).cacheHit),
     "odd-one-out": oddOneOut.status === "ready" && Boolean(oddOneOut.puzzle.cacheHit),
+    vaultbreak: vaultbreak.status === "ready" && vaultbreak.puzzle.cacheHit,
     "ranked-top-5": topTen.status === "ready" && Boolean(topTen.puzzle.cacheHit),
     spelldrop: spellDrop.status === "ready" && Boolean(spellDrop.cacheHit),
     closer: closer.status === "ready" && Boolean(closer.cacheHit),
@@ -278,6 +296,18 @@ export async function GET(request: NextRequest) {
       dynamoDbReadCount: oddOneOut.diagnostics.dynamoDbReads,
       dynamoDbWrites: oddOneOut.diagnostics.dynamoDbWrites,
       generationDurationMs: oddOneOut.diagnostics.generationDurationMs
+    } : undefined,
+    vaultbreak: vaultbreak.status === "ready" ? {
+      totalCandidates: vaultbreak.diagnostics.initialCandidateCount,
+      selectedCandidateId: vaultbreak.puzzle.id,
+      candidatesGeneratedCurrentRequest: vaultbreak.diagnostics.generationAttempts,
+      excludedPreviouslyUsed: vaultbreak.diagnostics.exactCollisionRetries,
+      excludedSoftCooldown: vaultbreak.diagnostics.cooldownCollisions,
+      excludedInvalid: Math.max(0, vaultbreak.diagnostics.generationAttempts - 1),
+      apiCalls: 0,
+      dynamoDbReadCount: vaultbreak.diagnostics.dynamoDbReads,
+      dynamoDbWrites: vaultbreak.diagnostics.dynamoDbWrites,
+      generationDurationMs: vaultbreak.diagnostics.generationDurationMs
     } : undefined,
     "ranked-top-5": topTen.status === "ready" ? topTen.puzzle.contentUniverse as unknown as Record<string, unknown> : undefined,
     spelldrop: spellDrop.status === "ready" ? spellDrop.contentUniverse : undefined,
@@ -341,6 +371,7 @@ export async function GET(request: NextRequest) {
   const dailyBoard = buildDailyBoardSeedManifest(date, ACTIVE_GAME_IDS, puzzleHashes, {
     needledrop: "same-week Billboard history + iTunes original-preview validation",
     "odd-one-out": "project-authored source-backed validated template inventory",
+    vaultbreak: "deterministic 5,040-code solver + atomic daily publication",
     "ranked-top-5": "structured-data candidate inventory",
     spelldrop: "WordNet/SUBTLEX/CMUdict candidate inventory",
     closer: "verified structured numeric inventory",
@@ -357,6 +388,7 @@ export async function GET(request: NextRequest) {
     cacheKeys: {
       rankedTopTen: getGameCacheKey("ranked-top-5", date),
       oddOneOut: getGameCacheKey("odd-one-out", date),
+      vaultbreak: getGameCacheKey("vaultbreak", date),
       singAlong: getGameCacheKey("sing-along", date),
       spellDrop: getGameCacheKey("spelldrop", date),
       closer: getGameCacheKey("closer", date)
@@ -368,6 +400,7 @@ export async function GET(request: NextRequest) {
     games: {
       needledrop,
       oddOneOut,
+      vaultbreak,
       singAlong,
       minefield: { status: "ready", puzzle: minefieldPuzzle },
       topTen,

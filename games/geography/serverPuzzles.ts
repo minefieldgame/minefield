@@ -259,6 +259,10 @@ async function resolveLandmarkDropAttempt(date: string): Promise<LandmarkDropPuz
     ),
     selectedRecognizabilityTier: selected.recognizabilityTier,
     selectedImageQualityScore: selected.imageQualityScore,
+    selectedFocalSubjectQuality: selected.focalSubjectQuality,
+    selectedSubjectDominance: selected.subjectDominance,
+    selectedImageFraming: selected.imageFraming,
+    selectedFocalSubjectReason: selected.focalSubjectReason,
     selectedLandmarkPlayabilityScore: selected.landmarkPlayabilityScore,
     selectedCategory: selected.category,
     selectedRegion: selected.region
