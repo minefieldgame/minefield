@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import { chartIssueDeltaDays, historicalChartAnchorDate, isChartIssueAnchoredToDate } from "../lib/chartProvider";
 import {
@@ -185,4 +186,19 @@ test("Rewind tier distribution reports every tier with coherent totals", () => {
   assert.equal(distribution.mainstream, 1);
   assert.equal(distribution.challenging, 1);
   assert.equal(distribution.reject, 1);
+});
+
+test("Rewind admin surfaces the historical anchor and recognizability evidence", () => {
+  const source = fs.readFileSync(new URL("../components/admin/AdminNeedleDropPreview.tsx", import.meta.url), "utf8");
+  for (const label of [
+    "Target historical month/day",
+    "Historical year selected",
+    "Requested historical chart date",
+    "Resolved Billboard issue date",
+    "Issue date delta",
+    "Fallback window used",
+    "Recognizability score",
+    "Recognizability tier",
+    "Why eligible"
+  ]) assert.match(source, new RegExp(label));
 });

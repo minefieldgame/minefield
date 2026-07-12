@@ -71,12 +71,19 @@ export default function AdminNeedleDropPreview({
       <div className="mt-5 grid grid-cols-2 gap-2">
         <Datum label="Game date" value={puzzle.puzzleDate} />
         <Datum label="Daily seed" value={hashString(`needledrop:${date}`)} />
-        <Datum label="Historical year" value={puzzle.chartYear} />
+        <Datum label="Historical year selected" value={diagnostics.historicalYearSelected} />
+        <Datum label="Selected daily date" value={diagnostics.selectedDailyDate} />
+        <Datum label="Target historical month/day" value={diagnostics.targetHistoricalMonthDay} />
         <Datum label="Billboard date" value={puzzle.chartDate} />
         <Datum label="Source chart issue" value={puzzle.chartSourceDate ?? "—"} />
         <Datum label="Chart position" value={`#${puzzle.chartPosition}`} />
-        <Datum label="Requested chart date" value={diagnostics.requestedChartDate} />
-        <Datum label="Resolved chart date" value={diagnostics.resolvedChartDate} />
+        <Datum label="Requested historical chart date" value={diagnostics.requestedHistoricalChartDate} />
+        <Datum label="Resolved Billboard issue date" value={diagnostics.resolvedBillboardIssueDate} />
+        <Datum label="Issue date delta" value={`${diagnostics.chartDateDeltaDays} day(s)`} />
+        <Datum label="Fallback window used" value={`±${diagnostics.fallbackWindowDays} days`} />
+        <Datum label="Recognizability score" value={`${diagnostics.recognizabilityScore}/100`} />
+        <Datum label="Recognizability tier" value={diagnostics.recognizabilityTier} />
+        <Datum label="Why eligible" value={diagnostics.eligibilityReason} />
         <Datum label="Fallback used" value={diagnostics.fallbackUsed ? "Yes" : "No"} />
         <Datum label="Fallback reason" value={diagnostics.fallbackReason} />
         <Datum label="Preview URL" value={diagnostics.previewAvailable ? "Available" : "Missing"} />
@@ -137,6 +144,7 @@ export default function AdminNeedleDropPreview({
         <Datum label="Attempted chart dates" value={diagnostics.attemptedChartDates.join(", ")} />
         <Datum label="Attempted positions" value={diagnostics.attemptedChartPositions.map((position) => `#${position}`).join(", ")} />
         <Datum label="Final selected song" value={diagnostics.finalSelectedSong} />
+        <Datum label="Eligibility evidence" value={diagnostics.eligibilityReason} />
         <Datum label="Errors" value={diagnostics.errors.length ? diagnostics.errors.join(", ") : "None"} />
       </div>
 

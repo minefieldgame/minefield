@@ -339,7 +339,7 @@ export async function GET(request: NextRequest) {
     };
   });
   const dailyBoard = buildDailyBoardSeedManifest(date, ACTIVE_GAME_IDS, puzzleHashes, {
-    needledrop: "Billboard archive + iTunes Search API",
+    needledrop: "same-week Billboard history + iTunes original-preview validation",
     "odd-one-out": "project-authored source-backed validated template inventory",
     "ranked-top-5": "structured-data candidate inventory",
     spelldrop: "WordNet/SUBTLEX/CMUdict candidate inventory",

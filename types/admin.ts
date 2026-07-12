@@ -57,6 +57,16 @@ export type AdminNeedleDropPreview =
           available: boolean;
         }>;
         finalSelectedSong: string;
+        selectedDailyDate: string;
+        historicalYearSelected: number;
+        targetHistoricalMonthDay: string;
+        requestedHistoricalChartDate: string;
+        resolvedBillboardIssueDate: string;
+        chartDateDeltaDays: number;
+        fallbackWindowDays: number;
+        recognizabilityScore: number;
+        recognizabilityTier: "iconic" | "mainstream" | "challenging" | "reject";
+        eligibilityReason: string;
         errors: string[];
       };
       rawProviderResponse: unknown;

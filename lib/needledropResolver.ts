@@ -80,6 +80,7 @@ type ResolutionDiagnostics = {
   originalRecordingRejectionCount: number;
   recognizabilityScore: number;
   recognizabilityTier: RewindRecognizability["tier"];
+  eligibilityReason: string;
   recognizabilityTierDistribution: ReturnType<typeof summarizeRewindRecognizabilityTiers>;
   inventoryMetrics: RewindInventoryMetrics;
   inventoryMetricDefinitions: typeof REWIND_INVENTORY_METRIC_DEFINITIONS;
@@ -395,6 +396,13 @@ async function resolveWithFallbacks(puzzleDate: string): Promise<Resolution> {
     originalRecordingRejectionCount,
     recognizabilityScore: song.recognizability.score,
     recognizabilityTier: song.recognizability.tier,
+    eligibilityReason: [
+      `Chart #${song.chartPosition} on a Billboard issue ${song.chartDateDeltaDays} day(s) from the historical anchor`,
+      `${song.recognizability.tier} recognizability score ${song.recognizability.score}/100`,
+      `chart recurrence evidence ${song.recognizability.components.chartRecurrence}/14`,
+      `artist familiarity evidence ${song.recognizability.components.artistFamiliarity}/12`,
+      "playable original-recording preview validated"
+    ].join("; "),
     recognizabilityTierDistribution: summarizeRewindRecognizabilityTiers(universe.candidates),
     inventoryMetrics,
     inventoryMetricDefinitions: REWIND_INVENTORY_METRIC_DEFINITIONS,
