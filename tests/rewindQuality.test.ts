@@ -201,4 +201,6 @@ test("Rewind admin surfaces the historical anchor and recognizability evidence",
     "Recognizability tier",
     "Why eligible"
   ]) assert.match(source, new RegExp(label));
+  assert.match(source, /Not recorded on legacy cached puzzle/);
+  assert.match(source, /Legacy cached puzzle predates the Rewind quality-evidence diagnostics/);
 });
